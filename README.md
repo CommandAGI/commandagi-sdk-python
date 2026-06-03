@@ -1,98 +1,60 @@
-# commandAGI Python SDK
+# CommandAGI Python SDK
 
-Official Python SDK for [commandAGI](https://commandagi.com) — Command the AGI with taste.
-
-## Installation
+Launch real cloud **computers** and **3D robot simulations** and control them from Python — stream
+the robot's camera, send actions, run episodes. No agent required: you drive.
 
 ```bash
-pip install git+https://github.com/commandAGI/commandagi-python.git
+pip install commandagi          # + `pip install commandagi[vision]` for numpy frames
 ```
 
-## Quick Start
-
-```python
-import os
-from commandagi import CommandAGI, ProfileCreateParams, EvalParams
-
-client = CommandAGI(api_key=os.environ["COMMANDAGI_API_KEY"])
-
-# Create a profile
-profile = client.profiles.create(ProfileCreateParams(
-    project_id="your-project-id",
-    name="my-taste-profile",
-    seed="minimalist design with warm tones",
-))
-
-# Evaluate content against the profile
-result = client.profiles.eval(profile.id, EvalParams(
-    frame_url="https://example.com/image.jpg",
-))
-
-print(f"Score: {result.score}, Confidence: {result.confidence}")
-```
-
-## API Reference
-
-### Client
+## Robot testing in a 3D world
 
 ```python
 from commandagi import CommandAGI
 
-client = CommandAGI(
-    api_key="cagi_xxx...",                    # Required
-    base_url="https://commandagi.com",        # Optional (default)
-    timeout=30.0,                             # Optional (default: 30s)
-)
+cagi = CommandAGI(api_key="cagi_...")          # or set COMMANDAGI_API_KEY
 
-# Use as context manager for automatic cleanup
-with CommandAGI(api_key="cagi_xxx...") as client:
-    profiles = client.profiles.list()
+with cagi.launch("simulation/warehouse") as world:
+    obs = world.observe()                      # JPEG bytes from the robot's head camera
+    for _ in range(20):
+        obs = world.step("turn", dir="left")   # act, then get the next frame
+    world.reset()                              # robot back to the episode start
+# leaving the block stops the world and releases the cloud VM
 ```
 
-### Profiles
+`launch()` provisions a real GCE VM running a PyBullet world, waits until it's streaming, and gives
+you a `World`. Built-in scenes: `simulation/warehouse`, `simulation/house-on-fire`,
+`simulation/school` (a mobile robot in each).
+
+### The control vocabulary
+
+| World kind | actions |
+|------------|---------|
+| robot / sim | `move(speed)`, `back(speed)`, `turn(dir, rate)`, `stop`, `reset` |
+| computer | `click(x, y)`, `type(text)`, `key(key)`, `move(x, y)`, `scroll(x, y, dy)` |
 
 ```python
-from commandagi import (
-    ProfileCreateParams,
-    ProfileUpdateParams,
-    EvalParams,
-)
-
-# Create a profile
-profile = client.profiles.create(ProfileCreateParams(
-    project_id="project-id",
-    name="profile-name",
-    seed="optional initial description",
-))
-
-# Get a profile (includes constraints, exemplars, comparisons)
-profile = client.profiles.get("profile-id")
-
-# Update a profile (partial update)
-updated = client.profiles.update("profile-id", ProfileUpdateParams(
-    name="new-name",
-))
-
-# Delete a profile
-client.profiles.delete("profile-id")
-
-# List all profiles (optionally filter by project)
-all_profiles = client.profiles.list()
-project_profiles = client.profiles.list("project-id")
-
-# Evaluate content
-result = client.profiles.eval("profile-id", EvalParams(
-    frame_url="https://example.com/image.jpg",
-))
-# result.score (0-1), result.confidence (0-1), result.details
-
-# Export profile (full)
-full_export = client.profiles.export("profile-id")
-
-# Export profile (minimal — for inference)
-minimal_export = client.profiles.export_minimal("profile-id")
+world.act("move", speed=0.8)        # fire-and-forget
+obs = world.step("move", speed=0.8) # act + return the next observation (settles 0.8s)
+obs = world.observe(fresh=True)     # wait for a frame newer than now
+arr = world.observe_array()         # HxWx3 uint8 numpy (needs commandagi[vision])
+for frame in world.stream():        # live generator of frames
+    ...
 ```
 
-## License
+## Computers too
 
-MIT
+```python
+with cagi.launch("computer/software-engineer") as pc:
+    pc.act("type", text="hello")
+    pc.act("key", key="Return")
+    screenshot = pc.observe()       # PNG bytes of the live Ubuntu desktop
+```
+
+## Auth
+
+Create an API key with an `operator` scope (dashboard → API keys, or `POST /me/api-keys`). Pass it to
+`CommandAGI(api_key=...)` or set `COMMANDAGI_API_KEY`. Point at another environment with
+`COMMANDAGI_BASE_URL` (e.g. `https://api-dev.commandagi.com`).
+
+Full HTTP + WebSocket reference (what the SDK wraps): [`docs/ROBOT_DEVELOPER_API.md`](../../docs/ROBOT_DEVELOPER_API.md).

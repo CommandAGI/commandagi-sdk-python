@@ -1,239 +1,280 @@
-"""commandAGI API client."""
+"""CommandAGI Python SDK — launch cloud computers and 3D robot simulations and control them.
 
+A developer with an API key can spin up a real environment (a PyBullet 3D world with a robot, or an
+Ubuntu desktop), stream its observations (the robot's head camera / the screen), and send actions —
+the same control plane the web app uses, wrapped in a small, Gym-flavored client.
+
+Quickstart (robot testing):
+
+    from commandagi import CommandAGI
+
+    cagi = CommandAGI(api_key="cagi_...")            # or set COMMANDAGI_API_KEY
+    with cagi.launch("simulation/warehouse") as world:
+        obs = world.observe()                        # JPEG bytes from the robot's head camera
+        for _ in range(10):
+            obs = world.step("move", speed=0.8)      # drive forward, get the next frame
+        world.reset()                                # back to the episode start pose
+    # leaving the `with` block stops the world and releases the cloud VM
+
+The control vocabulary for a simulated/real robot: move (speed), back (speed), turn (dir, rate),
+stop, reset. For a computer world: click (x, y), type (text), key (key), move (x, y), scroll.
+"""
 from __future__ import annotations
 
-from typing import Any
+import base64
+import json
+import os
+import threading
+import time
+from typing import Iterator, Optional
 
-import httpx
+import requests
+import websocket  # from the `websocket-client` package
 
-from commandagi.types import (
-    EvalDetails,
-    EvalParams,
-    EvalResult,
-    ExportFullResult,
-    ExportMetadata,
-    ExportMinimalResult,
-    ExportMinimalSnapshot,
-    Profile,
-    ProfileCreateParams,
-    ProfileUpdateParams,
-)
+DEFAULT_BASE_URL = "https://api.commandagi.com"
 
-DEFAULT_BASE_URL = "https://commandagi.com"
-
-
-def _to_camel(name: str) -> str:
-    """Convert snake_case to camelCase."""
-    parts = name.split("_")
-    return parts[0] + "".join(p.capitalize() for p in parts[1:])
-
-
-def _to_snake(name: str) -> str:
-    """Convert camelCase to snake_case."""
-    result: list[str] = []
-    for ch in name:
-        if ch.isupper():
-            result.append("_")
-            result.append(ch.lower())
-        else:
-            result.append(ch)
-    return "".join(result)
+# The built-in 3D simulation worlds (PyBullet). Each is a scene a mobile robot is dropped into.
+SIMULATIONS = ["simulation/warehouse", "simulation/house-on-fire", "simulation/school"]
+COMPUTERS = ["computer/software-engineer", "computer/robots-engineer", "computer/video-professional"]
 
 
 class CommandAGIError(Exception):
-    """Error from the commandAGI API."""
-
-    def __init__(self, message: str, status: int | None = None):
-        super().__init__(message)
-        self.status = status
+    """Any SDK-level error (HTTP failure, launch rejected, timeout)."""
 
 
-class _Profiles:
-    """Namespace for profile operations."""
+class World:
+    """A live world you control. Created by :meth:`CommandAGI.launch`; not constructed directly.
 
-    def __init__(self, client: CommandAGI):
+    Observations are the latest sensor frame (the robot's head camera for sims, the screen for
+    computers) as encoded image bytes. Actions are sent over the same realtime channel the web UI
+    uses. Use it as a context manager so the cloud VM is always released.
+    """
+
+    def __init__(self, client: "CommandAGI", session_id: str, device_id: str, kind: str):
         self._client = client
-
-    def create(self, params: ProfileCreateParams) -> Profile:
-        """Create a new taste profile."""
-        body: dict[str, Any] = {"projectId": params.project_id, "name": params.name}
-        if params.seed is not None:
-            body["seed"] = params.seed
-        data = self._client._request("POST", "/api/v1/profiles", json=body)
-        return _parse_profile(data)
-
-    def get(self, id: str) -> Profile:
-        """Get a profile by ID. Returns full profile with constraints, exemplars, comparisons."""
-        data = self._client._request("GET", f"/api/v1/profiles/{id}")
-        return _parse_profile(data)
-
-    def update(self, id: str, params: ProfileUpdateParams) -> Profile:
-        """Update a profile. Only provided fields are updated."""
-        body: dict[str, Any] = {}
-        if params.name is not None:
-            body["name"] = params.name
-        if params.seed is not None:
-            body["seed"] = params.seed
-        if params.constraints is not None:
-            body["constraints"] = params.constraints
-        if params.exemplars is not None:
-            body["exemplars"] = params.exemplars
-        if params.comparisons is not None:
-            body["comparisons"] = params.comparisons
-        if params.prompt_summary is not None:
-            body["promptSummary"] = params.prompt_summary
-        data = self._client._request("PATCH", f"/api/v1/profiles/{id}", json=body)
-        return _parse_profile(data)
-
-    def delete(self, id: str) -> None:
-        """Delete a profile."""
-        self._client._request("DELETE", f"/api/v1/profiles/{id}")
-
-    def list(self, project_id: str | None = None) -> list[Profile]:
-        """List all profiles. Optionally filter by project_id."""
-        path = "/api/v1/profiles"
-        if project_id:
-            path += f"?projectId={project_id}"
-        data = self._client._request("GET", path)
-        return [_parse_profile(p) for p in data["profiles"]]
-
-    def eval(self, id: str, params: EvalParams) -> EvalResult:
-        """Evaluate content against a profile."""
-        body: dict[str, Any] = {"frameUrl": params.frame_url}
-        if params.embedding is not None:
-            body["embedding"] = params.embedding
-        data = self._client._request("POST", f"/api/v1/profiles/{id}/eval", json=body)
-        return EvalResult(
-            score=data["score"],
-            confidence=data["confidence"],
-            details=EvalDetails(
-                latent_score=data["details"].get("latentScore"),
-                constraint_match=data["details"]["constraintMatch"],
-                exemplar_similarity=data["details"].get("exemplarSimilarity"),
-            ),
+        self.session_id = session_id
+        self.device_id = device_id
+        self.kind = kind  # "robot" | "computer"
+        self._frames: dict[str, bytes] = {}
+        self._latest: Optional[bytes] = None
+        self._lock = threading.Lock()
+        self._open = threading.Event()
+        self._closed = False
+        self._ws = websocket.WebSocketApp(
+            self._ws_url(),
+            on_open=self._on_open,
+            on_message=self._on_message,
         )
+        # ping_interval keeps the long-lived channel alive; reconnect transparently re-establishes it
+        # (and _on_open re-takes control) if the edge drops it mid-session.
+        self._thread = threading.Thread(
+            target=lambda: self._ws.run_forever(ping_interval=20, ping_timeout=10, reconnect=3),
+            daemon=True,
+        )
+        self._thread.start()
+        if not self._open.wait(timeout=15):
+            raise CommandAGIError("could not open the realtime control channel")
 
-    def export(self, id: str) -> ExportFullResult:
-        """Export a profile in full JSON format."""
-        data = self._client._request(
-            "GET", f"/api/v1/profiles/{id}/export?format=json"
-        )
-        meta = data["metadata"]
-        return ExportFullResult(
-            id=data["id"],
-            project_id=data["projectId"],
-            name=data["name"],
-            seed=data.get("seed"),
-            version=data["version"],
-            constraints=data["constraints"],
-            exemplars=data["exemplars"],
-            comparisons=data["comparisons"],
-            prompt_summary=data.get("promptSummary"),
-            metadata=ExportMetadata(
-                created_at=meta.get("createdAt"),
-                updated_at=meta.get("updatedAt"),
-                exported_at=meta["exportedAt"],
-                version=meta["version"],
-            ),
-        )
+    def _on_open(self, _ws) -> None:
+        # Re-take manual control on every (re)connect so our actions always drive the device.
+        self._open.set()
+        try:
+            self._send({"t": "remote.request", "deviceId": self.device_id, "on": True})
+        except Exception:
+            pass
 
-    def export_minimal(self, id: str) -> ExportMinimalResult:
-        """Export a profile in minimal format (for inference)."""
-        data = self._client._request(
-            "GET", f"/api/v1/profiles/{id}/export?format=minimal"
-        )
-        snap = data["snapshot"]
-        return ExportMinimalResult(
-            id=data["id"],
-            name=data["name"],
-            seed=data.get("seed"),
-            snapshot=ExportMinimalSnapshot(
-                prompt_summary=snap.get("promptSummary"),
-                exemplar_count=snap["exemplarCount"],
-                comparison_count=snap["comparisonCount"],
-                constraint_count=snap["constraintCount"],
-            ),
-            exported_at=data["exportedAt"],
-        )
+    # ── realtime plumbing ────────────────────────────────────────────────────
+    def _ws_url(self) -> str:
+        base = self._client.base_url.replace("https://", "wss://").replace("http://", "ws://")
+        return f"{base}/rt/session/{self.session_id}?role=owner&name=sdk"
+
+    def _on_message(self, _ws, raw: str) -> None:
+        try:
+            m = json.loads(raw)
+        except (ValueError, TypeError):
+            return
+        if m.get("t") == "frame" and isinstance(m.get("url"), str) and m["url"].startswith("data:"):
+            try:
+                data = base64.b64decode(m["url"].split(",", 1)[1])
+            except Exception:
+                return
+            with self._lock:
+                self._frames[m.get("channelId", "default")] = data
+                self._latest = data
+
+    def _send(self, msg: dict) -> None:
+        self._ws.send(json.dumps(msg))
+
+    # ── observations ─────────────────────────────────────────────────────────
+    def observe(self, *, fresh: bool = False, timeout: float = 30.0) -> bytes:
+        """Return the latest observation as encoded image bytes (JPEG for sims, PNG for computers).
+
+        Blocks until a frame is available. With ``fresh=True``, waits for a frame that arrives
+        *after* this call (useful right after an action).
+        """
+        if fresh:
+            with self._lock:
+                self._latest = None
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            with self._lock:
+                if self._latest is not None:
+                    return self._latest
+            time.sleep(0.1)
+        raise CommandAGIError("no observation within timeout — is the world still live?")
+
+    def observe_array(self, **kw):
+        """Observe and decode to a numpy HxWx3 uint8 array (requires Pillow + numpy)."""
+        try:
+            import io
+
+            import numpy as np
+            from PIL import Image
+        except ImportError as e:  # pragma: no cover
+            raise CommandAGIError("observe_array needs `pillow` and `numpy` installed") from e
+        return np.asarray(Image.open(io.BytesIO(self.observe(**kw))).convert("RGB"))
+
+    def stream(self) -> Iterator[bytes]:
+        """Yield observations as they arrive (roughly the device frame rate)."""
+        last = object()
+        while True:
+            with self._lock:
+                cur = self._latest
+            if cur is not None and cur is not last:
+                last = cur
+                yield cur
+            time.sleep(0.05)
+
+    # ── actions ──────────────────────────────────────────────────────────────
+    def act(self, action: str, **payload) -> None:
+        """Send a control action without waiting. E.g. ``act("move", speed=0.8)``."""
+        self._send({"t": "control", "deviceId": self.device_id, "action": action, "payload": payload})
+
+    def step(self, action: str, *, settle: float = 0.8, **payload) -> bytes:
+        """Send an action, let the world advance ``settle`` seconds, and return the next observation."""
+        self.act(action, **payload)
+        time.sleep(settle)
+        return self.observe(fresh=True)
+
+    def reset(self, *, settle: float = 1.0) -> bytes:
+        """Reset the episode (robot back to its start pose) and return the first observation."""
+        self.act("reset")
+        time.sleep(settle)
+        return self.observe(fresh=True)
+
+    # ── lifecycle ──────────────────────────────────────────────────────────────
+    def close(self) -> None:
+        """Stop the world and release the cloud VM. Safe to call more than once."""
+        self._closed = True
+        try:
+            self._client._stop(self.session_id)
+        finally:
+            try:
+                self._ws.close()  # stops run_forever's reconnect loop
+            except Exception:
+                pass
+
+    def __enter__(self) -> "World":
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self.close()
 
 
 class CommandAGI:
-    """commandAGI API client.
+    """Client for the CommandAGI API. Authenticate with an API key (create one in the dashboard or
+    via ``POST /me/api-keys`` with an ``operator`` scope)."""
 
-    Usage::
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+        self.api_key = api_key or os.environ.get("COMMANDAGI_API_KEY")
+        if not self.api_key:
+            raise CommandAGIError("api_key is required (pass it or set COMMANDAGI_API_KEY)")
+        self.base_url = (base_url or os.environ.get("COMMANDAGI_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
 
-        from commandagi import CommandAGI
+    # ── http ─────────────────────────────────────────────────────────────────
+    def _headers(self) -> dict:
+        return {"authorization": f"Bearer {self.api_key}", "content-type": "application/json"}
 
-        client = CommandAGI(api_key="cagi_xxx...")
+    def _post(self, path: str, body: Optional[dict] = None) -> dict:
+        r = requests.post(self.base_url + path, headers=self._headers(), json=body or {}, timeout=60)
+        if not r.ok:
+            raise CommandAGIError(f"POST {path} -> {r.status_code}: {r.text}")
+        return r.json() if r.text else {}
 
-        profile = client.profiles.create(ProfileCreateParams(
-            project_id="your-project-id",
-            name="my-taste-profile",
-        ))
-    """
+    def _get(self, path: str) -> dict:
+        r = requests.get(self.base_url + path, headers=self._headers(), timeout=60)
+        if not r.ok:
+            raise CommandAGIError(f"GET {path} -> {r.status_code}: {r.text}")
+        return r.json()
 
-    def __init__(
-        self,
-        api_key: str,
-        base_url: str = DEFAULT_BASE_URL,
-        timeout: float = 30.0,
-    ):
-        if not api_key:
-            raise ValueError("API key is required")
-        self._api_key = api_key
-        self._base_url = base_url.rstrip("/")
-        self._http = httpx.Client(
-            base_url=self._base_url,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "User-Agent": "commandagi-python/0.1.0",
-            },
-            timeout=timeout,
+    def _stop(self, session_id: str) -> None:
+        try:
+            self._post(f"/sessions/{session_id}/stop")
+        except CommandAGIError:
+            pass
+
+    # ── public ───────────────────────────────────────────────────────────────
+    def launch(self, template: str, *, wait: bool = True, timeout: float = 600.0) -> World:
+        """Launch a world and return it (live, ready to control).
+
+        ``template`` is a catalog id — a 3D sim (``simulation/warehouse``) or a computer
+        (``computer/software-engineer``). With ``wait=True`` (default) this blocks until the world's
+        device is streaming. The world has NO agent — you drive it. Always ``close()`` it (or use a
+        ``with`` block) to release the VM.
+        """
+        is_robot = template.startswith("simulation/") or template.startswith("physical/")
+        session_id = self._post("/machines", {"title": template})["sessionId"]
+        try:
+            res = self._post(f"/sessions/{session_id}/{'robots' if is_robot else 'computers'}", {"templateId": template})
+        except CommandAGIError:
+            self._stop(session_id)
+            raise
+        if res.get("status") != "granted":
+            self._stop(session_id)
+            raise CommandAGIError(f"launch was not granted: {res}")
+        world = World(self, session_id, res["deviceId"], "robot" if is_robot else "computer")
+        if wait:
+            self._wait_until_live(session_id, timeout)
+        return world
+
+    def _web_url(self) -> str:
+        # api.commandagi.com → commandagi.com ; api-dev.commandagi.com → dev.commandagi.com
+        host = self.base_url.split("://", 1)[-1]
+        if host.startswith("api-dev."):
+            return "https://dev.commandagi.com"
+        if host.startswith("api."):
+            return "https://commandagi.com"
+        return self.base_url
+
+    def register_robot(self, name: str = "my-robot"):
+        """Register YOUR robot as a device and return a :class:`RobotBridge` to stream it.
+
+        Creates an agentless machine + a bring-your-own robot device, then hands you a bridge: call
+        ``bridge.run(camera=..., on_action=...)`` to publish your robot's camera and receive control
+        actions. Watch/drive it at ``bridge.session_url``.
+        """
+        from .bridge import RobotBridge
+
+        session_id = self._post("/machines", {"title": name})["sessionId"]
+        try:
+            dev = self._post(f"/sessions/{session_id}/connect-device", {"kind": "robot", "name": name})
+        except CommandAGIError:
+            self._stop(session_id)
+            raise
+        return RobotBridge(
+            dev["controlUrl"],
+            dev["token"],
+            dev["deviceId"],
+            session_id=session_id,
+            session_url=f"{self._web_url()}/machine/{session_id}",
+            client=self,
         )
-        self.profiles = _Profiles(self)
 
-    def close(self) -> None:
-        """Close the HTTP client."""
-        self._http.close()
-
-    def __enter__(self) -> CommandAGI:
-        return self
-
-    def __exit__(self, *args: Any) -> None:
-        self.close()
-
-    def _request(
-        self,
-        method: str,
-        path: str,
-        json: dict[str, Any] | None = None,
-    ) -> Any:
-        response = self._http.request(method, path, json=json)
-        if response.status_code >= 400:
-            try:
-                data = response.json()
-                message = data.get("message") or data.get("error") or f"API error: {response.status_code}"
-            except Exception:
-                message = f"API error: {response.status_code}"
-            raise CommandAGIError(message, status=response.status_code)
-        if response.status_code == 204 or not response.content:
-            return None
-        return response.json()
-
-
-def _parse_profile(data: dict[str, Any]) -> Profile:
-    """Parse a profile dict from the API into a Profile dataclass."""
-    return Profile(
-        id=data["id"],
-        project_id=data["projectId"],
-        name=data["name"],
-        seed=data.get("seed"),
-        version=data.get("version"),
-        constraints=data.get("constraints"),
-        exemplars=data.get("exemplars"),
-        comparisons=data.get("comparisons"),
-        prompt_summary=data.get("promptSummary"),
-        created_at=data.get("createdAt"),
-        updated_at=data.get("updatedAt"),
-    )
+    def _wait_until_live(self, session_id: str, timeout: float) -> None:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            devices = self._get(f"/sessions/{session_id}").get("devices", [])
+            if any(d.get("status") == "live" for d in devices):
+                return
+            time.sleep(3)
+        # Not fatal: the first observe() will surface a clearer timeout if nothing ever streams.

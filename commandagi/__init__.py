@@ -1,25 +1,15 @@
-"""Official Python SDK for commandAGI — Command the AGI with taste."""
+"""CommandAGI Python SDK.
 
-from commandagi.client import CommandAGI
-from commandagi.types import (
-    Profile,
-    ProfileCreateParams,
-    ProfileUpdateParams,
-    EvalParams,
-    EvalResult,
-    ExportFullResult,
-    ExportMinimalResult,
-)
+Launch cloud computers and 3D robot simulations and control them programmatically.
 
-__all__ = [
-    "CommandAGI",
-    "Profile",
-    "ProfileCreateParams",
-    "ProfileUpdateParams",
-    "EvalParams",
-    "EvalResult",
-    "ExportFullResult",
-    "ExportMinimalResult",
-]
+    from commandagi import CommandAGI
+    cagi = CommandAGI(api_key="cagi_...")
+    with cagi.launch("simulation/warehouse") as world:
+        obs = world.observe()
+        obs = world.step("move", speed=0.8)
+"""
+from .bridge import RobotBridge
+from .client import COMPUTERS, SIMULATIONS, CommandAGI, CommandAGIError, World
 
-__version__ = "0.1.0"
+__all__ = ["CommandAGI", "World", "RobotBridge", "CommandAGIError", "SIMULATIONS", "COMPUTERS"]
+__version__ = "0.2.0"

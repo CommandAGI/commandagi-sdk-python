@@ -5,32 +5,24 @@ build-backend = "hatchling.build"
 [project]
 name = "commandagi"
 version = "0.1.0"
-description = "Official Python SDK for commandAGI — Command the AGI with taste"
+description = "Python SDK for CommandAGI — launch cloud computers and 3D robot simulations and control them programmatically."
 readme = "README.md"
-license = "MIT"
-requires-python = ">=3.10"
-authors = [
-    { name = "commandAGI", email = "hello@commandagi.com" },
-]
-keywords = ["commandagi", "ai", "annotation", "taste", "human-feedback", "rlhf"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Typing :: Typed",
-]
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "CommandAGI" }]
+keywords = ["robotics", "simulation", "reinforcement-learning", "agents", "pybullet", "computer-use"]
 dependencies = [
-    "httpx>=0.25.0",
+    "requests>=2.28",
+    "websocket-client>=1.5",
 ]
+
+[project.optional-dependencies]
+# For World.observe_array() — decode frames to numpy arrays.
+vision = ["numpy>=1.23", "pillow>=9.0"]
 
 [project.urls]
 Homepage = "https://commandagi.com"
-Repository = "https://github.com/commandAGI/commandagi-python"
-Issues = "https://github.com/commandAGI/commandagi-python/issues"
+Documentation = "https://github.com/commandAGI/commandagi/blob/main/docs/ROBOT_DEVELOPER_API.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["commandagi"]
