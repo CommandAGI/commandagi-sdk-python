@@ -2,7 +2,7 @@
 
 This is the *producer* side of the platform (the mirror of `World`, which is the consumer side that
 drives a hosted world). You register a robot, then run a bridge that publishes its camera frames and
-hands incoming control actions to your hardware. Anyone with access to the session — a person in the
+hands incoming control actions to your hardware. Anyone with access to the thread — a person in the
 web UI, an agent, or another developer's `World` client — then sees your robot's camera and can drive
 it, exactly like a first-party simulation.
 
@@ -10,7 +10,7 @@ it, exactly like a first-party simulation.
 
     cagi = CommandAGI(api_key="cagi_…")
     bridge = cagi.register_robot("my-rover")
-    print("watch + drive it at:", bridge.session_url)
+    print("watch + drive it at:", bridge.thread_url)
 
     bridge.run(
         camera=lambda: my_robot.jpeg_frame(),          # -> bytes (JPEG/PNG)
@@ -35,15 +35,15 @@ def _data_url(frame: bytes) -> str:
 
 
 class RobotBridge:
-    """A live bridge between your robot and a CommandAGI session. Create it with
+    """A live bridge between your robot and a CommandAGI thread. Create it with
     :meth:`CommandAGI.register_robot`; then call :meth:`run`."""
 
-    def __init__(self, control_url: str, token: str, device_id: str, *, session_id: str, session_url: str, client=None):
+    def __init__(self, control_url: str, token: str, device_id: str, *, thread_id: str, thread_url: str, client=None):
         self.control_url = control_url
         self.token = token
         self.device_id = device_id
-        self.session_id = session_id
-        self.session_url = session_url
+        self.thread_id = thread_id
+        self.thread_url = thread_url
         self._client = client
         self._camera: Optional[Callable[[], bytes]] = None
         self._on_action: Optional[Callable[[str, dict], None]] = None
@@ -118,7 +118,7 @@ class RobotBridge:
         return self
 
     def stop(self) -> None:
-        """Stop streaming (without releasing the robot's session)."""
+        """Stop streaming (without releasing the robot's thread)."""
         self._stop.set()
         if self._ws:
             try:
@@ -127,7 +127,7 @@ class RobotBridge:
                 pass
 
     def close(self) -> None:
-        """Stop streaming and release the session (the robot goes offline)."""
+        """Stop streaming and release the thread (the robot goes offline)."""
         self.stop()
         if self._client:
-            self._client._stop(self.session_id)
+            self._client._stop(self.thread_id)

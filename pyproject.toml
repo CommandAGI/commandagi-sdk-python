@@ -4,13 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "commandagi"
-version = "0.1.0"
+# Single source of truth: commandagi/__init__.py `__version__` (read by hatchling at build time).
+dynamic = ["version"]
 description = "Python SDK for CommandAGI — launch cloud computers and 3D robot simulations and control them programmatically."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "CommandAGI" }]
-keywords = ["robotics", "simulation", "reinforcement-learning", "agents", "pybullet", "computer-use"]
+keywords = ["robotics", "simulation", "reinforcement-learning", "agents", "physics", "computer-use"]
 dependencies = [
     "requests>=2.28",
     "websocket-client>=1.5",
@@ -19,10 +20,17 @@ dependencies = [
 [project.optional-dependencies]
 # For World.observe_array() — decode frames to numpy arrays.
 vision = ["numpy>=1.23", "pillow>=9.0"]
+# Gymnasium env wrapper (commandagi.gym_env) — the standard RL reset/step loop over a sim.
+gym = ["gymnasium>=0.29", "numpy>=1.23", "pillow>=9.0"]
+# LeRobot-style dataset recording (commandagi.lerobot) — record demonstrations/rollouts.
+lerobot = ["pyarrow>=14.0", "numpy>=1.23", "pillow>=9.0"]
 
 [project.urls]
 Homepage = "https://commandagi.com"
-Documentation = "https://github.com/commandAGI/commandagi/blob/main/docs/ROBOT_DEVELOPER_API.md"
+Documentation = "https://github.com/CommandAGI/commandagi/blob/main/docs/ROBOT_DEVELOPER_API.md"
+
+[tool.hatch.version]
+path = "commandagi/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["commandagi"]

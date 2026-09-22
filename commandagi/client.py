@@ -1,6 +1,6 @@
 """CommandAGI Python SDK — launch cloud computers and 3D robot simulations and control them.
 
-A developer with an API key can spin up a real environment (a PyBullet 3D world with a robot, or an
+A developer with an API key can spin up a real environment (a 3D physics world with a robot, or an
 Ubuntu desktop), stream its observations (the robot's head camera / the screen), and send actions —
 the same control plane the web app uses, wrapped in a small, Gym-flavored client.
 
@@ -16,8 +16,11 @@ Quickstart (robot testing):
         world.reset()                                # back to the episode start pose
     # leaving the `with` block stops the world and releases the cloud VM
 
-The control vocabulary for a simulated/real robot: move (speed), back (speed), turn (dir, rate),
-stop, reset. For a computer world: click (x, y), type (text), key (key), move (x, y), scroll.
+The control vocabulary for a computer world: click (x, y), type (text), key (key), move (x, y),
+scroll. Robots in a (morphology-agnostic) simulator are driven by a small GENERIC vocabulary —
+``ctrl`` (set actuator targets), ``actuator`` (one named actuator), ``ik`` (inverse-kinematics to a
+Cartesian target), ``trajectory`` (waypoints), ``describe`` — see :class:`World`'s generic-control
+methods. Spin up your own simulator instance with :meth:`CommandAGI.launch_sim`.
 """
 from __future__ import annotations
 
@@ -33,7 +36,7 @@ import websocket  # from the `websocket-client` package
 
 DEFAULT_BASE_URL = "https://api.commandagi.com"
 
-# The built-in 3D simulation worlds (PyBullet). Each is a scene a mobile robot is dropped into.
+# The built-in 3D simulation worlds. Each is a scene a mobile robot is dropped into.
 SIMULATIONS = ["simulation/warehouse", "simulation/house-on-fire", "simulation/school"]
 COMPUTERS = ["computer/software-engineer", "computer/robots-engineer", "computer/video-professional"]
 
@@ -50,13 +53,15 @@ class World:
     uses. Use it as a context manager so the cloud VM is always released.
     """
 
-    def __init__(self, client: "CommandAGI", session_id: str, device_id: str, kind: str):
+    def __init__(self, client: "CommandAGI", thread_id: str, device_id: str, kind: str):
         self._client = client
-        self.session_id = session_id
+        self.thread_id = thread_id
         self.device_id = device_id
         self.kind = kind  # "robot" | "computer"
         self._frames: dict[str, bytes] = {}
         self._latest: Optional[bytes] = None
+        self._descriptions: dict[str, dict] = {}  # robot_id -> last describe payload
+        self._results: dict[str, dict] = {}  # requestId -> action_result payload (answering controls)
         self._lock = threading.Lock()
         self._open = threading.Event()
         self._closed = False
@@ -66,7 +71,7 @@ class World:
             on_message=self._on_message,
         )
         # ping_interval keeps the long-lived channel alive; reconnect transparently re-establishes it
-        # (and _on_open re-takes control) if the edge drops it mid-session.
+        # (and _on_open re-takes control) if the edge drops it mid-thread.
         self._thread = threading.Thread(
             target=lambda: self._ws.run_forever(ping_interval=20, ping_timeout=10, reconnect=3),
             daemon=True,
@@ -86,7 +91,7 @@ class World:
     # ── realtime plumbing ────────────────────────────────────────────────────
     def _ws_url(self) -> str:
         base = self._client.base_url.replace("https://", "wss://").replace("http://", "ws://")
-        return f"{base}/rt/session/{self.session_id}?role=owner&name=sdk"
+        return f"{base}/rt/thread/{self.thread_id}?role=owner&name=sdk"
 
     def _on_message(self, _ws, raw: str) -> None:
         try:
@@ -101,9 +106,33 @@ class World:
             with self._lock:
                 self._frames[m.get("channelId", "default")] = data
                 self._latest = data
+        elif m.get("t") in ("describe", "description") and isinstance(m.get("description"), dict):
+            # Best-effort: the runtime may echo a world/robot description back over the channel.
+            with self._lock:
+                self._descriptions[m.get("robotId", "")] = m["description"]
+        elif m.get("t") == "action_result" and isinstance(m.get("requestId"), str):
+            # An answering control (describe / scene_graph / pick / transform …) — match by requestId.
+            with self._lock:
+                self._results[m["requestId"]] = m.get("result")
 
     def _send(self, msg: dict) -> None:
         self._ws.send(json.dumps(msg))
+
+    def request(self, action: str, *, timeout: float = 5.0, **payload):
+        """Send an *answering* control action and block for the runtime's result (matched by a
+        requestId via the platform's action_result relay). Used by :meth:`describe` / Gym proprioception.
+        Returns the result dict, or raises on timeout."""
+        request_id = f"req-{threading.get_ident()}-{int(time.time()*1000)}"
+        with self._lock:
+            self._results.pop(request_id, None)
+        self._send({"t": "control", "deviceId": self.device_id, "action": action, "payload": payload, "requestId": request_id})
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            with self._lock:
+                if request_id in self._results:
+                    return self._results.pop(request_id)
+            time.sleep(0.05)
+        raise CommandAGIError(f"control '{action}' timed out after {timeout}s")
 
     # ── observations ─────────────────────────────────────────────────────────
     def observe(self, *, fresh: bool = False, timeout: float = 30.0) -> bytes:
@@ -162,12 +191,77 @@ class World:
         time.sleep(settle)
         return self.observe(fresh=True)
 
+    # ── generic (morphology-agnostic) robot control ──────────────────────────
+    # The simulator is morphology-agnostic: a robot is described by its actuators and sites, and is
+    # driven by a small GENERIC vocabulary — ctrl / actuator / ik / trajectory / describe. There is
+    # deliberately NO drive / gripper here; "move forward" or "close the gripper" is just particular
+    # actuator targets on a particular morphology. All of these go through the same `control` channel
+    # as :meth:`act`, and address one robot within a (possibly multi-robot) device via ``robot_id``.
+    def ctrl(self, targets: dict, robot_id: str = "") -> None:
+        """Set actuator targets directly: ``{actuator_name: value, ...}``.
+
+        ``targets`` maps named actuators (joints/motors as exposed by :meth:`describe`) to their
+        target value. This is the lowest-level, fully generic control primitive.
+        """
+        self.act("ctrl", targets=targets, robotId=robot_id)
+
+    def actuator(self, name: str, value: float, robot_id: str = "") -> None:
+        """Set a single named actuator to ``value`` (sugar over :meth:`ctrl`)."""
+        self.act("actuator", name=name, value=value, robotId=robot_id)
+
+    def ik(self, target, site: Optional[str] = None, relative: bool = False, robot_id: str = "") -> None:
+        """Drive an end-effector ``site`` to a Cartesian ``target`` ``[x, y, z]`` via inverse kinematics.
+
+        ``site`` names the body/site to move (default: the robot's primary end-effector). With
+        ``relative=True`` the target is an offset from the site's current pose rather than absolute
+        world coordinates.
+        """
+        self.act("ik", target=list(target), site=site, relative=relative, robotId=robot_id)
+
+    def trajectory(self, waypoints, robot_id: str = "") -> None:
+        """Follow a sequence of ``waypoints`` (each an actuator-target dict or a Cartesian point).
+
+        Waypoints are interpreted by the runtime in order; this is the generic way to express a
+        multi-step motion plan for any morphology.
+        """
+        self.act("trajectory", waypoints=list(waypoints), robotId=robot_id)
+
+    def describe(self, robot_id: str = "") -> dict:
+        """Return a description of the world / robot(s): morphology, actuators, sites, objects.
+
+        Best-effort. The runtime answers a ``describe`` request over the thread control channel,
+        but there is currently no *synchronous* describe HTTP endpoint, so this issues the describe
+        action and then tries to read a description the runtime echoes back over the realtime
+        channel (see ``_descriptions``). If none arrives in time, returns ``{}`` — callers (e.g. the
+        agent runner) should also be able to obtain a description via the ``/agent/robot-act`` flow,
+        which inspects the live world server-side.
+        """
+        # Preferred: the `describe` action answers with the full world description (incl. live joint
+        # pos/vel) via the action_result relay. Falls back to the legacy echo path if unavailable.
+        try:
+            res = self.request("describe", robotId=robot_id)
+            if isinstance(res, dict) and res.get("robots") is not None:
+                return res
+        except CommandAGIError:
+            pass
+        with self._lock:
+            self._descriptions.pop(robot_id, None)
+        self.act("describe", robotId=robot_id)
+        deadline = time.time() + 5.0
+        while time.time() < deadline:
+            with self._lock:
+                desc = self._descriptions.get(robot_id)
+            if desc is not None:
+                return desc
+            time.sleep(0.1)
+        return {}
+
     # ── lifecycle ──────────────────────────────────────────────────────────────
     def close(self) -> None:
         """Stop the world and release the cloud VM. Safe to call more than once."""
         self._closed = True
         try:
-            self._client._stop(self.session_id)
+            self._client._stop(self.thread_id)
         finally:
             try:
                 self._ws.close()  # stops run_forever's reconnect loop
@@ -179,6 +273,74 @@ class World:
 
     def __exit__(self, *_exc) -> None:
         self.close()
+
+
+class SimInstance:
+    """A live simulator instance — a hosted morphology-agnostic 3D world you can populate with
+    robots, share, and (with the agent runner) drive autonomously.
+
+    Created by :meth:`CommandAGI.launch_sim` (or rehydrated via :meth:`CommandAGI.get_sim`); not
+    constructed directly. A sim instance owns one realtime **thread** (``thread_id``); robots you
+    :meth:`join_robot` become devices on that thread. Use :meth:`grant` to let other users view it
+    or launch their own robots into it.
+    """
+
+    def __init__(self, client: "CommandAGI", instance_id: str, thread_id: str,
+                 world_id: str = "", view: Optional[dict] = None):
+        self._client = client
+        self.id = instance_id
+        self.thread_id = thread_id
+        self.world_id = world_id
+        self._view = view or {}
+
+    def __repr__(self) -> str:  # pragma: no cover - cosmetic
+        return f"SimInstance(id={self.id!r}, thread_id={self.thread_id!r})"
+
+    def view(self) -> dict:
+        """Fetch the current instance view (metadata + attached devices) from the API."""
+        self._view = self._client._get(f"/sims/{self.id}")
+        return self._view
+
+    def devices(self) -> list:
+        """The robot devices currently attached to this instance (from the latest :meth:`view`)."""
+        return self.view().get("devices", [])
+
+    def join_robot(self, kind: str = "rover") -> dict:
+        """Spawn a robot of ``kind`` into the world and return ``{robotId, deviceId, threadId}``.
+
+        The robot becomes a device on this instance's thread; address it later via its ``deviceId``
+        (for control) and ``robotId`` (to target a specific robot within a multi-robot device).
+        """
+        res = self._client._post(f"/sims/{self.id}/join", {"kind": kind})
+        return {
+            "robotId": res.get("robotId"),
+            "deviceId": res.get("deviceId"),
+            "threadId": res.get("threadId", self.thread_id),
+        }
+
+    def grant(self, subject_id: str, capability: str = "operator", subject_type: str = "user") -> dict:
+        """Grant ``subject_id`` a capability on this instance.
+
+        ``capability``: ``"viewer"`` (may watch the stream) or ``"operator"`` (may also launch
+        robots into the world). ``subject_type`` is usually ``"user"``.
+        """
+        return self._client._post(
+            f"/sims/{self.id}/grants",
+            {"subjectType": subject_type, "subjectId": subject_id, "capability": capability},
+        )
+
+    def stop(self) -> None:
+        """Stop the simulator instance and release its resources. Safe to call more than once."""
+        try:
+            self._client._post(f"/sims/{self.id}/stop")
+        except CommandAGIError:
+            pass
+
+    def __enter__(self) -> "SimInstance":
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self.stop()
 
 
 class CommandAGI:
@@ -207,35 +369,45 @@ class CommandAGI:
             raise CommandAGIError(f"GET {path} -> {r.status_code}: {r.text}")
         return r.json()
 
-    def _stop(self, session_id: str) -> None:
+    def _stop(self, thread_id: str) -> None:
         try:
-            self._post(f"/sessions/{session_id}/stop")
+            self._post(f"/threads/{thread_id}/stop")
         except CommandAGIError:
             pass
 
     # ── public ───────────────────────────────────────────────────────────────
-    def launch(self, template: str, *, wait: bool = True, timeout: float = 600.0) -> World:
+    def launch(self, snapshot: str, *, wait: bool = True, timeout: float = 600.0) -> World:
         """Launch a world and return it (live, ready to control).
 
-        ``template`` is a catalog id — a 3D sim (``simulation/warehouse``) or a computer
+        ``snapshot`` is a catalog id — a 3D sim (``simulation/warehouse``) or a computer
         (``computer/software-engineer``). With ``wait=True`` (default) this blocks until the world's
         device is streaming. The world has NO agent — you drive it. Always ``close()`` it (or use a
         ``with`` block) to release the VM.
         """
-        is_robot = template.startswith("simulation/") or template.startswith("physical/")
-        session_id = self._post("/machines", {"title": template})["sessionId"]
+        is_robot = snapshot.startswith("simulation/") or snapshot.startswith("physical/")
+        thread_id = self._post("/worlds", {"title": snapshot})["threadId"]
         try:
-            res = self._post(f"/sessions/{session_id}/{'robots' if is_robot else 'computers'}", {"templateId": template})
+            res = self._post(f"/threads/{thread_id}/{'robots' if is_robot else 'computers'}", {"snapshotId": snapshot})
         except CommandAGIError:
-            self._stop(session_id)
+            self._stop(thread_id)
             raise
         if res.get("status") != "granted":
-            self._stop(session_id)
+            self._stop(thread_id)
             raise CommandAGIError(f"launch was not granted: {res}")
-        world = World(self, session_id, res["deviceId"], "robot" if is_robot else "computer")
+        world = World(self, thread_id, res["deviceId"], "robot" if is_robot else "computer")
         if wait:
-            self._wait_until_live(session_id, timeout)
+            self._wait_until_live(thread_id, timeout)
         return world
+
+    def connect_world(self, thread_id: str, device_id: str, kind: str = "robot") -> World:
+        """Open a control channel to an *existing* device on a thread and return a :class:`World`.
+
+        Unlike :meth:`launch`, this does not provision anything — it attaches to a device that already
+        exists (e.g. a robot you added to a :class:`SimInstance` via
+        :meth:`SimInstance.join_robot`). Calling ``world.close()`` on it stops the whole thread, so
+        prefer :meth:`SimInstance.stop` for lifecycle and use this purely to observe/control.
+        """
+        return World(self, thread_id, device_id, kind)
 
     def _web_url(self) -> str:
         # api.commandagi.com → commandagi.com ; api-dev.commandagi.com → dev.commandagi.com
@@ -249,31 +421,83 @@ class CommandAGI:
     def register_robot(self, name: str = "my-robot"):
         """Register YOUR robot as a device and return a :class:`RobotBridge` to stream it.
 
-        Creates an agentless machine + a bring-your-own robot device, then hands you a bridge: call
+        Creates an agentless world + a bring-your-own robot device, then hands you a bridge: call
         ``bridge.run(camera=..., on_action=...)`` to publish your robot's camera and receive control
-        actions. Watch/drive it at ``bridge.session_url``.
+        actions. Watch/drive it at ``bridge.thread_url``.
         """
         from .bridge import RobotBridge
 
-        session_id = self._post("/machines", {"title": name})["sessionId"]
+        thread_id = self._post("/worlds", {"title": name})["threadId"]
         try:
-            dev = self._post(f"/sessions/{session_id}/connect-device", {"kind": "robot", "name": name})
+            dev = self._post(f"/threads/{thread_id}/connect-device", {"kind": "robot", "name": name})
         except CommandAGIError:
-            self._stop(session_id)
+            self._stop(thread_id)
             raise
         return RobotBridge(
             dev["controlUrl"],
             dev["token"],
             dev["deviceId"],
-            session_id=session_id,
-            session_url=f"{self._web_url()}/machine/{session_id}",
+            thread_id=thread_id,
+            thread_url=f"{self._web_url()}/world/{thread_id}",
             client=self,
         )
 
-    def _wait_until_live(self, session_id: str, timeout: float) -> None:
+    # ── simulator instances ───────────────────────────────────────────────────
+    def launch_sim(self, scene: str = "the-matrix", visibility: str = "private",
+                   title: Optional[str] = None) -> SimInstance:
+        """Launch a new simulator instance for ``scene`` and return a :class:`SimInstance`.
+
+        ``visibility`` is ``"private"`` | ``"unlisted"`` | ``"public"``. The instance starts empty —
+        add robots with :meth:`SimInstance.join_robot`. Use it as a context manager (or call
+        :meth:`SimInstance.stop`) to release it.
+        """
+        body: dict = {"scene": scene, "visibility": visibility}
+        if title is not None:
+            body["title"] = title
+        res = self._post("/sims", body)
+        return SimInstance(
+            self,
+            instance_id=res.get("instanceId") or res.get("id", ""),
+            thread_id=res.get("threadId", ""),
+            world_id=res.get("worldId", ""),
+        )
+
+    def sims(self) -> list:
+        """List the simulator instances visible to you (``[{id, title, scene, visibility, ...}]``)."""
+        return self._get("/sims").get("sims", [])
+
+    def get_sim(self, sim_id: str) -> SimInstance:
+        """Rehydrate a :class:`SimInstance` for an existing instance ``sim_id``."""
+        view = self._get(f"/sims/{sim_id}")
+        return SimInstance(
+            self,
+            instance_id=view.get("id", sim_id),
+            thread_id=view.get("threadId", ""),
+            world_id=view.get("worldId", ""),
+            view=view,
+        )
+
+    def robot_act(self, goal: str, devices: list, *, model: Optional[str] = None,
+                  history: Optional[list] = None) -> dict:
+        """Ask the platform's agent for the next robot tool calls toward ``goal``.
+
+        ``devices`` is a list of ``{deviceId, world, camera}`` — one entry per robot device, where
+        ``world`` is that device's description (from :meth:`World.describe`) and ``camera`` is a
+        recent frame (a ``data:`` URL or base64 string). Returns
+        ``{reasoning, calls: [{tool, deviceId, robotId, ...}]}``. This is the building block the
+        :class:`~commandagi.agent.RobotAgent` runner loops over.
+        """
+        body: dict = {"goal": goal, "devices": devices}
+        if model is not None:
+            body["model"] = model
+        if history is not None:
+            body["history"] = history
+        return self._post("/agent/robot-act", body)
+
+    def _wait_until_live(self, thread_id: str, timeout: float) -> None:
         deadline = time.time() + timeout
         while time.time() < deadline:
-            devices = self._get(f"/sessions/{session_id}").get("devices", [])
+            devices = self._get(f"/threads/{thread_id}").get("devices", [])
             if any(d.get("status") == "live" for d in devices):
                 return
             time.sleep(3)
