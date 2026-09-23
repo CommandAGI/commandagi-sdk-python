@@ -27,7 +27,7 @@ lerobot = ["pyarrow>=14.0", "numpy>=1.23", "pillow>=9.0"]
 
 [project.urls]
 Homepage = "https://commandagi.com"
-Documentation = "https://github.com/CommandAGI/commandagi/blob/main/docs/ROBOT_DEVELOPER_API.md"
+Documentation = "https://github.com/CommandAGI/commandagi-sdk-python/blob/main/README.md"
 
 [tool.hatch.version]
 path = "commandagi/__init__.py"

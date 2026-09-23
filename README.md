@@ -131,4 +131,6 @@ Create an API key with an `operator` scope (dashboard → API keys, or `POST /me
 `CommandAGI(api_key=...)` or set `COMMANDAGI_API_KEY`. Point at another environment with
 `COMMANDAGI_BASE_URL` (e.g. `https://api-dev.commandagi.com`).
 
-Full HTTP + WebSocket reference (what the SDK wraps): [`docs/platform/ROBOT_DEVELOPER_API.md`](../../docs/platform/ROBOT_DEVELOPER_API.md).
+The [client implementation and method docstrings](commandagi/client.py) document the HTTP and
+WebSocket operations this SDK wraps. The [runnable examples](examples/) are included in this
+repository and do not require the private platform checkout.
