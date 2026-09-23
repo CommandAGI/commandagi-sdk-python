@@ -2,14 +2,14 @@
 standard ``reset`` / ``step`` RL loop.
 
 The action space is the robot's actuators (a ``Box`` over each actuator's ctrlrange, read from
-:meth:`World.describe`); the observation is the head-camera image plus proprioception (joint
+:meth:`Session.describe`); the observation is the head-camera image plus proprioception (joint
 positions/velocities). Rewards are user-supplied (a callback over the description), since "reward" is
 task-specific — the env gives you the faithful physics + observations and you decide the objective.
 
     from commandagi import CommandAGI
     from commandagi.gym_env import CommandAGIEnv
 
-    cagi = CommandAGI(api_key="cagi_...")
+    cagi = CommandAGI()                              # reads COMMANDAGI_API_KEY
     with cagi.launch("simulation/warehouse") as world:
         env = CommandAGIEnv(world, reward_fn=lambda d: 0.0)
         obs, info = env.reset()
@@ -31,7 +31,7 @@ try:
 except ImportError as e:  # pragma: no cover
     raise ImportError("commandagi.gym_env needs `gymnasium` and `numpy` — pip install 'commandagi[gym]'") from e
 
-from .client import CommandAGIError, World
+from .client import CommandAGIError, Session
 
 
 def _actuators(desc: dict, robot_id: str) -> list[dict]:
@@ -56,10 +56,10 @@ def _joint_state(desc: dict, robot_id: str) -> tuple[np.ndarray, np.ndarray]:
 
 
 class CommandAGIEnv(gym.Env):
-    """Gymnasium env wrapping a live :class:`World`. One robot, morphology-agnostic.
+    """Gymnasium env wrapping a live sim :class:`Session`. One robot, morphology-agnostic.
 
     Args:
-        world: a live sim World (from ``CommandAGI.launch`` / ``SimInstance``).
+        world: a live sim Session (from ``CommandAGI.launch`` or ``CommandAGI.session``).
         robot_id: which robot to drive (default: the world's only/first robot).
         reward_fn: ``description -> float`` reward; defaults to constant 0.
         terminated_fn / truncated_fn: ``description -> bool`` episode-end predicates.
@@ -72,7 +72,7 @@ class CommandAGIEnv(gym.Env):
 
     def __init__(
         self,
-        world: World,
+        world: Session,
         *,
         robot_id: str = "",
         reward_fn: Optional[Callable[[dict], float]] = None,
@@ -93,7 +93,7 @@ class CommandAGIEnv(gym.Env):
         self.max_steps = max_steps
         self._steps = 0
 
-        desc = world.describe(robot_id)
+        desc = world.describe()
         acts = _actuators(desc, robot_id)
         if not acts:
             raise CommandAGIError("no actuators found — is this a robot sim and is it live yet?")
@@ -121,16 +121,16 @@ class CommandAGIEnv(gym.Env):
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
-        self.world.reset()
+        self.world.sim.reset()
         self._steps = 0
-        desc = self.world.describe(self.robot_id)
+        desc = self.world.describe()
         return self._obs(desc), {"description": desc}
 
     def step(self, action):
         targets = {name: float(v) for name, v in zip(self._act_names, np.asarray(action).reshape(-1))}
-        self.world.ctrl(targets, robot_id=self.robot_id)
+        self.world.sim.ctrl(targets=targets, robot_id=self.robot_id or None)
         time.sleep(self.control_dt)
-        desc = self.world.describe(self.robot_id)
+        desc = self.world.describe()
         obs = self._obs(desc)
         reward = float(self.reward_fn(desc))
         terminated = bool(self.terminated_fn(desc))

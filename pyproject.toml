@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "commandagi"
 # Single source of truth: commandagi/__init__.py `__version__` (read by hatchling at build time).
 dynamic = ["version"]
-description = "Python SDK for CommandAGI — launch cloud computers and 3D robot simulations and control them programmatically."
+description = "The CommandAGI SDK for Python — agent threads, memory and integrations, and live computers, robots and simulated worlds you watch and control."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# For World.observe_array() — decode frames to numpy arrays.
+# For Session.observe_array() — decode frames to numpy arrays.
 vision = ["numpy>=1.23", "pillow>=9.0"]
 # Gymnasium env wrapper (commandagi.gym_env) — the standard RL reset/step loop over a sim.
 gym = ["gymnasium>=0.29", "numpy>=1.23", "pillow>=9.0"]

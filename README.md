@@ -1,136 +1,79 @@
-# CommandAGI Python SDK
+# commandagi — the CommandAGI Python SDK
 
-Launch real cloud **computers** and **3D robot simulations** and control them from Python — stream
-the robot's camera, send actions, run episodes. No agent required: you drive.
+Drive the whole CommandAGI platform as code: agent threads, memory and integrations, and live
+**embodiments** (cloud computers, robots, simulated worlds) that you watch and control.
 
 ```bash
-pip install commandagi          # + `pip install commandagi[vision]` for numpy frames
+pip install commandagi
+export COMMANDAGI_API_KEY=cagi_...     # Settings → API keys
 ```
-
-## Robot testing in a 3D world
 
 ```python
 from commandagi import CommandAGI
 
-cagi = CommandAGI(api_key="cagi_...")          # or set COMMANDAGI_API_KEY
+cagi = CommandAGI()                                   # reads COMMANDAGI_API_KEY
 
+# Agents: start one on a goal and follow along.
+t = cagi.threads.create(intent="Summarise this week's robotics news in five bullets")
+cagi.threads.send(t["threadId"], "Add a link for each one.")
+
+# Embodiments: launch a world YOU drive (no agent in it), watch it, control it.
 with cagi.launch("simulation/warehouse") as world:
-    obs = world.observe()                      # JPEG bytes from the robot's head camera
-    for _ in range(20):
-        obs = world.step("turn", dir="left")   # act, then get the next frame
-    world.reset()                              # robot back to the episode start
-# leaving the block stops the world and releases the cloud VM
+    print(world.controls())                           # what it accepts right now, with payload schemas
+    world.sim.ik(target=[0.3, 0.0, 0.4])              # typed robot/sim control
+    jpeg = world.observe(fresh=True)                  # the next frame, after the move
+# leaving the block stops the world and releases the machine
+
+# Anything else: every platform tool by name.
+cagi.call("list_snapshots")
 ```
 
-`launch()` provisions a real GCE VM running a 3D physics world, waits until it's streaming, and gives
-you a `World`. Built-in scenes: `simulation/warehouse`, `simulation/house-on-fire`,
-`simulation/school` (a mobile robot in each).
+## One surface, generated
 
-### The control vocabulary
+This SDK, the TypeScript SDK (`npm i commandagi`) and the `commandagi` CLI all come from **one
+schema**, `commandagi-sdk.schema.json`, so they can't drift apart:
 
-| World kind  | actions                                                                   |
-| ----------- | ------------------------------------------------------------------------- |
-| robot / sim | `move(speed)`, `back(speed)`, `turn(dir, rate)`, `stop`, `reset`          |
-| computer    | `click(x, y)`, `type(text)`, `key(key)`, `move(x, y)`, `scroll(x, y, dy)` |
+- **Tools**: `cagi.threads`, `cagi.embodiments`, `cagi.memory`, `cagi.integrations`,
+  `cagi.social(platform, account)`, `whoami`, `search`, `run` and `post`. Each one is a typed wrapper
+  over `call(tool, args)`. Options are passed as keyword arguments, e.g. `snapshot_id=…`, and sent
+  over the wire as camelCase (`snapshotId`).
+- **Control vocabularies** on a live `Session`:
+  - `session.desktop` for computers: `click`, `double_click`, `move`, `scroll`, `type`, `key`, `wait`
+  - `session.robot` for physical robots: `joint`, `gripper`, `move`, `turn`, `home`, `stop`, …
+  - `session.sim` for simulated worlds: `reset`, `sim_mode`, `ctrl`, `actuator`, `ik`,
+    `trajectory`, `grab`, `force`, `add_robot`, …
 
-```python
-world.act("move", speed=0.8)        # fire-and-forget
-obs = world.step("move", speed=0.8) # act + return the next observation (settles 0.8s)
-obs = world.observe(fresh=True)     # wait for a frame newer than now
-arr = world.observe_array()         # HxWx3 uint8 numpy (needs commandagi[vision])
-for frame in world.stream():        # live generator of frames
-    ...
-```
+  Every method sends one action to that embodiment. The platform checks it against the controls the
+  embodiment is currently declaring, which `session.controls()` lists along with their payload
+  schemas. For anything a runtime declares that no vocabulary covers, use `session.act(action,
+  payload)`.
 
-## Simulator instances (morphology-agnostic robots)
+The generated part is `commandagi/_generated.py`. Don't edit it: it is regenerated from the schema in
+the CommandAGI monorepo.
 
-The simulator is **morphology-agnostic**: a robot is just a set of named actuators and sites, driven
-by one small **generic** control vocabulary — no `drive`/`gripper`, just `ctrl` / `actuator` / `ik`
-/ `trajectory` / `describe`. Spin up your own instance, choose who can watch or add robots, and
-populate it with one or many robots on a single session.
+## Sessions
 
-```python
-from commandagi import CommandAGI
+| | |
+| --- | --- |
+| `cagi.launch(snapshot_id, title=, wait=True, timeout=600)` | a new agentless thread running that snapshot; waits until it declares controls |
+| `cagi.session(thread_id, embodiment_id)` | attach to an embodiment that already exists |
+| `session.frame(fresh=False)` / `observe()` / `observe_array()` / `frames()` | the latest frame, as `{url, channel_id, at}`, image bytes, or a numpy array (`pip install "commandagi[vision]"`); `frames()` yields each new one |
+| `session.describe()` | the live world a sim or robot runtime reports |
+| `session.close()` / `stop()` | stop watching / also stop a world this session launched |
 
-cagi = CommandAGI(api_key="cagi_...")
+Snapshot ids come from `cagi.call("list_snapshots")`, e.g. `simulation/warehouse` or
+`computer/software-engineer`.
 
-sim = cagi.launch_sim(scene="the-matrix", visibility="private", title="demo")
-print("instance:", sim.id, "session:", sim.session_id)
+## Reinforcement learning
 
-# Who can do what:
-sim.grant("user_teammate", capability="viewer")    # may watch the stream
-sim.grant("user_buddy",    capability="operator")  # may also launch robots into the world
+`commandagi.gym_env.CommandAGIEnv` wraps a sim session as a Gymnasium env (`pip install
+"commandagi[gym]"`), and `commandagi.lerobot` records rollouts as LeRobot datasets (`pip install
+"commandagi[lerobot]"`).
 
-# Add robots (each becomes a embodiment on sim.session_id):
-rover = sim.join_robot(kind="rover")   # -> {robotId, embodimentId, sessionId}
-arm   = sim.join_robot(kind="arm")
+## Environment
 
-cagi.sims()             # list instances visible to you
-cagi.get_sim(sim.id)    # rehydrate a SimInstance
-sim.view()              # instance metadata + attached embodiments
-sim.stop()              # release it (or use `with cagi.launch_sim(...) as sim:`)
-```
-
-### Generic robot control
-
-`World` exposes the morphology-agnostic vocabulary (address a specific robot in a multi-robot embodiment
-with `robot_id`):
-
-```python
-world = cagi.connect_world(sim.session_id, rover["embodimentId"], kind="robot")
-
-desc = world.describe()                                   # actuators, sites, objects (best-effort)
-world.ctrl({"left_wheel": 1.0, "right_wheel": 1.0})       # set actuator targets directly
-world.actuator("left_wheel", 0.0)                          # one named actuator
-world.ik(target=[0.3, 0.0, 0.4], site="ee", relative=False)  # inverse kinematics to a point
-world.trajectory([{"left_wheel": 1.0}, {"left_wheel": 0.0}])  # follow waypoints
-frame = world.observe()                                    # camera frame, as before
-```
-
-> `describe()` is best-effort: the runtime answers a describe request over the session channel, but
-> there is currently no synchronous describe HTTP endpoint — if nothing echoes back it returns `{}`,
-> and the autonomous agent also obtains descriptions server-side via `/agent/robot-act`.
-
-## Autonomous agents over many robots
-
-One agent can drive **many** robots in a single session. `RobotAgent` loops perceive → reason → act:
-each step it gathers every embodiment's description + a fresh camera frame, calls `/agent/robot-act` with
-all embodiments, and applies the returned tool calls (`ctrl`/`actuator`/`ik`/`trajectory`) back to the
-addressed embodiment — until a `done` call or `max_steps`.
-
-```python
-from commandagi import CommandAGI
-from commandagi.agent import RobotAgent, attach_robots
-
-cagi = CommandAGI(api_key="cagi_...")
-sim = cagi.launch_sim(scene="warehouse")
-
-embodiments = attach_robots(cagi, sim, kinds=["rover", "arm"])   # two robots, one session
-
-with RobotAgent(cagi, sim.session_id, embodiments, goal="bring the red box to the arm") as agent:
-    result = agent.run(max_steps=25)        # blocks; prints reasoning + applied calls each step
-print("done:", result["done"], "in", result["steps"], "steps")
-
-sim.stop()
-```
-
-A full runnable script lives in [`examples/sim_agent.py`](examples/sim_agent.py).
-
-## Computers too
-
-```python
-with cagi.launch("computer/software-engineer") as pc:
-    pc.act("type", text="hello")
-    pc.act("key", key="Return")
-    screenshot = pc.observe()       # PNG bytes of the live Ubuntu desktop
-```
-
-## Auth
-
-Create an API key with an `operator` scope (dashboard → API keys, or `POST /me/api-keys`). Pass it to
-`CommandAGI(api_key=...)` or set `COMMANDAGI_API_KEY`. Point at another environment with
-`COMMANDAGI_BASE_URL` (e.g. `https://api-dev.commandagi.com`).
-
-The [client implementation and method docstrings](commandagi/client.py) document the HTTP and
-WebSocket operations this SDK wraps. The [runnable examples](examples/) are included in this
-repository and do not require the private platform checkout.
+| variable | meaning |
+| --- | --- |
+| `COMMANDAGI_API_KEY` | your `cagi_…` key. Its scopes decide what every call may do |
+| `COMMANDAGI_BASE_URL` | API origin (default `https://api.commandagi.com`) |
+| `COMMANDAGI_THREAD_ID` | default thread for self-thread methods. Set automatically when your code runs inside the platform |
