@@ -25,7 +25,19 @@ from ._generated import (
     RobotControls,
     SimControls,
 )
-from .client import CommandAGI, CommandAGIError, Session
+
+# The client (and its HTTP and WebSocket dependencies) loads on first use, so `commandagi.design` — which
+# declares structure and never touches the network — imports anywhere, Pyodide included.
+_CLIENT_NAMES = ("CommandAGI", "CommandAGIError", "Session")
+
+
+def __getattr__(name):
+    if name in _CLIENT_NAMES:
+        from . import client
+
+        return getattr(client, name)
+    raise AttributeError(f"module 'commandagi' has no attribute {name!r}")
+
 
 __all__ = [
     "CommandAGI",

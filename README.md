@@ -64,6 +64,24 @@ the CommandAGI monorepo.
 Snapshot ids come from `cagi.call("list_snapshots")`, e.g. `simulation/warehouse` or
 `computer/software-engineer`.
 
+## Design in code: `commandagi.design`
+
+The same structure-declaring primitives as the TypeScript SDK's `commandagi/design`, producing the same op
+graph (plain JSON). They cover CAD (`part`, `box`, `cylinder`, `sketch`, `extrude`, `subtract`, `hole`,
+`linear_pattern` and the rest), EDA (`circuit`, `board`, `component`, `net`, `connect`, `footprints`) and
+any graph (`graph`, `node`, `input_`, `code`). There is no kernel, solver, router or renderer; importing
+`commandagi.design` needs nothing but the standard library.
+
+`commandagi.design.cadquery` is a CadQuery-style importer: `Workplane("XY").box(…).faces(">Z").workplane()
+.rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real
+topology (fillets, edge selectors).
+
+A `.py` code part is a script. Its result is `main(**inputs)` if it defines `main`; otherwise what it passed
+to `show_object`; otherwise its `result` variable. `param(name, default, unit=…)` declares an input and
+reads its value. In a CommandAGI editor, a `.py` code node runs under Pyodide in a sandboxed worker, where
+`import cadquery as cq` is this importer (OCCT does not run there). `run_module(source, path, inputs)` is
+what the sandbox calls. Tests: `python -m unittest tests.test_design`.
+
 ## Reinforcement learning
 
 `commandagi.gym_env.CommandAGIEnv` wraps a sim session as a Gymnasium env (`pip install
