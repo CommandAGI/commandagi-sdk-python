@@ -358,17 +358,17 @@
       },
       {
         "name": "memory",
-        "doc": "The agent's durable memory.",
+        "doc": "The agent's durable memory: markdown files under memories/ in the thread's drive.",
         "factory": null,
         "methods": [
           {
             "name": "search",
             "tool": "memory_search",
-            "doc": "Recall by query.",
+            "doc": "Recall by query (the drive's content index over memories/).",
             "params": [
               {
                 "name": "query",
-                "key": "query",
+                "key": "q",
                 "type": "string",
                 "required": true,
                 "spread": false,
@@ -382,7 +382,7 @@
           {
             "name": "remember",
             "tool": "memory_remember",
-            "doc": "Store a memory.",
+            "doc": "Write a memory file.",
             "params": [
               {
                 "name": "opts",
@@ -398,18 +398,18 @@
             "withThread": false
           },
           {
-            "name": "link",
-            "tool": "memory_link",
-            "doc": "Relate two memories.",
+            "name": "forget",
+            "tool": "memory_forget",
+            "doc": "Delete a memory file by its path.",
             "params": [
               {
-                "name": "opts",
-                "key": null,
-                "type": "object",
-                "required": false,
-                "spread": true,
+                "name": "path",
+                "key": "path",
+                "type": "string",
+                "required": true,
+                "spread": false,
                 "prefix": null,
-                "cli": "spread"
+                "cli": "positional"
               }
             ],
             "bound": {},
@@ -947,45 +947,41 @@
             }
           },
           {
-            "name": "reload_spec",
+            "name": "load",
             "channelId": "ctrl",
             "label": "Simulation lifecycle",
             "schema": {
               "type": "object",
               "properties": {
-                "base": {
-                  "type": "object",
-                  "additionalProperties": true
-                },
-                "spec": {
+                "world": {
                   "type": "object",
                   "properties": {
-                    "bodies": {
-                      "type": "array",
-                      "maxItems": 100000,
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": true
-                      }
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1024
                     },
-                    "dynamics": {
-                      "type": "object",
-                      "additionalProperties": true
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "simulation"
+                      ]
                     },
-                    "plan": {
+                    "scene": {
                       "type": "object",
                       "additionalProperties": true
                     }
                   },
                   "required": [
-                    "bodies"
+                    "name",
+                    "kind",
+                    "scene"
                   ],
                   "additionalProperties": true
                 }
               },
               "required": [
-                "spec",
-                "base"
+                "world"
               ],
               "additionalProperties": false
             }
