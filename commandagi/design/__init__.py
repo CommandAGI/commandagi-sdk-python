@@ -33,6 +33,9 @@ from . import source as _source
 from .media import MEDIA_ROOTS, Element, declare_song, declare_video, from_media
 from .office import (OfficeDocument, a, b, br, bullet, cell, code_, column, deck, divider, h1, h2, h3, i, image, numbered, p, page,
                      pre, quote, row, s, shape, sheet, slide, text, todo, u, workbook)
+from .ontology import (body, camera, channel, dashboard, dashboard_param, date_range, declare_document, declare_opgraph, device,
+                       element, geoproject, graph_node, is_document, is_opgraph, opgraph, pane, reference, region, scene, space, split,
+                       unit, view, wire, world)
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
@@ -42,6 +45,9 @@ __all__ = [
     "sketch", "sphere", "subtract", "union",
     "PartRef", "board", "circuit", "component", "connect", "footprints", "net", "part_type_for",
     "BOARD_FOOTPRINTS", "pcb_board", "pcb_component", "pcb_trace", "pcb_via",
+    "body", "camera", "channel", "dashboard", "dashboard_param", "date_range", "declare_document", "declare_opgraph", "device",
+    "element", "geoproject", "graph_node", "is_document", "is_opgraph", "opgraph", "pane", "reference", "region", "scene", "space",
+    "split", "unit", "view", "wire", "world",
     "graph_of", "run_module",
     "BUSINESS_TAGS", "Books", "Calendar", "CapTable", "Case", "Change", "Company", "Entity", "Harm", "Matters", "Option", "People",
     "Registration", "Relief", "Rfc", "document_of",
@@ -57,6 +63,8 @@ def graph_of(value: Any, name: str = "Part") -> Dict[str, Any]:
     """The op graph a declared value is: a declaration, a plain IR graph, or CadQuery-style workplanes."""
     if isinstance(value, Declaration):
         return value.ir
+    if is_opgraph(value):
+        return declare_opgraph(value).ir
     if is_ir_graph(value):
         return value
     if isinstance(value, Element) and value.type in MEDIA_ROOTS:
@@ -88,7 +96,7 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
     if isinstance(declared, dict):
         for k, v in declared.items():
             params.setdefault(k, v if isinstance(v, dict) and "default" in v else {"default": v})
-    stem = path.split("/")[-1].rsplit(".", 1)[0].replace(".part", "").replace(".circuit", "").replace(".sch", "").replace(".sheet", "").replace(".page", "").replace(".deck", "") or "Part"
+    stem = path.split("/")[-1].rsplit(".", 1)[0].replace(".part", "").replace(".circuit", "").replace(".sch", "").replace(".sheet", "").replace(".page", "").replace(".deck", "").replace(".opgraph", "").replace(".dashboard", "").replace(".geo", "") or "Part"
     if callable(ns.get("main")):
         values = {k: p["default"] for k, p in params.items()}
         values.update(inputs)
@@ -104,8 +112,14 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
         raise ValueError(f"the script declared {len(run.declared)} blocks; a file declares one")
     else:
         raise ValueError("the script declared nothing (define main(), call show_object(), set result, or write a with group(...) block)")
-    # A workbook, a page, a company, an RFC or a case is a document of its own: it leaves beside an empty graph.
-    document = value.declared() if isinstance(value, OfficeDocument) else document_of(value)
+    # A workbook, a page, a company, an RFC, a case, a world, a definition, a dashboard or a geo project is a document of
+    # its own: it leaves beside an empty graph.
+    if isinstance(value, OfficeDocument):
+        document = value.declared()
+    elif is_document(value):
+        document = declare_document(value)
+    else:
+        document = document_of(value)
     if document is not None:
         return json.loads(json.dumps({"graph": {"id": stem, "nodes": {}}, "params": params, "document": document}))
     g = graph_of(value, stem)

@@ -81,6 +81,13 @@ Office documents are declared as calls with the same shapes as the TypeScript SD
 cell("A1", "Item", bold=True), cell("B2", formula="=B1*12")))`, `page(h1("Notes"), p("Text with ", b("bold"), "."))`
 and `deck(slide(shape("ellipse", x=160, y=160, w=400, h=400), layout="Blank"))`. A workbook and a page leave
 `run_module` as its `document` (the sheets and docs editors' own JSON); a deck is the deck's op graph.
+The ontology's own files have the same declarations as the TypeScript SDK's JSX, with calls in place of tags:
+`world(name, kind, space(…), unit(uid=…, name=…, device=…, position=[…], rotation=0), …)`, `device(name,
+channel(id=…, …))`, `dashboard(name, split("x", 0.5, pane(id="a", …), pane(id="b", …)), region(side=…, …))`,
+`geoproject(id, name, date_range(…), camera(…))` and `opgraph(graph_node(id, type, x=…, y=…, …), wire("a:out",
+"b:in"))`. Keyword arguments are the record's fields, verbatim (a Python keyword takes a trailing underscore:
+`from_=`). They declare what the JSX declares: a world, a definition, a dashboard or a geo project leaves `run_module`
+as its `document`; a node graph is the editor's op graph.
 
 `commandagi.design.cadquery` is a CadQuery-style importer: `Workplane("XY").box(…).faces(">Z").workplane()
 .rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real
