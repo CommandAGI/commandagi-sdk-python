@@ -78,7 +78,9 @@ def _add(s: Scope, el: Element, type: str, inputs: Dict[str, Any]) -> NodeRef:
 
 _DRAW_SOURCES = {"rect", "ellipse", "polygon", "path", "text", "brush-stroke"}
 _DRAW_MODIFIERS = {"transform", "offset", "array", "mirror", "stroke", "fill", "blur", "levels", "threshold", "adjust", "crop", "bucket-fill"}
-_DRAW_LATER = {"image", "raster-layer", "sketch", "connector", "draw.instance"}
+# Pixels a drawing places: each names its image file (``src``).
+_DRAW_PIXELS = {"image", "raster-layer"}
+_DRAW_LATER = {"sketch", "connector", "draw.instance"}
 
 
 def subpaths_of(d: str, what: str) -> List[Dict[str, Any]]:
@@ -170,6 +172,12 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
         if t == "brush-stroke" and "points" in a:
             a["points"] = _pairs(a["points"], f"{el.where()} points")
         return _add(s, el, t, a)
+    if t in _DRAW_PIXELS:
+        if el.children:
+            raise ValueError(f"{el.where()} takes no children")
+        if "src" not in el.props:
+            raise ValueError(f'{el.where()}: src names its image file by relative path ("photo.png")')
+        return _add(s, el, t, {**_attrs(el, ("src",)), "__asset": _asset(el.props["src"], el)})
     if t in _DRAW_MODIFIERS:
         if len(el.children) != 1:
             raise ValueError(f"{el.where()} wraps the one node it changes")
@@ -187,12 +195,12 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
 
 
 def drawing(*children: Any, name: Optional[str] = None, **props: Any) -> Declaration:
-    """A drawing (a ``.drawx``): its layers, each holding shapes, groups and modifiers."""
+    """A drawing: its layers, each holding shapes, images, groups and modifiers."""
     root = Element("drawing", children, {**props, **({"name": name} if name is not None else {})})
     extra = [k for k in root.props if k not in ("name", "width", "height", "background")]
     if extra:
         raise ValueError(f"<drawing>: {extra[0]} is not read (a drawing has name, width, height, background)")
-    # A drawing with no name of its own declares none (as a ``.drawx`` may).
+    # A drawing with no name of its own declares none: the file's name only names the graph.
     meta: Dict[str, Any] = {"name": name} if name is not None else {}
     for k in ("width", "height", "background"):
         if root.props.get(k) is not None:
@@ -294,6 +302,21 @@ _STACKS = {
 }
 
 
+def _mask_of(s: Scope, prefix: str, el: Element) -> Dict[str, Any]:
+    """A layer's (or a stroke's, or a filter's) ``mask(...)``: the one layer it holds, wired to the node's mask port."""
+    masks = [c for c in el.children if c.tag == "mask"]
+    if not masks:
+        return {}
+    if len(masks) > 1:
+        raise ValueError(f"{el.where()} has one <mask>")
+    m = masks[0]
+    if _attrs(m):
+        raise ValueError(f"<mask> in {el.where()} has no attributes (write them on the layer it holds)")
+    if len(m.children) != 1:
+        raise ValueError(f"<mask> in {el.where()} holds one layer")
+    return {"mask": _stack(s, prefix, m.children)[0]}
+
+
 def _stack(s: Scope, prefix: str, children: List[Element]) -> List[NodeRef]:
     root, chain_type, layer_of, chain_of = _STACKS[prefix]
     slots = []
@@ -304,16 +327,16 @@ def _stack(s: Scope, prefix: str, children: List[Element]) -> List[NodeRef]:
                 raise ValueError(f"{el.where()} is painted on a layer: write it inside one")
             raise ValueError(f"<{el.tag}> is not read in a {root} (see commandagi.design.twod)")
         type_, inputs = layer
-        stack = [c for c in el.children if chain_of(c) is None]
-        chain = [c for c in el.children if chain_of(c) is not None]
+        stack = [c for c in el.children if c.tag != "mask" and chain_of(c) is None]
+        chain = [c for c in el.children if c.tag != "mask" and chain_of(c) is not None]
         if stack and type_ != f"{prefix}.group":
             raise ValueError(f"{el.where()}: only a <group> holds layers")
         inner = _stack(s, prefix, stack) if type_ == f"{prefix}.group" else []
-        top = _add(s, el, type_, {**inputs, **channels("layers", inner)})
+        top = _add(s, el, type_, {**inputs, **channels("layers", inner), **_mask_of(s, prefix, el)})
         carried = dict(_COMMON_DEFAULTS)
         carried.update({k: inputs[k] for k in _COMMON if k in inputs})
         for c in chain:
-            top = _add(s, c, chain_type, {**carried, **chain_of(c), "src": top})
+            top = _add(s, c, chain_type, {**carried, **chain_of(c), "src": top, **_mask_of(s, prefix, c)})
         slots.append(top)
     return slots
 
@@ -334,19 +357,19 @@ def _stack_document(prefix: str, children: tuple, name: Optional[str], props: Di
 
 
 def painting(*children: Any, name: Optional[str] = None, **props: Any) -> Declaration:
-    """A paint document (a ``.paintx``): its layer stack, bottom first, each layer's strokes inside it."""
+    """A paint document: its layer stack, bottom first, each layer's strokes inside it."""
     return _stack_document("paint", children, name, props)
 
 
 def photo(*children: Any, name: Optional[str] = None, **props: Any) -> Declaration:
-    """A photo (an ``.imgx``): pixel layers naming their image files, adjustments, and each raster's filters."""
+    """A photo: pixel layers naming their image files, adjustments, each raster's filters, and masks."""
     return _stack_document("photo", children, name, props)
 
 
 # ── Nest ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def nest(*children: Any, name: Optional[str] = None, **props: Any) -> Declaration:
-    """A nest (a ``.nestx``): its sheet, stock, options and parts."""
+    """A nest: its sheet, stock, options and parts."""
     root = Element("nest", children, props)
     a = _attrs(root, ("name",))
     for k in a:
@@ -386,6 +409,8 @@ polygon = _tag("polygon")
 path = _tag("path")
 text = _tag("text")
 brush_stroke = _tag("brush-stroke")
+image = _tag("image")
+raster_layer = _tag("raster-layer")
 transform = _tag("transform")
 offset = _tag("offset")
 array = _tag("array")
@@ -398,6 +423,7 @@ boolean = _tag("boolean")
 clip = _tag("clip")
 raster = _tag("raster")
 gradient = _tag("gradient")
+mask = _tag("mask")
 sheet = _tag("sheet")
 stock = _tag("stock")
 options = _tag("options")
