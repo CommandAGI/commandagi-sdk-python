@@ -7,7 +7,8 @@ or renderer. A ``.py`` file using these is a CODE PART: a graph's code node runs
 Pyodide, with no network) and the editor evaluates what it declares.
 
 A code part is a script. Its result is, first found: ``main(**inputs)`` if it defines ``main``; else what
-it passed to ``show_object``; else its ``result`` variable. ``param(name, default, unit=…)`` reads an input
+it passed to ``show_object``; else its ``result`` variable; else the block it declared (``with group(...)``,
+``commandagi.design.sheet``). Each node a call declared carries where the call is (``meta.source``, ``./source.py``). ``param(name, default, unit=…)`` reads an input
 (declaring it); a ``params`` dict declares inputs too.
 """
 from __future__ import annotations
@@ -25,6 +26,7 @@ from . import cadquery as _cq
 from .solids import declare_solids
 from .business import (BUSINESS_TAGS, Books, Calendar, CapTable, Case, Change, Company, Entity, Harm, Matters, Option, People,
                        Registration, Relief, Rfc, document_of)
+from . import source as _source
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
@@ -64,23 +66,30 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
         shown.append(obj)
 
     ns: Dict[str, Any] = {"__name__": "__code_part__", "__file__": path, "param": param, "show_object": show_object, "inputs": inputs}
-    exec(compile(source, path, "exec"), ns)
+    with _source.running(source, path) as run:
+        exec(compile(source, path, "exec"), ns)
     declared = ns.get("params")
     if isinstance(declared, dict):
         for k, v in declared.items():
             params.setdefault(k, v if isinstance(v, dict) and "default" in v else {"default": v})
-    stem = path.split("/")[-1].rsplit(".", 1)[0].replace(".part", "").replace(".circuit", "") or "Part"
+    stem = path.split("/")[-1].rsplit(".", 1)[0].replace(".part", "").replace(".circuit", "").replace(".sch", "") or "Part"
     if callable(ns.get("main")):
         values = {k: p["default"] for k, p in params.items()}
         values.update(inputs)
-        value = ns["main"](**values)
+        with run:
+            value = ns["main"](**values)
     elif shown:
         value = shown if len(shown) > 1 else shown[0]
     elif "result" in ns:
         value = ns["result"]
+    elif len(run.declared) == 1:
+        value = run.declared[0]
+    elif run.declared:
+        raise ValueError(f"the script declared {len(run.declared)} blocks; a file declares one")
     else:
-        raise ValueError("the script declared nothing (define main(), call show_object(), or set result)")
+        raise ValueError("the script declared nothing (define main(), call show_object(), set result, or write a with group(...) block)")
     g = graph_of(value, stem)
+    _source.finish(g, run.map)
     problems = check_ir(g)
     if problems:
         raise ValueError("the declared graph is not well formed: " + "; ".join(problems[:5]))
