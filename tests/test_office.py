@@ -9,7 +9,7 @@ class WorkbookTests(unittest.TestCase):
     def test_a_workbook_declares_the_workbook_json(self):
         doc = workbook(sheet("Q1", column("B", 120), cell("a1", "Item", bold=True), cell("B2", formula="=1+1"), frozen_rows=1), title="Budget")
         self.assertEqual(doc.document, {
-            "format": "sheetx", "version": 1,
+            "format": "workbook", "version": 1,
             "sheets": [{"id": "sheet-1", "name": "Q1", "kind": "grid", "rows": 200, "cols": 26,
                         "cells": {"A1": {"v": "Item", "fmt": {"bold": True}}, "B2": {"f": "=1+1"}},
                         "colWidths": {1: 120}, "frozen": {"rows": 1, "cols": 0}}],
@@ -21,7 +21,7 @@ class WorkbookTests(unittest.TestCase):
     def test_run_module_hands_a_workbook_back_as_its_document(self):
         out = run_module('from commandagi.design import workbook, sheet, cell\nresult = workbook(sheet("S", cell("A1", 3)))', "Budget.sheet.py")
         self.assertEqual(out["graph"], {"id": "Budget", "nodes": {}})
-        self.assertEqual(out["document"]["format"], "sheetx")
+        self.assertEqual(out["document"]["format"], "workbook")
         self.assertEqual(out["document"]["document"]["sheets"][0]["cells"], {"A1": {"v": 3}})
 
 

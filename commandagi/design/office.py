@@ -1,4 +1,4 @@
-"""Office documents — a workbook (``.sheetx``), a page (``.pagex``) and a deck (``.deckx``) — declared as the very
+"""Office documents — a workbook (``.sheet.py``), a page (``.page.py``) and a deck (``.deck.py``) — declared as the very
 document the CommandAGI sheets, docs and decks editors open. The same declarations as the TypeScript SDK's
 ``commandagi/design`` office JSX (``office.ts``), as calls::
 
@@ -50,7 +50,7 @@ class Element:
 
 
 class OfficeDocument:
-    """A workbook or a page: the editor's own JSON (``format`` is ``sheetx`` or ``pagex``)."""
+    """A workbook or a page: the editor's own JSON (``format`` is ``workbook`` or ``page``)."""
 
     def __init__(self, fmt: str, document: Dict[str, Any]):
         self.format = fmt
@@ -150,7 +150,7 @@ def workbook(*sheets: Element, title: Optional[str] = None) -> OfficeDocument:
         }))
     if not out:
         raise ValueError("a workbook holds at least one sheet")
-    return OfficeDocument("sheetx", _defined({"format": "sheetx", "version": 1, "sheets": out, "meta": {"title": title} if title is not None else None}))
+    return OfficeDocument("workbook", _defined({"format": "workbook", "version": 1, "sheets": out, "meta": {"title": title} if title is not None else None}))
 
 
 # ── Page ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -252,7 +252,7 @@ def page(*blocks: Element, title: Optional[str] = None) -> OfficeDocument:
             out.append(_defined({"id": bid, "type": "image", "html": "", "src": el.props.get("src", ""), "alt": el.props.get("alt")}))
         else:
             raise ValueError(f"<{el.tag}> is not a block of a page (h1, h2, h3, p, bullet, numbered, todo, quote, pre, divider, image)")
-    return OfficeDocument("pagex", _defined({"format": "pagex", "version": 1, "blocks": out, "meta": {"title": title} if title is not None else None}))
+    return OfficeDocument("page", _defined({"format": "page", "version": 1, "blocks": out, "meta": {"title": title} if title is not None else None}))
 
 
 # ── Deck ─────────────────────────────────────────────────────────────────────────────────────────────────────────
