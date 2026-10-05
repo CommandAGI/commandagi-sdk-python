@@ -72,6 +72,13 @@ graph (plain JSON). They cover CAD (`part`, `box`, `cylinder`, `sketch`, `extrud
 any graph (`graph`, `node`, `input_`, `code`). There is no kernel, solver, router or renderer; importing
 `commandagi.design` needs nothing but the standard library.
 
+The ontology's own files have the same declarations as the TypeScript SDK's JSX, with calls in place of tags:
+`world(name, kind, space(…), unit(uid=…, name=…, device=…, position=[…], rotation=0), …)`, `device(name,
+channel(id=…, …))`, `dashboard(name, split("x", 0.5, pane(id="a", …), pane(id="b", …)), region(side=…, …))`,
+`geoproject(id, name, date_range(…), camera(…))` and `opgraph(graph_node(id, type, x=…, y=…, …), wire("a:out",
+"b:in"))`. Keyword arguments are the record's fields, verbatim (a Python keyword takes a trailing underscore:
+`from_=`). They declare the same op graph as the JSX does.
+
 `commandagi.design.cadquery` is a CadQuery-style importer: `Workplane("XY").box(…).faces(">Z").workplane()
 .rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real
 topology (fillets, edge selectors).
