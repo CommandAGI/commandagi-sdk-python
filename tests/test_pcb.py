@@ -53,7 +53,7 @@ class BoardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "two elements are called V1"):
             pcb_board("D.sch.tsx", children=[pcb_component("V1", "smd-0805"), pcb_via(0, 0, 0.3, 0.6, name="V1")])
         with self.assertRaisesRegex(ValueError, "relative to this file"):
-            pcb_board("/abs.sch.json")
+            pcb_board("/abs.sch.tsx")
 
 
 if __name__ == "__main__":
