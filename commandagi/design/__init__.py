@@ -24,6 +24,7 @@ from .cad import (PLANES, Body, SketchBuilder, SketchRef, assembly, box, chamfer
 from .eda import PartRef, board, circuit, component, connect, footprints, net, part_type_for
 from . import cadquery as _cq
 from . import threed as _threed
+from . import twod
 from .solids import declare_solids
 from .business import (BUSINESS_TAGS, Books, Calendar, CapTable, Case, Change, Company, Entity, Harm, Matters, Option, People,
                        Registration, Relief, Rfc, document_of)
@@ -41,6 +42,7 @@ __all__ = [
     "BUSINESS_TAGS", "Books", "Calendar", "CapTable", "Case", "Change", "Company", "Entity", "Harm", "Matters", "Option", "People",
     "Registration", "Relief", "Rfc", "document_of",
     "Element", "declare_song", "declare_video", "from_media",
+    "twod",
 ]
 # A 3D document, element by element (the TypeScript SDK's JSX): `commandagi.design.threed` (h, document).
 

@@ -72,6 +72,11 @@ graph (plain JSON). They cover CAD (`part`, `box`, `cylinder`, `sketch`, `extrud
 any graph (`graph`, `node`, `input_`, `code`). There is no kernel, solver, router or renderer; importing
 `commandagi.design` needs nothing but the standard library.
 
+`commandagi.design.twod` declares 2D documents the way the TypeScript SDK's JSX does: `twod.drawing(twod.layer(
+twod.rect(x=…, …), name="Layer 1"), name="Poster", width=800, height=600)`, and `twod.painting`, `twod.photo` and
+`twod.nest` alike. A call is one node, its keywords the node's inputs (`from_` for a Python word), its positional
+arguments the nodes it takes. Tests: `python -m unittest tests.test_twod`.
+
 `commandagi.design.cadquery` is a CadQuery-style importer: `Workplane("XY").box(…).faces(">Z").workplane()
 .rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real
 topology (fillets, edge selectors).
