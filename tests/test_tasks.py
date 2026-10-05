@@ -12,16 +12,16 @@ OCT_20 = int(datetime(2026, 10, 20, tzinfo=timezone.utc).timestamp() * 1000)
 
 class TaskTests(unittest.TestCase):
     def test_a_task_is_its_body(self):
-        d = declare_task_document(task("ship", subtask("Ship it/Draft.task.py"), subtask("Ship it/Send.task"),
+        d = declare_task_document(task("ship", subtask("Ship it/Draft.task.py"), subtask("Ship it/Send.task.tsx"),
                                        title="Ship it", status="doing", priority="high", assignees=["agent:writer"],
                                        dueAt="2026-10-20", readme="Ship it.md"))
         self.assertEqual(d, {"format": "task", "sources": {}, "document": {
             "id": "ship", "title": "Ship it", "status": "doing", "priority": "high", "assignees": ["agent:writer"],
-            "dueAt": OCT_20, "readme": "Ship it.md", "subtasks": ["Ship it/Draft.task.py", "Ship it/Send.task"]}})
+            "dueAt": OCT_20, "readme": "Ship it.md", "subtasks": ["Ship it/Draft.task.py", "Ship it/Send.task.tsx"]}})
         with self.assertRaisesRegex(ValueError, "subtasks is not read"):
-            declare_task_document(task("a", subtasks=["x.task"]))
-        with self.assertRaisesRegex(ValueError, 'two <subtask> in <task> have ref "x.task"'):
-            declare_task_document(task("a", subtask("x.task"), subtask("x.task")))
+            declare_task_document(task("a", subtasks=["x.task.tsx"]))
+        with self.assertRaisesRegex(ValueError, 'two <subtask> in <task> have ref "x.task.tsx"'):
+            declare_task_document(task("a", subtask("x.task.tsx"), subtask("x.task.tsx")))
         with self.assertRaisesRegex(ValueError, "dueAt is a date"):
             declare_task_document(task("a", dueAt="next week"))
 

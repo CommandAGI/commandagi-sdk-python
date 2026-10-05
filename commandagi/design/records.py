@@ -1,4 +1,4 @@
-"""Signed records, declared in Python: a market contract (``.contract``) and a product instance (``.instance``), the same
+"""Signed records, declared in Python: a market contract (``.contract.py``) and a product instance (``.instance.py``), the same
 documents as the TypeScript SDK's JSX (``commandagi/design`` ``records.ts``), with calls in place of tags::
 
     result = contract("c-1", contract_party(principal="u-1", role="offeror", sig="ed25519:…", signedAt=1780765664000),
@@ -81,7 +81,7 @@ def declare_record_document(root: Element) -> Dict[str, Any]:
 
 
 def contract(id: str, *parties: Element, **fields: Any) -> Element:
-    """A contract record (``<name>.contract``): its id, terms and createdAt, and its parties in order."""
+    """A contract record (``<name>.contract.py``): its id, terms and createdAt, and its parties in order."""
     return Element("contract", {"id": id, **_fields(fields)}, parties)
 
 
@@ -91,7 +91,7 @@ def contract_party(**fields: Any) -> Element:
 
 
 def product_instance(serial: str, *events: Element, **fields: Any) -> Element:
-    """A product instance (``<name>.instance``): its serial, productId and model, and its chain oldest first."""
+    """A product instance (``<name>.instance.py``): its serial, productId and model, and its chain oldest first."""
     return Element("instance", {"serial": serial, **_fields(fields)}, events)
 
 

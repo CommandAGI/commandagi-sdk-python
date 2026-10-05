@@ -1,5 +1,5 @@
 """A company, an RFC or a case declared in Python — the same documents the CommandAGI company app and contract editor
-open as ``<Name>.company``, ``<name>.rfc`` and ``<name>.case``, and the same elements as the TypeScript SDK's JSX
+open as ``<Name>.company.py``, ``<name>.rfc.py`` and ``<name>.case.py``, and the same elements as the TypeScript SDK's JSX
 (``commandagi/design`` ``business.ts``)::
 
     from commandagi.design.business import Company, Entity, Books, CapTable, Registration
@@ -13,7 +13,7 @@ open as ``<Name>.company``, ``<name>.rfc`` and ``<name>.case``, and the same ele
     )
 
 Each call is an element ``{"$$design": "element", "type": "Company", "props": {..., "children": [...]}}``, the node
-shape the JSX runtime makes. ``document_of`` reads one into the native document: the ``.company`` itself, or an RFC's
+shape the JSX runtime makes. ``document_of`` reads one into the document the apps use: the company itself, or an RFC's
 or a case's ``{"id"?, "draft"}``. The standard's parts REF their files (the journal stays hledger, the cap table Open
 Cap Table Format). A change's ``parameter`` is the draft's ``key``. An unknown attribute or child is refused by name.
 """
@@ -145,7 +145,7 @@ def read_business_node(el: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
-    """A ``.company`` document from a <Company> (docs/formats.md § companies)."""
+    """A company document from a <Company> (docs/formats.md § companies)."""
     p, one = node["props"], node["one"]
     entity = None
     if one["entity"]:
