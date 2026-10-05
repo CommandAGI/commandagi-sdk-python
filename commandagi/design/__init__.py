@@ -27,6 +27,7 @@ from .solids import declare_solids
 from .business import (BUSINESS_TAGS, Books, Calendar, CapTable, Case, Change, Company, Entity, Harm, Matters, Option, People,
                        Registration, Relief, Rfc, document_of)
 from . import source as _source
+from .media import MEDIA_ROOTS, Element, declare_song, declare_video, from_media
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
@@ -38,6 +39,7 @@ __all__ = [
     "graph_of", "run_module",
     "BUSINESS_TAGS", "Books", "Calendar", "CapTable", "Case", "Change", "Company", "Entity", "Harm", "Matters", "Option", "People",
     "Registration", "Relief", "Rfc", "document_of",
+    "Element", "declare_song", "declare_video", "from_media",
 ]
 
 
@@ -47,6 +49,8 @@ def graph_of(value: Any, name: str = "Part") -> Dict[str, Any]:
         return value.ir
     if is_ir_graph(value):
         return value
+    if isinstance(value, Element) and value.type in MEDIA_ROOTS:
+        return from_media(value).ir
     if isinstance(value, _cq.Workplane) or (isinstance(value, (list, tuple)) and value and all(isinstance(v, _cq.Workplane) for v in value)):
         return declare_solids(name, _cq.solids_of(value)).ir
     raise ValueError("the script declared something that is not a part, a circuit, a graph or a Workplane solid")
