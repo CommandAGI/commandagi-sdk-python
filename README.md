@@ -76,6 +76,12 @@ any graph (`graph`, `node`, `input_`, `code`). There is no kernel, solver, route
 .rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real
 topology (fillets, edge selectors).
 
+`commandagi.design.threed` declares a whole 3D document element by element, as the TypeScript SDK's JSX
+does in a `.3d.tsx`: `h(tag, *children, **fields)` makes an element, and a `part` (or `assembly`) element
+with `parameter`, `plane`, one element per feature named by its type (`sketch` with its `point`, `line`,
+`circle` and `constraint` children, `extrude`, `fillet`, `hole` …), `body` and `slot` declares the `.3dx`
+body itself, node for node. Tests: `python -m unittest tests.test_threed`.
+
 A `.py` code part is a script. Its result is `main(**inputs)` if it defines `main`; otherwise what it passed
 to `show_object`; otherwise its `result` variable. `param(name, default, unit=…)` declares an input and
 reads its value. In a CommandAGI editor, a `.py` code node runs under Pyodide in a sandboxed worker, where

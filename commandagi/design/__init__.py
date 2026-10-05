@@ -22,6 +22,7 @@ from .cad import (PLANES, Body, SketchBuilder, SketchRef, assembly, box, chamfer
                   subtract, union)
 from .eda import PartRef, board, circuit, component, connect, footprints, net, part_type_for
 from . import cadquery as _cq
+from . import threed as _threed
 from .solids import declare_solids
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     "PartRef", "board", "circuit", "component", "connect", "footprints", "net", "part_type_for",
     "graph_of", "run_module",
 ]
+# A 3D document, element by element (the TypeScript SDK's JSX): `commandagi.design.threed` (h, document).
 
 
 def graph_of(value: Any, name: str = "Part") -> Dict[str, Any]:
@@ -41,6 +43,8 @@ def graph_of(value: Any, name: str = "Part") -> Dict[str, Any]:
         return value.ir
     if is_ir_graph(value):
         return value
+    if isinstance(value, _threed.Element):
+        return _threed.declare_threed(value, name)
     if isinstance(value, _cq.Workplane) or (isinstance(value, (list, tuple)) and value and all(isinstance(v, _cq.Workplane) for v in value)):
         return declare_solids(name, _cq.solids_of(value)).ir
     raise ValueError("the script declared something that is not a part, a circuit, a graph or a Workplane solid")
