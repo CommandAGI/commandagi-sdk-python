@@ -6,7 +6,7 @@ children::
 
     result = world("Bench", "simulation",
         space(origin_mm=[-1000, -600, 0], size_mm=[2000, 1200, 2000]),
-        unit(uid="arm", name="arm", device="../../devices/so-101/definition.json", position=[0, 0, 750], rotation=0))
+        unit(uid="arm", name="arm", device="../../devices/so-101/definition.tsx", position=[0, 0, 750], rotation=0))
 
 A field whose name is a Python keyword takes a trailing underscore (``from_=...``). A run gives back what the
 TypeScript SDK gives: for a world, a definition, a dashboard and a geo project, the document's JSON in the run's one
@@ -318,7 +318,7 @@ def _walk(el: Element):
 
 
 def world(name: str, kind: str, *children: Element, **fields: Any) -> Element:
-    """A world (``worlds/<name>/world.json``): ``kind`` is "physical" or "simulation", said explicitly."""
+    """A world (``worlds/<name>/world.tsx``): ``kind`` is "physical" or "simulation", said explicitly."""
     return Element("world", {"name": name, "kind": kind, **_fields(fields)}, children)
 
 
@@ -344,7 +344,7 @@ def body(**fields: Any) -> Element:
 
 
 def device(name: str, *channels: Element, **fields: Any) -> Element:
-    """A device definition (``devices/<name>/definition.json``): its channels, with the bounds its driver enforces."""
+    """A device definition (``devices/<name>/definition.tsx``): its channels, with the bounds its driver enforces."""
     return Element("device", {"name": name, **_fields(fields)}, channels)
 
 
@@ -353,7 +353,7 @@ def channel(**fields: Any) -> Element:
 
 
 def dashboard(name: str, *children: Element, **fields: Any) -> Element:
-    """A dashboard (``<name>.dashboard.json``): its params, one layout (a split or a pane), its regions."""
+    """A dashboard (``<name>.dashboard.tsx``): its params, one layout (a split or a pane), its regions."""
     return Element("dashboard", {"name": name, **_fields(fields)}, children)
 
 
@@ -375,7 +375,7 @@ def region(**fields: Any) -> Element:
 
 
 def geoproject(id: str, name: str, *children: Element, **fields: Any) -> Element:
-    """A geo project's manifest (``<name>.geox``): its date range, camera and references."""
+    """A geo project's manifest (``<name>.geo.tsx``): its date range, camera and references."""
     return Element("geoproject", {"id": id, "name": name, **_fields(fields)}, children)
 
 
@@ -392,7 +392,7 @@ def reference(**fields: Any) -> Element:
 
 
 def opgraph(*children: Element, **fields: Any) -> Element:
-    """A node graph (``<name>.opgraph``): ``graph_node`` records and ``wire`` records between their ports."""
+    """A node graph (``<name>.opgraph.tsx``): ``graph_node`` records and ``wire`` records between their ports."""
     return Element("opgraph", _fields(fields), children)
 
 
