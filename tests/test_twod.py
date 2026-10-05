@@ -75,6 +75,19 @@ class StackTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["photo.gradient"]["inputs"], {"shape": "linear", "from": [0, 0], "to": [1, 1], "stops": []})
 
 
+    def test_a_mask_is_the_one_layer_it_holds_wired_to_the_node_it_masks(self):
+        g = twod.photo(
+            twod.element("exposure", twod.mask(twod.gradient()), name="Sky", ev=-0.5),
+            twod.raster(twod.element("gaussianBlur", twod.mask(twod.fill(color=[1, 1, 1, 1])), radius=2), src="a.png"),
+        ).ir
+        self.assertEqual(g["nodes"]["photo.adjust"]["inputs"]["mask"], wire("photo.gradient"))
+        self.assertEqual(g["nodes"]["photo.filter"]["inputs"]["mask"], wire("photo.fill"))
+        self.assertNotIn("mask", g["nodes"]["photo.raster"]["inputs"])
+        self.assertEqual(g["nodes"]["doc"]["inputs"]["layers.1"], wire("photo.adjust"))
+        with self.assertRaisesRegex(ValueError, "holds one layer"):
+            twod.photo(twod.element("exposure", twod.mask()))
+
+
 class NestTests(unittest.TestCase):
     def test_a_nest_declares_its_sheet_stock_options_and_parts(self):
         g = twod.nest(
