@@ -59,7 +59,7 @@ def _task(root: Element) -> Dict[str, Any]:
             raise ValueError(f"<{c.tag}> stands in a task only as <subtask ref>; a task holds no other task")
         ref = c.attrs.get("ref")
         if not isinstance(ref, str) or not ref:
-            raise ValueError(f"<subtask> ref is a path to a .task file, not {ref!r}")
+            raise ValueError(f"<subtask> ref is a path to a .task.tsx file, not {ref!r}")
         if ref in refs:
             raise ValueError(f'two <subtask> in <task> have ref "{ref}"')
         refs.append(ref)
@@ -98,7 +98,7 @@ def declare_task_document(root: Element) -> Dict[str, Any]:
 
 
 def task(id: str, *subtasks: Element, **fields: Any) -> Element:
-    """A task (``<name>.task``): its fields, and its subtasks' files in order."""
+    """A task (``<name>.task.py``): its fields, and its subtasks' files in order."""
     return Element("task", {"id": id, **_fields(fields)}, subtasks)
 
 
@@ -108,7 +108,7 @@ def subtask(ref: str) -> Element:
 
 
 def project(id: str, *views: Element, **fields: Any) -> Element:
-    """A project (``<name>.project``): its fields and its named views."""
+    """A project (``<name>.project.py``): its fields and its named views."""
     return Element("project", {"id": id, **_fields(fields)}, views)
 
 
