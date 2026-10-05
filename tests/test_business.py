@@ -14,7 +14,7 @@ class BusinessTests(unittest.TestCase):
             CapTable(ocf="Northwind/captable/"),
             Registration(kind="tax-id", jurisdiction="US", id="12-3"),
             name="Northwind", files=["Northwind/"]))
-        self.assertEqual(d["kind"], "company")
+        self.assertEqual(d["format"], "company")
         self.assertEqual(d["document"], {
             "format": "commandagi-company", "name": "Northwind", "about": "", "files": ["Northwind/"], "dashboard": None,
             "entity": {"jurisdiction": "US-DE", "form": "llc", "name": None, "formed": "2024-01-31", "fiscalYearEnd": None,
@@ -39,6 +39,13 @@ class BusinessTests(unittest.TestCase):
             document_of(Company(Harm(id="h"), name="X"))
         with self.assertRaisesRegex(ValueError, "<Company> needs name"):
             document_of(Company())
+
+    def test_run_module_hands_a_company_back_as_its_document(self):
+        from commandagi.design import run_module
+        out = run_module('from commandagi.design import Company, Entity\nresult = Company(Entity(jurisdiction="US-DE"), name="N")', "N.company.py")
+        self.assertEqual(out["graph"]["nodes"], {})
+        self.assertEqual(out["document"]["format"], "company")
+        self.assertEqual(out["document"]["document"]["entity"]["jurisdiction"], "US-DE")
 
 
 if __name__ == "__main__":

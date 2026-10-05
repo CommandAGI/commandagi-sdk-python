@@ -190,8 +190,9 @@ _ROOTS = {"Company": ("company", company_of), "Rfc": ("rfc", rfc_of), "Case": ("
 
 
 def document_of(value: Any) -> Optional[Dict[str, Any]]:
-    """``{"kind", "document"}`` for a <Company>, <Rfc> or <Case> element, else None."""
+    """``{"format", "document", "sources"}`` for a <Company>, <Rfc> or <Case> element, else None (``run_module`` hands it
+    back beside an empty graph, as the TypeScript SDK's ``declarationOf`` does)."""
     if not _is_element(value) or value["type"] not in _ROOTS:
         return None
     kind, read = _ROOTS[value["type"]]
-    return {"kind": kind, "document": read(read_business_node(value))}
+    return {"format": kind, "document": read(read_business_node(value)), "sources": {}}

@@ -102,9 +102,10 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
         raise ValueError(f"the script declared {len(run.declared)} blocks; a file declares one")
     else:
         raise ValueError("the script declared nothing (define main(), call show_object(), set result, or write a with group(...) block)")
-    # A workbook or a page is a document of its own (office.py): it leaves beside an empty graph.
-    if isinstance(value, OfficeDocument):
-        return json.loads(json.dumps({"graph": {"id": stem, "nodes": {}}, "params": params, "document": value.declared()}))
+    # A workbook, a page, a company, an RFC or a case is a document of its own: it leaves beside an empty graph.
+    document = value.declared() if isinstance(value, OfficeDocument) else document_of(value)
+    if document is not None:
+        return json.loads(json.dumps({"graph": {"id": stem, "nodes": {}}, "params": params, "document": document}))
     g = graph_of(value, stem)
     _source.finish(g, run.map)
     problems = check_ir(g)
