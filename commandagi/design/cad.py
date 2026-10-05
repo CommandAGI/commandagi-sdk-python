@@ -1,4 +1,4 @@
-"""CAD — parts, sketches and features, declared as the 3D feature graph a ``.3dx`` holds (the same nodes the
+"""CAD — parts, sketches and features, declared as a 3D document's feature graph (the same nodes the
 TypeScript SDK declares). Lengths in millimetres; angles are taken in degrees and written in radians.
 Structure only: the engine's geometry kernel builds the solid when it evaluates the part.
 

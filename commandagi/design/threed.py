@@ -1,4 +1,4 @@
-"""A 3D document, declared element by element — the same ``.3dx`` body the TypeScript SDK's JSX declares (``threed.ts``).
+"""A 3D document, declared element by element — the same graph the TypeScript SDK's JSX declares (``threed.ts``).
 
 Python has no JSX, so an element is a call: ``h(tag, *children, **fields)``, and ``document`` reads a ``part`` (or
 ``assembly``) element::
@@ -18,7 +18,7 @@ The tags, the fields and the nodes are the TypeScript SDK's (``commandagi/design
 of its type with its fields as ports, a sketch's entities are its children, a parameter is an ``input`` node whose
 ``drives`` are its bindings, a ``<slot name value>`` any other document field, the bodies one ``3d.bodyMeta`` node, and
 the three built-in planes are there unless the root's ``builtinPlanes`` lists the ones the document has (``[]``: none).
-A ``feature`` element with a ``type`` declares a feature of a type the kernel does not know (a ``.3dx`` may hold any).
+A ``feature`` element with a ``type`` declares a feature of a type the kernel does not know (a document may hold any).
 An id is letters, digits, ``_ . -`` with ``/`` between them. Millimetres and radians, as stored. Anything else is
 refused by name.
 """
@@ -180,7 +180,7 @@ def _sketch_of(el: Element) -> Dict[str, Any]:
 
 
 def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]:
-    """The ``.3dx`` body a ``part`` or ``assembly`` element declares (the TypeScript SDK's ``declareThreeD``)."""
+    """The graph a ``part`` or ``assembly`` element declares (the TypeScript SDK's ``declareThreeD``)."""
     if not isinstance(root, Element) or root.tag not in ("part", "assembly"):
         raise ValueError("a 3D document is one part or assembly element")
     for k in root.props:
@@ -308,10 +308,10 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
         meta["isAssembly"] = True
     if order:
         meta["presentation"] = {"order": order}
-    did = root.props.get("id") if isinstance(root.props.get("id"), str) and root.props.get("id") else f"3dx-{slug(name).lower()}"
+    did = root.props.get("id") if isinstance(root.props.get("id"), str) and root.props.get("id") else f"3d-{slug(name).lower()}"
     return {"id": did, "nodes": nodes, "meta": meta}
 
 
 def document(root: Element, name: Optional[str] = None) -> Declaration:
-    """A 3D document: the ``.3dx`` body a ``part`` or ``assembly`` element declares, as a declaration."""
+    """A 3D document: the graph a ``part`` or ``assembly`` element declares, as a declaration."""
     return Declaration("assembly" if getattr(root, "tag", None) == "assembly" else "part", declare_threed(root, name or "Part"))

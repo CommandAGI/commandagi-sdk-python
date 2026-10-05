@@ -1,4 +1,4 @@
-"""A 3D document, element by element, declares the .3dx body — the same nodes the TypeScript SDK's JSX declares
+"""A 3D document, element by element, declares its graph — the same nodes the TypeScript SDK's JSX declares
 (sdk/typescript src/design/threed.test.ts holds the same expectations).
 Run: python -m unittest discover -s tests"""
 import unittest
@@ -25,9 +25,9 @@ def plate():
 
 
 class ThreeDTests(unittest.TestCase):
-    def test_a_part_declares_the_3dx_body(self):
+    def test_a_part_declares_the_document_graph(self):
         g = document(plate()).ir
-        self.assertEqual(g["id"], "3dx-plate")
+        self.assertEqual(g["id"], "3d-plate")
         self.assertEqual(g["meta"], {"name": "Plate", "units": "mm", "presentation": {"order": ["sketch1", "extrude1", "fillet1"]}})
         n = g["nodes"]
         self.assertEqual(n["depth"], {"id": "depth", "type": "input", "label": "depth", "inputs": {"value": 6, "unit": "mm", "drives": [{"target": "extrude1", "field": "distance"}]}})
@@ -68,7 +68,7 @@ class ThreeDTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, message):
                 fn()
 
-    def test_what_a_3dx_may_hold(self):
+    def test_what_a_document_may_hold(self):
         def graph(*children, **props):
             return document(h("part", *children, name="P", **props)).ir
 

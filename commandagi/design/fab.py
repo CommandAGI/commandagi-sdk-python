@@ -1,4 +1,4 @@
-"""Machine jobs, declared in Python: a machining setup (``.camx``) and a slicing setup (``.slicex``), the same documents
+"""Machine jobs, declared in Python: a machining setup (``.cam.py``) and a slicing setup (``.slice.py``), the same documents
 as the TypeScript SDK's JSX (``commandagi/design`` ``fab.ts``), with calls in place of tags. Each call is one record;
 its keyword arguments are the record's fields, verbatim (millimetres, the native names); its positional arguments are
 its children::
@@ -137,7 +137,7 @@ def fab_source(**fields: Any) -> Element:
 
 
 def fab_design(**fields: Any) -> Element:
-    """The ``.3dx`` the source was exported from (``<design fileId name>``)."""
+    """The 3D document (``.3d.tsx``) the source was exported from (``<design fileId name>``)."""
     return Element("design", _fields(fields))
 
 

@@ -9,7 +9,7 @@ from commandagi.design.fab import declare_fab_document
 
 
 class FabTests(unittest.TestCase):
-    def test_a_machining_setup_is_its_camx(self):
+    def test_a_machining_setup_is_its_setup(self):
         d = declare_fab_document(cam(
             stock(materialId="plywood", thicknessMm=6, xMm=90, yMm=70),
             cam_machine(post="grbl", maxSpindleRpm=10000, spindlePowerKw=None),
@@ -38,7 +38,7 @@ class FabTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"<spool> is not a tag of a machining setup"):
             declare_fab_document(cam(spool()))
 
-    def test_a_slicing_setup_is_its_slicex(self):
+    def test_a_slicing_setup_is_its_setup(self):
         out = run_module(
             'from commandagi.design import slicing, fab_source, spool, slice_machine\n'
             'result = slicing(fab_source(fileId="carrier.stl", name="carrier.stl"), spool(materialId="pla", diameterMm=1.75),\n'
