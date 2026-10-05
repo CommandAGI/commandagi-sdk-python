@@ -80,7 +80,26 @@ A `.py` code part is a script. Its result is `main(**inputs)` if it defines `mai
 to `show_object`; otherwise its `result` variable. `param(name, default, unit=…)` declares an input and
 reads its value. In a CommandAGI editor, a `.py` code node runs under Pyodide in a sandboxed worker, where
 `import cadquery as cq` is this importer (OCCT does not run there). `run_module(source, path, inputs)` is
-what the sandbox calls. Tests: `python -m unittest tests.test_design`.
+what the sandbox calls. Tests: `python -m unittest tests.test_design tests.test_sheet`.
+
+`commandagi.design.sheet` is a schematic in Python (a `<name>.sch.py` the CommandAGI circuit editor opens and
+edits), the same nodes as the TypeScript SDK's JSX schematic:
+
+```python
+from commandagi.design.sheet import ground, group, resistor, trace, voltagesource
+
+with group("Divider"):
+    voltagesource("V1", voltage="9", sch_x=114.3, sch_y=114.3)
+    resistor("R1", resistance="3k", sch_x=114.3, sch_y=88.9, sch_rotation=90)
+    ground("#PWR1", sch_x=139.7, sch_y=114.3)
+    trace(".V1 > .pos", ".R1 > .pin1")
+```
+
+The `with group(...)` block is the file's result. `run_module` maps the file's calls with Python's `ast`
+(`commandagi.design.source`): each node a call declares carries `meta.source` (the call's span, each keyword's span
+and literal value or expression, how many times it ran), so the editor writes each edit back into the file as the
+smallest text edit. A keyword that is an expression is never replaced with a literal (the edit is refused with its
+line).
 
 ## Reinforcement learning
 
