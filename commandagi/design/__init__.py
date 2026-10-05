@@ -22,6 +22,7 @@ from .cad import (PLANES, Body, SketchBuilder, SketchRef, assembly, box, chamfer
                   subtract, union)
 from .eda import PartRef, board, circuit, component, connect, footprints, net, part_type_for
 from . import cadquery as _cq
+from . import twod
 from .solids import declare_solids
 
 __all__ = [
@@ -31,7 +32,7 @@ __all__ = [
     "cylinder", "extrude", "fillet", "hole", "instance", "intersect", "linear_pattern", "mirror", "part", "revolve",
     "sketch", "sphere", "subtract", "union",
     "PartRef", "board", "circuit", "component", "connect", "footprints", "net", "part_type_for",
-    "graph_of", "run_module",
+    "graph_of", "run_module", "twod",
 ]
 
 
