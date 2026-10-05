@@ -23,6 +23,9 @@ from .cad import (PLANES, Body, SketchBuilder, SketchRef, assembly, box, chamfer
 from .eda import PartRef, board, circuit, component, connect, footprints, net, part_type_for
 from . import cadquery as _cq
 from .solids import declare_solids
+from .ontology import (Element, body, camera, channel, dashboard, dashboard_param, date_range, declare_document, device,
+                       element, geoproject, graph_node, is_document, opgraph, pane, reference, region, scene, space, split,
+                       unit, view, wire, world)
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
@@ -31,6 +34,9 @@ __all__ = [
     "cylinder", "extrude", "fillet", "hole", "instance", "intersect", "linear_pattern", "mirror", "part", "revolve",
     "sketch", "sphere", "subtract", "union",
     "PartRef", "board", "circuit", "component", "connect", "footprints", "net", "part_type_for",
+    "Element", "body", "camera", "channel", "dashboard", "dashboard_param", "date_range", "declare_document", "device",
+    "element", "geoproject", "graph_node", "is_document", "opgraph", "pane", "reference", "region", "scene", "space",
+    "split", "unit", "view", "wire", "world",
     "graph_of", "run_module",
 ]
 
@@ -39,6 +45,8 @@ def graph_of(value: Any, name: str = "Part") -> Dict[str, Any]:
     """The op graph a declared value is: a declaration, a plain IR graph, or CadQuery-style workplanes."""
     if isinstance(value, Declaration):
         return value.ir
+    if is_document(value):
+        return declare_document(value).ir
     if is_ir_graph(value):
         return value
     if isinstance(value, _cq.Workplane) or (isinstance(value, (list, tuple)) and value and all(isinstance(v, _cq.Workplane) for v in value)):
