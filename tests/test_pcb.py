@@ -36,6 +36,15 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(out["graph"]["nodes"]["fp_R1"]["inputs"]["placement"], {"x": 1, "y": 2, "rot": 0, "side": "top"})
         self.assertNotIn("board", out["graph"]["nodes"])
 
+    def test_a_library_footprint_is_its_ref_and_its_library(self):
+        g = pcb_board("D.sch.tsx", children=[pcb_component("U1", "Package_SO:SOIC-8", x=12, y=8, rotation=90, library="footprints.pretty")]).ir
+        self.assertEqual(g["nodes"]["fp_U1"]["inputs"], {"ref": "U1", "footprint": "Package_SO:SOIC-8", "library": "footprints.pretty",
+                                                         "placement": {"x": 12, "y": 8, "rot": 90, "side": "top"}})
+        with self.assertRaisesRegex(ValueError, "its ref, \"Library:Footprint\""):
+            pcb_board("D.sch.tsx", children=[pcb_component("U1", "SOIC-8", library="footprints.pretty")])
+        with self.assertRaisesRegex(ValueError, "a footprint library folder"):
+            pcb_board("D.sch.tsx", children=[pcb_component("U1", "Package_SO:SOIC-8", library="SOIC-8.kicad_mod")])
+
     def test_refusals(self):
         with self.assertRaisesRegex(ValueError, "footprint is one of smd-0805"):
             pcb_board("D.sch.tsx", children=[pcb_component("R1", "0603")])

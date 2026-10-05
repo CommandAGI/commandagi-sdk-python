@@ -36,9 +36,10 @@ _COPPER = ("F.Cu", "B.Cu")
 
 
 def pcb_component(name: str, footprint: str, x: Optional[float] = None, y: Optional[float] = None,
-                  rotation: Optional[float] = None, layer: Optional[str] = None) -> Dict[str, Any]:
-    """The schematic's part ``name`` on the board (the ``<component>`` element)."""
-    return {"tag": "component", "name": name, "footprint": footprint, "x": x, "y": y, "rotation": rotation, "layer": layer}
+                  rotation: Optional[float] = None, layer: Optional[str] = None, library: Optional[str] = None) -> Dict[str, Any]:
+    """The schematic's part ``name`` on the board (the ``<component>`` element). ``footprint`` is one of the editor's
+    land patterns, or a library footprint by its ref ("Package_SO:SOIC-8") in the ``.pretty`` folder ``library``."""
+    return {"tag": "component", "name": name, "footprint": footprint, "x": x, "y": y, "rotation": rotation, "layer": layer, "library": library}
 
 
 def pcb_trace(layer: str, width: float, points: Sequence[Tuple[float, float]], from_: Optional[str] = None,
@@ -155,8 +156,14 @@ def pcb_board(schematic: str, width: Optional[float] = None, height: Optional[fl
         for e in children:
             if e["tag"] == "component":
                 fp = e["footprint"]
-                if fp not in BOARD_FOOTPRINTS:
-                    raise ValueError(f"{_where(e)}: footprint is one of {', '.join(BOARD_FOOTPRINTS)}, not {fp!r}")
+                library = e.get("library")
+                if library is not None:
+                    if not isinstance(library, str) or not re.search(r"\.pretty/?$", library, re.I):
+                        raise ValueError(f"{_where(e)}: library names a footprint library folder (a .pretty), not {library!r}")
+                    if not isinstance(fp, str) or not re.match(r"^[^:]+:[^:/]+$", fp):
+                        raise ValueError(f'{_where(e)}: a library footprint is its ref, "Library:Footprint" ("Package_SO:SOIC-8"), not {fp!r}')
+                elif fp not in BOARD_FOOTPRINTS:
+                    raise ValueError(f"{_where(e)}: footprint is one of {', '.join(BOARD_FOOTPRINTS)}, or a library footprint with its library, not {fp!r}")
                 x, y = e.get("x"), e.get("y")
                 if (x is None) != (y is None):
                     raise ValueError(f"{_where(e)}: give pcbX and pcbY together")
@@ -165,7 +172,7 @@ def pcb_board(schematic: str, width: Optional[float] = None, height: Optional[fl
                 side = e.get("layer") or "top"
                 if side not in ("top", "bottom"):
                     raise ValueError(f'{_where(e)}: layer is "top" or "bottom"')
-                inputs: Dict[str, Any] = {"ref": e["name"], "footprint": f"Authored:{fp}"}
+                inputs: Dict[str, Any] = {"ref": e["name"], **({"footprint": fp, "library": library.rstrip("/")} if library is not None else {"footprint": f"Authored:{fp}"})}
                 if x is not None:
                     inputs["placement"] = {"x": x, "y": y, "rot": e.get("rotation") or 0, "side": side}
                 s.add(BOARD_PART, inputs, id=f"fp_{e['name']}", label=e["name"])
