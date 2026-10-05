@@ -84,6 +84,45 @@ class SheetTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "belongs inside `with group"):
             run('from commandagi.design.schematic import *\nresistor("R1")\n', "s.sch.py")
 
+    def test_a_library_part_names_its_symbol_by_ref_places_each_unit_mirrors_and_a_code_part_is_a_code_node(self):
+        text = '''from commandagi.design.schematic import code, group, netlabel, part, resistor, trace, unit
+
+with group("Rail"):
+    part("U1", symbol="Amplifier_Operational:LM358", library="opamps.kicad_sym", value="LM358", sch_x=50.8, sch_y=25.4, sch_mirror="x")
+    unit("U1", 2, sch_x=101.6, sch_y=25.4, sch_rotation=180)
+    resistor("R1", resistance="10k", sch_x=76.2, sch_y=50.8, sch_mirror="y")
+    code("blinker", source="blinker.circuit.ts", inputs={"resistor": "330"})
+    trace(".U1 > .pin7", ".R1 > .pin1")
+    netlabel("OUT", ".U1 > .1")
+'''
+        g = run(text, "rail.sch.py")
+        n = g["nodes"]
+        self.assertEqual(n["U1"]["inputs"], {"ref": "U1", "value": "LM358", "symbol": "Amplifier_Operational:LM358", "library": "opamps.kicad_sym", "pins": []}, "the pins are the library's")
+        self.assertEqual(n["sym_U1_1"]["inputs"], {"unit": 1, "style": 1, "at": {"x": 50.8, "y": 25.4}, "rot": 0, "mirror": "x", "part": wire("U1", "@part")})
+        self.assertEqual(n["sym_U1_1"]["type"], sch_symbol_type_for([]))
+        self.assertEqual(n["sym_U1_2"]["inputs"], {"unit": 2, "style": 1, "at": {"x": 101.6, "y": 25.4}, "rot": 180, "mirror": "", "part": wire("U1", "@part")})
+        self.assertEqual(n["sym_U1_2"]["meta"]["source"]["tag"], "unit", "a unit's placement maps to its unit(…) call")
+        self.assertEqual(n["sym_R1_1"]["inputs"]["mirror"], "y")
+        self.assertEqual(n["w_1"]["inputs"], {"ends.1": wire("U1", "pin:7"), "ends.2": wire("sym_R1_1", "p1")}, "a library pin by number, bound by the editor")
+        self.assertEqual(n["lbl_OUT"]["inputs"]["on"], wire("U1", "pin:1"))
+        b = n["blinker"]
+        self.assertEqual((b["type"], b["label"], b["inputs"]), ("code", "blinker.circuit.ts", {"source": "blinker.circuit.ts", "resistor": "330"}))
+        self.assertEqual(b["meta"]["source"]["tag"], "code")
+        head = 'from commandagi.design.schematic import *\nwith group("S"):\n'
+        cases = [
+            ('    part("U1", symbol="LM358", library="a.kicad_sym")\n', "library ref"),
+            ('    part("U1", symbol="A:B")\n', "library is the path"),
+            ('    resistor("R1", sch_x=0, sch_y=0)\n    unit("R1", 2, sch_x=1, sch_y=1)\n', "one unit"),
+            ('    part("U1", symbol="A:B", library="a.kicad_sym")\n    unit("U1", 1, sch_x=1, sch_y=1)\n', "unit is 2 or more"),
+            ('    part("U1", symbol="A:B", library="a.kicad_sym")\n    unit("U1", 2)\n', "give it sch_x and sch_y"),
+            ('    part("U1", symbol="A:B", library="a.kicad_sym")\n    unit("U1", 2, sch_x=1, sch_y=1)\n    unit("U1", 2, sch_x=2, sch_y=1)\n', "placed twice"),
+            ('    resistor("R1", sch_x=0, sch_y=0, sch_mirror="z")\n', 'sch_mirror is "x" or "y"'),
+            ('    code("c", source="c.ts", inputs={"source": "d.ts"})\n', "source is the file"),
+        ]
+        for body, message in cases:
+            with self.assertRaisesRegex(ValueError, message):
+                run(head + body, "s.sch.py")
+
 
 if __name__ == "__main__":
     unittest.main()

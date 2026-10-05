@@ -21,15 +21,25 @@ The calls:
     trace(a, b, …)                                                           wires along the selectors: ".R1 > .pin2",
                                                                              ".J1" (a junction), "net.GND" (a label)
     netlabel(net, connection)                                                a label naming the net of a pin
+    part(name, symbol="Lib:Name", library="x.kicad_sym", value=…)            a library part: its symbol named by its
+                                                                             library ref in a .kicad_sym, by path
+    unit(part, n, sch_x=, sch_y=, sch_rotation=, sch_mirror=)                where unit n (2 or more) of a part sits;
+                                                                             the part's own sch_x, sch_y place unit 1
+    code(name, source=…, inputs={…})                                         a code part: the parts another file
+                                                                             declares (its path relative to this one)
 
 ``sch_x`` and ``sch_y`` are the sheet's own coordinates: millimetres, Y DOWN. ``sch_rotation`` is 0, 90, 180 or 270
-degrees. A part with neither is declared and not placed. A wire is a binding between two pins, never a coincidence of
+degrees; ``sch_mirror`` is "x" or "y". A part with neither is declared and not placed. A library part's pins and body
+are the library's: the editor reads them from the file, so the schematic holds no pin geometry. Its pin is named by
+number (".U1 > .pin5"); the editor binds it to the unit that has it (a pin common to every unit lands on the lowest
+unit placed). A wire is a binding between two pins, never a coincidence of
 coordinates. The ``with group(...)`` block is the file's result. Each node carries the call it came from in
 ``meta.source`` (``./source.py``), so the circuit editor writes its edits back into the file. Anything else is refused
 by name, never guessed.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Optional
 
 from .eda import circuit, part_type_for
@@ -44,7 +54,8 @@ _PART_BODY_PORT = "@part"
 _VERTEX_PORT = "v"
 
 __all__ = ["SCH_WIRE", "SCH_JUNCTION", "SCH_LABEL", "SHEET_PARTS", "sch_symbol_type_for", "group", "resistor", "capacitor",
-           "inductor", "voltagesource", "currentsource", "ground", "junction", "trace", "netlabel"]
+           "inductor", "voltagesource", "currentsource", "ground", "junction", "trace", "netlabel", "part", "unit", "code",
+           "LIBRARY_PIN_PORT"]
 
 
 def sch_symbol_type_for(sockets: List[str]) -> str:
@@ -68,7 +79,12 @@ SHEET_PARTS: Dict[str, Dict[str, Any]] = {
     "currentsource": {"symbol": "Ideal:I", "value": "current", "pins": 2, "aliases": _SOURCE, "excitation": True},
     "ground": {"symbol": "Ideal:GND", "value": None, "pins": 1, "aliases": {"pin1": "1", "gnd": "1"}, "power": "GND"},
 }
-_PLACE = ["sch_x", "sch_y", "sch_rotation"]
+_PLACE = ["sch_x", "sch_y", "sch_rotation", "sch_mirror"]
+_MIRRORS = ("x", "y")
+#: A library part's wire end before the editor reads its library: the part node, and the pin by number.
+LIBRARY_PIN_PORT = "pin:"
+#: The node a code part declares (the graph's own ``code`` op): it runs another file.
+_CODE_OP = "code"
 
 
 class _Element:
@@ -79,7 +95,10 @@ class _Element:
 
     def where(self) -> str:
         name = self.props.get("name")
-        return f"{self.type}({name!r})" if isinstance(name, str) else f"{self.type}()"
+        if isinstance(name, str):
+            return f"{self.type}({name!r})"
+        part = self.props.get("part")
+        return f"{self.type}({part!r})" if isinstance(part, str) else f"{self.type}()"
 
     def meta(self) -> Optional[Dict[str, Any]]:
         return None if self.source is None else {"source": self.source}
@@ -132,6 +151,21 @@ ground = _part("ground")
 def junction(name: Optional[str] = None, **props: Any) -> None:
     """A wire vertex at (sch_x, sch_y)."""
     _child("junction", {"name": name, **props} if name is not None else props)
+
+
+def part(name: Optional[str] = None, **props: Any) -> None:
+    """A library part: ``part("U1", symbol="Amplifier_Operational:LM358", library="opamps.kicad_sym", value="LM358")``."""
+    _child("part", {"name": name, **props} if name is not None else props)
+
+
+def unit(part: Optional[str] = None, unit: Any = None, **props: Any) -> None:
+    """Where unit ``unit`` (2 or more) of a part sits: ``unit("U1", 2, sch_x=101.6, sch_y=25.4)``."""
+    _child("unit", {**({"part": part} if part is not None else {}), **({"unit": unit} if unit is not None else {}), **props})
+
+
+def code(name: Optional[str] = None, **props: Any) -> None:
+    """A code part: ``code("blinker", source="blinker.circuit.ts", inputs={"resistor": "330"})``."""
+    _child("code", {"name": name, **props} if name is not None else props)
 
 
 def trace(*path: str, **props: Any) -> None:
@@ -204,20 +238,49 @@ def _declare_sheet(children: List[_Element]) -> None:
                 inputs["powerSymbol"] = True
             if el.props.get("excitation") is not None:
                 inputs["excitation"] = el.props["excitation"]
-            part = s.add(part_type_for(pins), inputs, id=ref, label=ref, meta=el.meta())
-            x, y, rot = _num(el, "sch_x"), _num(el, "sch_y"), _num(el, "sch_rotation")
-            placement: Optional[str] = None
-            if x is not None or y is not None:
-                if rot is not None and rot not in (0, 90, 180, 270):
-                    raise ValueError(f"{el.where()}: sch_rotation is 0, 90, 180 or 270")
-                placement = s.add(
-                    sch_symbol_type_for([p["id"] for p in pins]),
-                    {"unit": 1, "style": 1, "at": {"x": x if x is not None else 0, "y": y if y is not None else 0}, "rot": rot or 0, "mirror": "",
-                     _PART_PORT: {"wire": {"node": part.id, "port": _PART_BODY_PORT}}},
-                    id=f"sym_{ref}_1", label=ref, meta=el.meta()).id
-            elif rot is not None:
-                raise ValueError(f"{el.where()}: sch_rotation needs sch_x and sch_y")
-            parts[ref] = {"ref": ref, "placement": placement, "ideal": ideal}
+            node = s.add(part_type_for(pins), inputs, id=ref, label=ref, meta=el.meta())
+            placed = {"ref": ref, "id": node.id, "units": {}, "ideal": ideal}
+            _place(s, placed, 1, el, [p["id"] for p in pins])
+            parts[ref] = placed
+            continue
+        if el.type == "part":
+            _refuse_unknown(el, ["name", "symbol", "library", "value", *_PLACE])
+            ref = _str(el, "name", "the part's reference (U1)")
+            if ref in parts:
+                raise ValueError(f"two parts are called {ref}")
+            symbol = _str(el, "symbol", 'its library ref ("Device:R_Small")')
+            if not re.match(r"^[^:]+:[^:]+$", symbol):
+                raise ValueError(f'{el.where()}: symbol is a library ref, "Library:Symbol" ("Device:R_Small"), not {symbol!r}')
+            library = _str(el, "library", "the path of the .kicad_sym that holds the symbol")
+            if not library.lower().endswith(".kicad_sym"):
+                raise ValueError(f"{el.where()}: library names a .kicad_sym file, not {library!r}")
+            raw = el.props.get("value")
+            if raw is not None and (isinstance(raw, bool) or not isinstance(raw, (str, int, float))):
+                raise ValueError(f"{el.where()}: value is a value (\"LM358\", 1000), not {raw!r}")
+            inputs = {"ref": ref}
+            if raw is not None:
+                inputs["value"] = _value_text(raw)
+            # The pins are the library's: the editor reads them (and the part's type) from the library file.
+            inputs.update(symbol=symbol, library=library, pins=[])
+            node = s.add(part_type_for([]), inputs, id=ref, label=ref, meta=el.meta())
+            placed = {"ref": ref, "id": node.id, "units": {}, "ideal": None}
+            _place(s, placed, 1, el, [])
+            parts[ref] = placed
+            continue
+        if el.type == "code":
+            _refuse_unknown(el, ["name", "source", "inputs"])
+            name = _str(el, "name", "the code part's id")
+            source = _str(el, "source", "the path of the file it runs, relative to this one")
+            inputs = el.props.get("inputs")
+            if inputs is None:
+                inputs = {}
+            if not isinstance(inputs, dict):
+                raise ValueError(f"{el.where()}: inputs is an object of the file's parameters")
+            if "source" in inputs:
+                raise ValueError(f"{el.where()}: source is the file, not one of its inputs")
+            if name in s.nodes:
+                raise ValueError(f"two nodes are called {name}")
+            s.add(_CODE_OP, {"source": source, **inputs}, id=name, label=source.split("/")[-1], meta=el.meta())
             continue
         if el.type == "junction":
             _refuse_unknown(el, ["name", "sch_x", "sch_y"])
@@ -227,13 +290,12 @@ def _declare_sheet(children: List[_Element]) -> None:
             if name in junctions:
                 raise ValueError(f"two junctions are called {name}")
             junctions[name] = s.add(SCH_JUNCTION, {"at": {"x": _num(el, "sch_x") or 0, "y": _num(el, "sch_y") or 0}}, id=name, label="Junction", meta=el.meta()).id
-        elif el.type in ("trace", "netlabel"):
+        elif el.type in ("unit", "trace", "netlabel"):
             later.append(el)
         else:
             raise ValueError(f"{el.type}() is not read on a schematic (see commandagi.design.schematic)")
 
     def end(sel: Any, el: _Element) -> Dict[str, str]:
-        import re
         if not isinstance(sel, str):
             raise ValueError(f"{el.where()}: an end is a selector (\".R1 > .pin1\", \".J1\", \"net.GND\")")
         n = re.match(r"^\s*net\.([A-Za-z0-9_+\-]+)\s*$", sel)
@@ -250,13 +312,17 @@ def _declare_sheet(children: List[_Element]) -> None:
         part = parts.get(p.group(1))
         if not part:
             raise ValueError(f"{el.where()}: there is no part {p.group(1)}")
-        if not part["placement"]:
+        if not part["units"]:
             raise ValueError(f"{el.where()}: {part['ref']} is not on the sheet (give it sch_x and sch_y)")
+        if part["ideal"] is None:
+            # A library part's pin by number (".pin5" or ".5"); the editor binds it to the unit that has it.
+            lib = re.match(r"^pin(.+)$", p.group(2), re.IGNORECASE)
+            return {"node": part["id"], "port": LIBRARY_PIN_PORT + (lib.group(1) if lib else p.group(2))}
         key = p.group(2).lower()
         number = part["ideal"]["aliases"].get(key) or (key if key.isdigit() else None)
         if not number or int(number) > part["ideal"]["pins"]:
             raise ValueError(f"{el.where()}: {part['ref']} has no pin {p.group(2)}")
-        return {"node": part["placement"], "port": f"p{number}"}
+        return {"node": part["units"][1], "port": f"p{number}"}
 
     def free(base: str) -> str:
         """A free id ``base``, ``base_2``, … (the same file declares the same ids)."""
@@ -268,7 +334,26 @@ def _declare_sheet(children: List[_Element]) -> None:
     def label(text: str, on: Dict[str, str], el: _Element) -> None:
         s.add(SCH_LABEL, {"text": text, "on": {"wire": on}}, id=free(f"lbl_{text}"), label=text, meta=el.meta())
 
+    # Units first: a wire may land on any unit's pin.
     for el in later:
+        if el.type != "unit":
+            continue
+        _refuse_unknown(el, ["part", "unit", *_PLACE])
+        ref = _str(el, "part", "the reference of the part whose unit it places")
+        placed = parts.get(ref)
+        if not placed:
+            raise ValueError(f"{el.where()}: there is no part {ref}")
+        n = el.props.get("unit")
+        if isinstance(n, bool) or not isinstance(n, int) or n < 2:
+            raise ValueError(f"{el.where()}: unit is 2 or more (the part's own sch_x and sch_y place unit 1)")
+        if placed["ideal"] is not None:
+            raise ValueError(f"{el.where()}: {ref} is an ideal part, which has one unit")
+        if n in placed["units"]:
+            raise ValueError(f"{el.where()}: unit {n} of {ref} is placed twice")
+        _place(s, placed, n, el, [])
+    for el in later:
+        if el.type == "unit":
+            continue
         if el.type == "netlabel":
             _refuse_unknown(el, ["net", "connection"])
             text = el.props.get("net")
@@ -294,6 +379,35 @@ def _declare_sheet(children: List[_Element]) -> None:
             else:
                 wires += 1
                 s.add(SCH_WIRE, channels("ends", [{"wire": a}, {"wire": b}]), id=free(f"w_{wires}"), label="Wire", meta=el.meta())
+
+
+def _str(el: _Element, prop: str, what: str) -> str:
+    v = el.props.get(prop)
+    if not isinstance(v, str) or not v.strip():
+        raise ValueError(f"{el.where()}: {prop} is {what}")
+    return v
+
+
+def _place(s: Scope, placed: Dict[str, Any], unit_number: int, el: _Element, pins: List[str]) -> None:
+    """Add the placement of ``unit_number`` of a part that ``el`` declares (its sch_x, sch_y, sch_rotation, sch_mirror)."""
+    x, y, rot = _num(el, "sch_x"), _num(el, "sch_y"), _num(el, "sch_rotation")
+    mirror = el.props.get("sch_mirror")
+    if x is None and y is None:
+        if rot is not None or mirror is not None:
+            raise ValueError(f"{el.where()}: {'sch_rotation' if rot is not None else 'sch_mirror'} needs sch_x and sch_y")
+        if el.type == "unit":
+            raise ValueError(f"{el.where()}: a unit is placed: give it sch_x and sch_y")
+        return
+    if rot is not None and rot not in (0, 90, 180, 270):
+        raise ValueError(f"{el.where()}: sch_rotation is 0, 90, 180 or 270")
+    if mirror is not None and mirror not in _MIRRORS:
+        raise ValueError(f'{el.where()}: sch_mirror is "x" or "y"')
+    ref = placed["ref"]
+    placed["units"][unit_number] = s.add(
+        sch_symbol_type_for(pins),
+        {"unit": unit_number, "style": 1, "at": {"x": x if x is not None else 0, "y": y if y is not None else 0}, "rot": rot or 0,
+         "mirror": mirror or "", _PART_PORT: {"wire": {"node": placed["id"], "port": _PART_BODY_PORT}}},
+        id=f"sym_{ref}_{unit_number}", label=ref, meta=el.meta()).id
 
 
 def _value_text(raw: Any) -> str:
