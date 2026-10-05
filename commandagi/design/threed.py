@@ -17,11 +17,15 @@ Python has no JSX, so an element is a call: ``h(tag, *children, **fields)``, and
 The tags, the fields and the nodes are the TypeScript SDK's (``commandagi/design`` ``threed.ts``): a feature is a node
 of its type with its fields as ports, a sketch's entities are its children, a parameter is an ``input`` node whose
 ``drives`` are its bindings, a ``<slot name value>`` any other document field, the bodies one ``3d.bodyMeta`` node, and
-the three built-in planes are always there. Millimetres and radians, as stored. Anything else is refused by name.
+the three built-in planes are there unless the root's ``builtinPlanes`` lists the ones the document has (``[]``: none).
+A ``feature`` element with a ``type`` declares a feature of a type the kernel does not know (a ``.3dx`` may hold any).
+An id is letters, digits, ``_ . -`` with ``/`` between them. Millimetres and radians, as stored. Anything else is
+refused by name.
 """
 from __future__ import annotations
 
 import math
+import re
 from typing import Any, Dict, List, Optional
 
 from .ir import Declaration, slug
@@ -100,12 +104,28 @@ def _fields(el: Element, skip: tuple = ()) -> Dict[str, Any]:
     return {k: _plain(v, f"{_where(el)} {k}") for k, v in el.props.items() if k not in skip and v is not None}
 
 
+_ID = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$")
+NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "point", "constraint", "projection",
+                "line", "circle", "arc", "spline", "ellipse", "ellipseArc", "input"}
+
+
+def _builtin_planes(root: Element) -> set:
+    v = root.props.get("builtinPlanes")
+    if v is None:
+        return set(BUILTIN_PLANES)
+    if not isinstance(v, list) or any(not isinstance(x, str) or x not in BUILTIN_PLANES for x in v):
+        raise ValueError(f"{_where(root)}: builtinPlanes lists built-in planes ({', '.join(BUILTIN_PLANES)})")
+    if len(set(v)) != len(v):
+        raise ValueError(f"{_where(root)}: builtinPlanes names a plane twice")
+    return set(v)
+
+
 def _id_of(el: Element) -> str:
     i = el.props.get("id")
     if not isinstance(i, str) or not i:
         raise ValueError(f"{_where(el)} needs an id")
-    if slug(i) != i:
-        raise ValueError(f"{_where(el)}: an id is letters, digits, _ . - ({i!r})")
+    if not _ID.match(i):
+        raise ValueError(f"{_where(el)}: an id is letters, digits, _ . - with / between them ({i!r})")
     return i
 
 
@@ -164,8 +184,9 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
     if not isinstance(root, Element) or root.tag not in ("part", "assembly"):
         raise ValueError("a 3D document is one part or assembly element")
     for k in root.props:
-        if k not in ("name", "id") and k not in VIEW_ATTRS:
+        if k not in ("name", "id", "builtinPlanes") and k not in VIEW_ATTRS:
             raise ValueError(f"{_where(root)}: prop {k} is not read on a 3D document")
+    builtins = _builtin_planes(root)
     name = root.props.get("name") if isinstance(root.props.get("name"), str) and root.props.get("name") else fallback_name
     nodes: Dict[str, Any] = {}
     owner: Dict[str, str] = {}
@@ -231,14 +252,23 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             nodes[field] = {"id": field, "type": f"3d.{field}", "inputs": inputs}
         elif el.tag in THREED_FEATURES:
             features.append(el)
+        elif el.tag == "feature":
+            t = el.props.get("type")
+            if not isinstance(t, str) or not re.match(r"^[A-Za-z_][\w.-]*$", t):
+                raise ValueError(f"{_where(el)} needs the feature's type")
+            if t in THREED_FEATURES or t in NOT_FEATURES:
+                raise ValueError(f"{_where(el)}: a {t} is written <{t}>")
+            features.append(el)
         else:
             raise ValueError(f"<{el.tag}> is not read in a 3D document (see commandagi.design.threed)")
     for el in features:
         fid = _id_of(el)
         claim(fid, f'feature "{fid}"')
-        if "type" in el.props:
+        generic = el.tag == "feature"
+        if not generic and "type" in el.props:
             raise ValueError(f"{_where(el)}: the tag is the feature's type")
-        f = _fields(el, ("id",))
+        ftype = el.props["type"] if generic else el.tag
+        f = _fields(el, ("id", "type") if generic else ("id",))
         label = f.pop("name", None)
         suppressed = f.pop("suppressed", None)
         if suppressed is not None and not isinstance(suppressed, bool):
@@ -257,14 +287,14 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
                     if k not in ("source", "consumes"):
                         raise ValueError(f"{_where(el)}: a code feature has source, inputs and consumes, not {k}")
                 f = {**f, **code_inputs}
-        node: Dict[str, Any] = {"id": fid, "type": el.tag, "label": label if isinstance(label, str) else fid}
+        node: Dict[str, Any] = {"id": fid, "type": ftype, "label": label if isinstance(label, str) else fid}
         if suppressed is not None:
             node["disabled"] = suppressed
         node["inputs"] = f
         nodes[fid] = node
         order.append(fid)
     for pid, p in BUILTIN_PLANES.items():
-        if pid in owner:
+        if pid in owner or pid not in builtins:
             continue
         nodes[pid] = {"id": pid, "type": "plane", "label": p["name"], "inputs": {k: (list(v) if isinstance(v, list) else v) for k, v in p.items() if k != "name"}}
     if bodies:

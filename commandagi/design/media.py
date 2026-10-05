@@ -72,6 +72,11 @@ track = _tag("track")
 clip = _tag("clip")
 title = _tag("title")
 transition = _tag("transition")
+intro = _tag("intro")
+outro = _tag("outro")
+shape = _tag("shape")
+adjustment = _tag("adjustment")
+midi = _tag("midi")
 effect = _tag("effect")
 keyframe = _tag("keyframe")
 marker = _tag("marker")
@@ -183,13 +188,26 @@ TRANSITIONS = ("none", "cut", "crossDissolve", "fadeToBlack", "fadeToWhite", "di
 EFFECT_TYPES = ("brightnessContrast", "saturation", "hueRotate", "gaussianBlur", "sharpen", "pixelate", "chromaKey", "twist", "wave",
                 "mirror", "vignette", "glow", "grayscale", "sepia", "invert", "posterize", "edges", "chromaticAberration", "bulge",
                 "duotone", "colorWheels", "mask")
+ANIM_PRESETS = ("fade", "slideL", "slideR", "slideU", "slideD", "pop", "rise", "spin")
 ANIMATABLE = ("opacity", "volume", "transform.x", "transform.y", "transform.scaleX", "transform.scaleY", "transform.rotation")
 CLIP_TRANSFORM = {"x": 0, "y": 0, "scaleX": 1, "scaleY": 1, "rotation": 0, "anchorX": 0.5, "anchorY": 0.5}
 CLIP_COLOR = {"exposure": 0, "contrast": 0, "saturation": 0, "temperature": 0, "brightness": 0, "hue": 0}
 TITLE_TEXT = {"text": "Title", "fontFamily": "Inter, system-ui, sans-serif", "fontSize": 96, "color": "#ffffff", "bold": True,
               "italic": False, "align": "center", "background": "transparent", "strokeColor": "#000000", "strokeWidth": 0}
 VIDEO_SETTINGS = {"width": 1920, "height": 1080, "fps": 30, "sampleRate": 48000, "background": "#000000"}
-_TRACK_HEIGHT = {"video": 64, "audio": 48}
+_TRACK_HEIGHT = {"video": 64, "audio": 48, "midi": 56}
+VIDEO_TRACK_KINDS = ("video", "audio", "midi")
+SHAPE_KINDS = ("emoji", "rect", "ellipse", "triangle", "star", "arrow", "heart", "speech", "svg")
+SHAPE_LOOK = {"fill": "#ffd166", "stroke": "#00000000", "strokeWidth": 0}
+MIDI_INSTRUMENTS = ("grandPiano", "electricPiano", "synthLead", "synthPad", "strings", "organ", "bass", "pluck", "bell", "sawLead", "squareLead",
+                    "superSaw", "reeseBass", "subBass", "fmBell", "musicBox", "marimba", "vibraphone", "kalimba", "harp", "clav", "brass", "flute",
+                    "choir", "glass", "sineLead", "pwmPad", "pluckSynth", "eightBit", "drumKit")
+MIDI_CLIP = {"instrument": "grandPiano", "gain": 0.8}
+
+
+def shape_content(kind: str) -> str:
+    """A shape's content when not given: the star's glyph, else none."""
+    return "\u2b50" if kind == "star" else ""
 _CLIP_PROPS = ["name", "start", "duration", "in", "out", "speed", "opacity", "volume", "blendMode", "fitMode", *CLIP_TRANSFORM, *CLIP_COLOR]
 
 
@@ -206,8 +224,11 @@ def _common(c: Element) -> Dict[str, Any]:
     return out
 
 
-def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]]]:
+def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
     transition_in: Dict[str, Any] = {"kind": "none", "duration": 0}
+    anims: Dict[str, Any] = {}
+    notes: List[Dict[str, Any]] = []
+    note_id = _ids()
     effects: List[Dict[str, Any]] = []
     keyframes: List[Dict[str, Any]] = []
     fx_id, kf_id = _ids(), _ids()
@@ -231,6 +252,26 @@ def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], List[Dict[
                 raise ValueError(f"{_where(c)}: a clip has one <transition> (into it)")
             saw = True
             transition_in = {"kind": _or(_str(el, "kind", TRANSITIONS), "crossDissolve"), "duration": _or(_num(el, "duration", 0), 0.5)}
+        elif el.type == "note":
+            if c.type != "midi":
+                raise ValueError(f"<note> is read in a <midi> clip, not a <{c.type}>")
+            _refuse_unknown(el, ["pitch", "start", "duration", "velocity"])
+            pitch = pitch_of(el.props.get("pitch"))
+            if pitch is None:
+                raise ValueError(f'<note>: pitch is a MIDI number 0–127 or a name like "C4", not {json.dumps(el.props.get("pitch"))}')
+            start, dur = _num(el, "start", 0), _num(el, "duration", 0)
+            if start is None or dur is None:
+                raise ValueError("<note>: a note has a start and a duration (seconds in the clip)")
+            notes.append({"id": note_id(f"note_{clip_id}"), "pitch": pitch, "start": start, "duration": dur, "velocity": _or(_num(el, "velocity", 0, 1), 0.8)})
+        elif el.type in ("intro", "outro"):
+            _refuse_unknown(el, ["preset", "duration"])
+            k = "animIn" if el.type == "intro" else "animOut"
+            if k in anims:
+                raise ValueError(f"{_where(c)}: a clip has one <{el.type}>")
+            preset = _str(el, "preset", ANIM_PRESETS)
+            if not preset:
+                raise ValueError(f"<{el.type}> names its preset ({', '.join(ANIM_PRESETS)})")
+            anims[k] = {"preset": preset, "duration": _or(_num(el, "duration", 0), 1)}
         elif el.type == "effect":
             t = _str(el, "type", EFFECT_TYPES)
             if not t:
@@ -265,8 +306,8 @@ def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], List[Dict[
                 raise ValueError(f"{_where(el)}: a keyframe names its property ({', '.join(ANIMATABLE)})")
             key(el, prop)
         else:
-            raise ValueError(f"<{el.type}> is not read in a <{c.type}> (a clip holds <transition>, <effect> and <keyframe>)")
-    return transition_in, effects, keyframes
+            raise ValueError(f"<{el.type}> is not read in a <{c.type}> (a clip holds <transition>, <intro>, <outro>, <effect> and <keyframe>; a <midi> clip its <note>s)")
+    return transition_in, anims, effects, keyframes, notes
 
 
 def declare_video(root: Element) -> Declaration:
@@ -291,8 +332,8 @@ def declare_video(root: Element) -> Declaration:
         if tr.type != "track":
             raise ValueError(f"<{tr.type}> is not read in a <video> (it holds <track> and <marker>)")
         _refuse_unknown(tr, ["name", "kind", "muted", "hidden", "locked", "volume", "height"])
-        kind = _or(_str(tr, "kind", ("video", "audio")), "video")
-        track_name = _or(_str(tr, "name"), "A" if kind == "audio" else "V")
+        kind = _or(_str(tr, "kind", VIDEO_TRACK_KINDS), "video")
+        track_name = _or(_str(tr, "name"), "A" if kind == "audio" else "M" if kind == "midi" else "V")
         track_id = new_id(f"track_{track_name}")
         clip_wires: List[Any] = []
         for c in tr.children:
@@ -355,15 +396,50 @@ def declare_video(root: Element) -> Declaration:
                 inputs = {"kind": "text", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1,
                           **_common(c), "volume": 1, "text": text}
                 source = None
+            elif c.type in ("shape", "adjustment"):
+                # A shape and an adjustment layer are synthetic: no media, no in/out, speed 1, no sound.
+                own = ["kind", "content", *SHAPE_LOOK] if c.type == "shape" else []
+                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + own)
+                if kind != "video":
+                    raise ValueError(f"{_where(c)}: a <{c.type}> goes on a video track")
+                clip_name = _or(_str(c, "name"), "Sticker" if c.type == "shape" else "Adjustment")
+                duration = _num(c, "duration", 0)
+                if duration is None:
+                    raise ValueError(f"{_where(c)}: give its duration in seconds")
+                inputs = {"kind": c.type, "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1,
+                          **_common(c), "volume": 1}
+                if c.type == "shape":
+                    sk = _str(c, "kind", SHAPE_KINDS)
+                    if not sk:
+                        raise ValueError(f"{_where(c)}: a <shape> names its kind ({', '.join(SHAPE_KINDS)})")
+                    inputs["sticker"] = {"kind": sk, "content": _or(_str(c, "content"), shape_content(sk)), "fill": _or(_str(c, "fill"), SHAPE_LOOK["fill"]),
+                                         "stroke": _or(_str(c, "stroke"), SHAPE_LOOK["stroke"]), "strokeWidth": _or(_num(c, "strokeWidth", 0), SHAPE_LOOK["strokeWidth"])}
+                source = None
+            elif c.type == "midi":
+                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed")] + list(MIDI_CLIP))
+                if kind != "midi":
+                    raise ValueError(f'{_where(c)}: a <midi> clip goes on a midi track (kind="midi")')
+                clip_name = _or(_str(c, "name"), "MIDI")
+                duration = _num(c, "duration", 0)
+                if duration is None:
+                    raise ValueError(f"{_where(c)}: give its duration in seconds")
+                inputs = {"kind": "midi", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1, **_common(c)}
+                source = None
             else:
-                raise ValueError(f"<{c.type}> is not read on a <track> (it holds <clip> and <title>)")
+                raise ValueError(f"<{c.type}> is not read on a <track> (it holds <clip>, <title>, <shape>, <adjustment> and <midi>)")
+            if kind == "midi" and c.type != "midi":
+                raise ValueError(f"{_where(c)}: a midi track holds <midi> clips")
             clip_id = new_id(f"clip_{clip_name}")
-            transition_in, effects, keyframes = _clip_children(c, clip_id)
+            transition_in, anims, effects, keyframes, notes = _clip_children(c, clip_id)
             inputs["transitionIn"] = transition_in
+            inputs.update(anims)
             inputs["effects"] = effects
             inputs["trackers"] = []
             if keyframes:
                 inputs["keyframes"] = keyframes
+            if c.type == "midi":
+                inputs["midi"] = {"notes": notes, "instrument": _or(_str(c, "instrument", MIDI_INSTRUMENTS), MIDI_CLIP["instrument"]),
+                                  "gain": _or(_num(c, "gain", 0), MIDI_CLIP["gain"])}
             inputs["source"] = source
             nodes[clip_id] = _node(clip_id, "video.clip", inputs, clip_name)
             clip_wires.append(_wire(clip_id, "frames"))

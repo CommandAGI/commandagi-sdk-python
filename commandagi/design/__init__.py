@@ -37,6 +37,9 @@ from .ontology import (body, camera, channel, dashboard, dashboard_param, date_r
                        element, geoproject, graph_node, is_document, is_opgraph, opgraph, pane, reference, region, scene, space, split,
                        unit, view, wire, world)
 from .tasks import declare_task_document, is_task_document, project, project_view, subtask, task
+from .records import contract, contract_party, declare_record_document, instance_event, is_record_document, product_instance
+from .fab import (cam, cam_machine, cam_part, declare_fab_document, fab_design, fab_source, fixture, is_fab_document, operation, runs_on,
+                  slice_machine, slicing, spool, stock)
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
@@ -50,6 +53,9 @@ __all__ = [
     "element", "geoproject", "graph_node", "is_document", "is_opgraph", "opgraph", "pane", "reference", "region", "scene", "space",
     "split", "unit", "view", "wire", "world",
     "declare_task_document", "is_task_document", "project", "project_view", "subtask", "task",
+    "contract", "contract_party", "declare_record_document", "instance_event", "is_record_document", "product_instance",
+    "cam", "cam_machine", "cam_part", "declare_fab_document", "fab_design", "fab_source", "fixture", "is_fab_document", "operation",
+    "runs_on", "slice_machine", "slicing", "spool", "stock",
     "graph_of", "run_module",
     "BUSINESS_TAGS", "Books", "Calendar", "CapTable", "Case", "Change", "Company", "Entity", "Harm", "Matters", "Option", "People",
     "Registration", "Relief", "Rfc", "document_of",
@@ -98,7 +104,7 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
     if isinstance(declared, dict):
         for k, v in declared.items():
             params.setdefault(k, v if isinstance(v, dict) and "default" in v else {"default": v})
-    stem = path.split("/")[-1].rsplit(".", 1)[0].replace(".part", "").replace(".circuit", "").replace(".sch", "").replace(".sheet", "").replace(".page", "").replace(".deck", "").replace(".opgraph", "").replace(".dashboard", "").replace(".geo", "").replace(".task", "").replace(".project", "") or "Part"
+    stem = path.split("/")[-1].rsplit(".", 1)[0].replace(".part", "").replace(".circuit", "").replace(".sch", "").replace(".sheet", "").replace(".page", "").replace(".deck", "").replace(".opgraph", "").replace(".dashboard", "").replace(".geo", "").replace(".task", "").replace(".project", "").replace(".cam", "").replace(".slice", "").replace(".contract", "").replace(".instance", "") or "Part"
     if callable(ns.get("main")):
         values = {k: p["default"] for k, p in params.items()}
         values.update(inputs)
@@ -122,6 +128,10 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
         document = declare_document(value)
     elif is_task_document(value):
         document = declare_task_document(value)
+    elif is_record_document(value):
+        document = declare_record_document(value)
+    elif is_fab_document(value):
+        document = declare_fab_document(value)
     else:
         document = document_of(value)
     if document is not None:

@@ -59,9 +59,30 @@ class ThreeDTests(unittest.TestCase):
             (doc(h("extrude", id="e", distance=float("inf"))), "not a finite number"),
             (doc(h("parameter", name="w", value="6")), "value is a number"),
         ]
+        cases += [
+            (doc(h("feature", type="extrude", id="e")), "a extrude is written <extrude>"),
+            (doc(h("box", id="a//b")), "an id is letters, digits, _ . - with / between them"),
+            (lambda: document(h("part", name="P", builtinPlanes=["XY"])), "builtinPlanes lists built-in planes"),
+        ]
         for fn, message in cases:
             with self.assertRaisesRegex(ValueError, message):
                 fn()
+
+    def test_what_a_3dx_may_hold(self):
+        def graph(*children, **props):
+            return document(h("part", *children, name="P", **props)).ir
+
+        def planes(g):
+            return sorted(n["id"] for n in g["nodes"].values() if n["type"] == "plane")
+
+        self.assertEqual(planes(graph()), ["plane_xy", "plane_xz", "plane_yz"])
+        self.assertEqual(planes(graph(builtinPlanes=[])), [])
+        xy = h("plane", id="XY", name="XY", origin=[0, 0, 0], normal=[0, 0, 1], xAxis=[1, 0, 0], builtin="XY")
+        self.assertEqual(planes(graph(xy, builtinPlanes=["plane_xz"])), ["XY", "plane_xz"])
+        g = graph(h("cylinder", id="fan/bore", radius=2), h("feature", type="rotate", id="r1", name="rotate_y_30", axis=[0, 1, 0], angle=30))
+        self.assertEqual(g["nodes"]["fan/bore"]["inputs"], {"radius": 2})
+        self.assertEqual(g["nodes"]["r1"], {"id": "r1", "type": "rotate", "label": "rotate_y_30", "inputs": {"axis": [0, 1, 0], "angle": 30}})
+        self.assertEqual(g["meta"]["presentation"], {"order": ["fan/bore", "r1"]})
 
 
 if __name__ == "__main__":

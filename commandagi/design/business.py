@@ -19,9 +19,10 @@ Cap Table Format). A change's ``parameter`` is the draft's ``key``. An unknown a
 """
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, List, Optional
 
-_TEXT, _TEXTS, _BOOL, _RECORD, _DATA = "text", "texts", "bool", "record", "data"
+_TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
 
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
@@ -43,8 +44,8 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Case": {"props": {"id": _TEXT, "respondent": _TEXT, "filedFor": _TEXT, "criminal": _BOOL, "source": _TEXT, "dutyId": _TEXT, "article": _TEXT,
                        "agreementId": _TEXT, "term": _TEXT, "act": _TEXT, "actDate": _TEXT, "evidence": _TEXT, "media": _DATA, "reopens": _TEXT},
              "many": {"harms": "Harm", "relief": "Relief"}},
-    "Harm": {"props": {"id": _TEXT, "interest": _TEXT, "description": _TEXT, "amount": _TEXT}, "required": ["id"]},
-    "Relief": {"props": {"kind": _TEXT, "description": _TEXT, "harmIds": _TEXTS, "amount": _TEXT, "days": _TEXT}, "required": ["kind"]},
+    "Harm": {"props": {"id": _TEXT, "interest": _TEXT, "description": _TEXT, "amount": _AMOUNT}, "required": ["id"]},
+    "Relief": {"props": {"kind": _TEXT, "description": _TEXT, "harmIds": _TEXTS, "amount": _AMOUNT, "days": _AMOUNT}, "required": ["kind"]},
 }
 
 
@@ -103,6 +104,9 @@ def _value(tag: str, prop: str, kind: str, v: Any) -> Any:
         raise bad("true or false")
     if kind == _RECORD and not isinstance(v, dict):
         raise bad("an object")
+    # An amount is as the form typed it (text) or as a file stored it (a number); each is kept as it is.
+    if kind == _AMOUNT and (isinstance(v, bool) or not isinstance(v, (str, int, float)) or (isinstance(v, float) and not math.isfinite(v))):
+        raise bad("text or a number")
     return list(v) if kind == _TEXTS else v
 
 

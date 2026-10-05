@@ -192,12 +192,12 @@ def drawing(*children: Any, name: Optional[str] = None, **props: Any) -> Declara
     extra = [k for k in root.props if k not in ("name", "width", "height", "background")]
     if extra:
         raise ValueError(f"<drawing>: {extra[0]} is not read (a drawing has name, width, height, background)")
-    title = name or "Drawing"
-    meta: Dict[str, Any] = {"name": title}
+    # A drawing with no name of its own declares none (as a ``.drawx`` may).
+    meta: Dict[str, Any] = {"name": name} if name is not None else {}
     for k in ("width", "height", "background"):
         if root.props.get(k) is not None:
             meta[k] = root.props[k]
-    s = Scope(f"draw:{slug(title)}", meta)
+    s = Scope(f"draw:{slug(name or 'Drawing')}", meta)
     with using(s):
         layers = [_drawn(s, c, True) for c in root.children]
         comp = s.add("composite", {**({"background": meta["background"]} if "background" in meta else {}), **channels("layers", layers)},

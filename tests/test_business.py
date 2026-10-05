@@ -31,6 +31,10 @@ class BusinessTests(unittest.TestCase):
         case = document_of(Case(Harm(id="h1", interest="property", amount="4200"), Relief(kind="restitution", harmIds=["h1"]), respondent="Acme"))
         self.assertEqual(case["document"], {"draft": {"respondent": "Acme", "harms": [{"id": "h1", "interest": "property", "amount": "4200"}],
                                                       "relief": [{"kind": "restitution", "harmIds": ["h1"]}]}})
+        stored = document_of(Case(Harm(id="h1", amount=4200), Relief(kind="exclusion", amount=10.5, days=30)))
+        self.assertEqual(stored["document"], {"draft": {"harms": [{"id": "h1", "amount": 4200}], "relief": [{"kind": "exclusion", "amount": 10.5, "days": 30}]}})
+        with self.assertRaisesRegex(ValueError, "amount is text or a number"):
+            document_of(Case(Harm(id="h1", amount=True)))
 
     def test_what_the_vocabulary_does_not_say_is_refused(self):
         with self.assertRaisesRegex(ValueError, "<Company> has no attribute mailbox"):
