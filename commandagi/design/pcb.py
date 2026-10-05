@@ -42,9 +42,9 @@ def pcb_component(name: str, footprint: str, x: Optional[float] = None, y: Optio
 
 
 def pcb_trace(layer: str, width: float, points: Sequence[Tuple[float, float]], from_: Optional[str] = None,
-              to: Optional[str] = None, rule: str = "any", name: Optional[str] = None) -> Dict[str, Any]:
+              to: Optional[str] = None, name: Optional[str] = None) -> Dict[str, Any]:
     """A copper run (the ``<trace>`` element)."""
-    return {"tag": "trace", "layer": layer, "width": width, "points": [list(p) for p in points], "from": from_, "to": to, "rule": rule, "name": name}
+    return {"tag": "trace", "layer": layer, "width": width, "points": [list(p) for p in points], "from": from_, "to": to, "name": name}
 
 
 def pcb_via(x: float, y: float, drill: float, diameter: float, layers: Sequence[str] = ("F.Cu", "B.Cu"), name: Optional[str] = None) -> Dict[str, Any]:
@@ -175,12 +175,10 @@ def pcb_board(schematic: str, width: Optional[float] = None, height: Optional[fl
                     raise ValueError(f"{_where(e)}: points is a list of at least two [x, y]")
                 if e["layer"] not in _COPPER:
                     raise ValueError(f'{_where(e)}: layer is a copper layer ("F.Cu" or "B.Cu")')
-                if e["rule"] not in ("any", "45", "90"):
-                    raise ValueError(f'{_where(e)}: rule is "any", "45" or "90"')
                 terminals = ([end(e["from"], e, 0)] if e.get("from") is not None else []) + \
                             ([end(e["to"], e, len(pts) - 1)] if e.get("to") is not None else [])
                 inputs = {"kind": "run", "points": [{"x": p[0], "y": p[1], "id": trace_point_id(i, len(pts))} for i, p in enumerate(pts)],
-                          "widthMm": _positive(e, "width", e["width"]), "layer": e["layer"], "rule": e["rule"]}
+                          "widthMm": _positive(e, "width", e["width"]), "layer": e["layer"], "rule": "any"}
                 if terminals:
                     inputs["terminals"] = terminals
                 s.add(CONDUCTOR, inputs, id=ids[id(e)], label="Trace")
