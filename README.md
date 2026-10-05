@@ -68,8 +68,8 @@ Snapshot ids come from `cagi.call("list_snapshots")`, e.g. `simulation/warehouse
 
 The same structure-declaring primitives as the TypeScript SDK's `commandagi/design`, producing the same op
 graph (plain JSON). They cover CAD (`part`, `box`, `cylinder`, `sketch`, `extrude`, `subtract`, `hole`,
-`linear_pattern` and the rest), EDA (`circuit`, `board`, `component`, `net`, `connect`, `footprints`) and
-any graph (`graph`, `node`, `input_`, `code`). There is no kernel, solver, router or renderer; importing
+`linear_pattern` and the rest), EDA (`circuit`, `board`, `component`, `net`, `connect`, `footprints`), a board
+in code (`pcb_board`, `pcb_component`, `pcb_trace`, `pcb_via`: the same nodes as a `.pcb.tsx`) and any graph (`graph`, `node`, `input_`, `code`). There is no kernel, solver, router or renderer; importing
 `commandagi.design` needs nothing but the standard library.
 
 `commandagi.design.twod` declares 2D documents the way the TypeScript SDK's JSX does: `twod.drawing(twod.layer(
