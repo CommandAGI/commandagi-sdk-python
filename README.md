@@ -72,6 +72,11 @@ graph (plain JSON). They cover CAD (`part`, `box`, `cylinder`, `sketch`, `extrud
 any graph (`graph`, `node`, `input_`, `code`). There is no kernel, solver, router or renderer; importing
 `commandagi.design` needs nothing but the standard library.
 
+Office documents are declared as calls with the same shapes as the TypeScript SDK's office JSX: `workbook(sheet(…,
+cell("A1", "Item", bold=True), cell("B2", formula="=B1*12")))`, `page(h1("Notes"), p("Text with ", b("bold"), "."))`
+and `deck(slide(shape("ellipse", x=160, y=160, w=400, h=400), layout="Blank"))`. A workbook and a page leave
+`run_module` as its `document` (the sheets and docs editors' own JSON); a deck is the deck's op graph.
+
 `commandagi.design.cadquery` is a CadQuery-style importer: `Workplane("XY").box(…).faces(">Z").workplane()
 .rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real
 topology (fillets, edge selectors).
@@ -80,7 +85,7 @@ A `.py` code part is a script. Its result is `main(**inputs)` if it defines `mai
 to `show_object`; otherwise its `result` variable. `param(name, default, unit=…)` declares an input and
 reads its value. In a CommandAGI editor, a `.py` code node runs under Pyodide in a sandboxed worker, where
 `import cadquery as cq` is this importer (OCCT does not run there). `run_module(source, path, inputs)` is
-what the sandbox calls. Tests: `python -m unittest tests.test_design`.
+what the sandbox calls. Tests: `python -m unittest tests.test_design tests.test_office`.
 
 ## Reinforcement learning
 

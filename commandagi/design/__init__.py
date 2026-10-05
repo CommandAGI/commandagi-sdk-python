@@ -23,6 +23,8 @@ from .cad import (PLANES, Body, SketchBuilder, SketchRef, assembly, box, chamfer
 from .eda import PartRef, board, circuit, component, connect, footprints, net, part_type_for
 from . import cadquery as _cq
 from .solids import declare_solids
+from .office import (OfficeDocument, a, b, br, bullet, cell, code_, column, deck, divider, h1, h2, h3, i, image, numbered, p, page,
+                     pre, quote, row, s, shape, sheet, slide, text, todo, u, workbook)
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
@@ -32,6 +34,8 @@ __all__ = [
     "sketch", "sphere", "subtract", "union",
     "PartRef", "board", "circuit", "component", "connect", "footprints", "net", "part_type_for",
     "graph_of", "run_module",
+    "OfficeDocument", "workbook", "sheet", "cell", "column", "row", "page", "h1", "h2", "h3", "p", "bullet", "numbered", "todo",
+    "quote", "pre", "divider", "image", "b", "i", "u", "s", "code_", "a", "br", "deck", "slide", "text", "shape",
 ]
 
 
@@ -65,7 +69,7 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
     if isinstance(declared, dict):
         for k, v in declared.items():
             params.setdefault(k, v if isinstance(v, dict) and "default" in v else {"default": v})
-    stem = path.split("/")[-1].rsplit(".", 1)[0].replace(".part", "").replace(".circuit", "") or "Part"
+    stem = path.split("/")[-1].rsplit(".", 1)[0].replace(".part", "").replace(".circuit", "").replace(".sheet", "").replace(".page", "").replace(".deck", "") or "Part"
     if callable(ns.get("main")):
         values = {k: p["default"] for k, p in params.items()}
         values.update(inputs)
@@ -76,6 +80,9 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
         value = ns["result"]
     else:
         raise ValueError("the script declared nothing (define main(), call show_object(), or set result)")
+    # A workbook or a page is a document of its own (office.py): it leaves beside an empty graph.
+    if isinstance(value, OfficeDocument):
+        return json.loads(json.dumps({"graph": {"id": stem, "nodes": {}}, "params": params, "document": value.declared()}))
     g = graph_of(value, stem)
     problems = check_ir(g)
     if problems:
