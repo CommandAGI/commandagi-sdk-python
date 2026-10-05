@@ -176,8 +176,6 @@ def media_kind(src: str) -> Optional[str]:
     return _EXT.get(m.group(1).lower()) if m else None
 
 
-BLEND_MODES = ("normal", "add", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light",
-               "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity")
 EASINGS = ("linear", "easeIn", "easeOut", "easeInOut", "hold")
 TRANSITIONS = ("none", "cut", "crossDissolve", "fadeToBlack", "fadeToWhite", "dipToColor", "wipeLeft", "wipeRight", "wipeUp",
                "wipeDown", "diagonalWipe", "barnDoors", "iris", "diamond", "clockWipe", "pixelDissolve", "pushLeft", "pushRight",
@@ -200,7 +198,7 @@ def _common(c: Element) -> Dict[str, Any]:
     color = {k: _or(_num(c, k, -180 if k == "hue" else -1, 180 if k == "hue" else 1), d) for k, d in CLIP_COLOR.items()}
     fit = _str(c, "fitMode", ("fit", "fill", "stretch"))
     out: Dict[str, Any] = {"opacity": _or(_num(c, "opacity", 0, 1), 1), "volume": _or(_num(c, "volume", 0), 1),
-                           "blendMode": _or(_str(c, "blendMode", BLEND_MODES), "normal")}
+                           "blendMode": _or(_str(c, "blendMode"), "normal")}
     if fit:
         out["fitMode"] = fit
     out["transform"] = transform
