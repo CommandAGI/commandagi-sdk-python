@@ -23,6 +23,8 @@ from .cad import (PLANES, Body, SketchBuilder, SketchRef, assembly, box, chamfer
 from .eda import PartRef, board, circuit, component, connect, footprints, net, part_type_for
 from . import cadquery as _cq
 from .solids import declare_solids
+from .business import (BUSINESS_TAGS, Books, Calendar, CapTable, Case, Change, Company, Entity, Harm, Matters, Option, People,
+                       Registration, Relief, Rfc, document_of)
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
@@ -32,6 +34,8 @@ __all__ = [
     "sketch", "sphere", "subtract", "union",
     "PartRef", "board", "circuit", "component", "connect", "footprints", "net", "part_type_for",
     "graph_of", "run_module",
+    "BUSINESS_TAGS", "Books", "Calendar", "CapTable", "Case", "Change", "Company", "Entity", "Harm", "Matters", "Option", "People",
+    "Registration", "Relief", "Rfc", "document_of",
 ]
 
 
