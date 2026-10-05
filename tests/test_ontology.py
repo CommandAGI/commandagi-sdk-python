@@ -13,13 +13,13 @@ class OntologyTests(unittest.TestCase):
     def test_a_world_is_its_world_json(self):
         d = declare_document(world("Shop", "simulation",
                                    space(origin_mm=[0, 0, 0], size_mm=[4000, 3000, 2500]),
-                                   unit(uid="arm", name="arm", device="../../devices/so-101/definition.json", position=[100, 0, 0], rotation=90),
+                                   unit(uid="arm", name="arm", device="../../devices/so-101/definition.tsx", position=[100, 0, 0], rotation=90),
                                    scene(body(id="cube", shape={"type": "box", "hx": 0.02}, at=[0, 0, 1]), hz=240)))
         self.assertEqual(d, {"format": "world", "sources": {}, "document": {
             "name": "Shop",
             "kind": "simulation",
             "space": {"origin_mm": [0, 0, 0], "size_mm": [4000, 3000, 2500]},
-            "units": [{"uid": "arm", "name": "arm", "device": "../../devices/so-101/definition.json", "position": [100, 0, 0], "rotation": 90}],
+            "units": [{"uid": "arm", "name": "arm", "device": "../../devices/so-101/definition.tsx", "position": [100, 0, 0], "rotation": 90}],
             "scene": {"hz": 240, "bodies": [{"id": "cube", "shape": {"type": "box", "hx": 0.02}, "at": [0, 0, 1]}]},
         }})
         with self.assertRaisesRegex(ValueError, "said explicitly"):

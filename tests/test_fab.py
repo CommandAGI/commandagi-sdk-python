@@ -16,7 +16,7 @@ class FabTests(unittest.TestCase):
             fixture(name="clamp", xMm=-14, yMm=25, wMm=20, dMm=20, zMm=4),
             operation(id="op-2", op="mill_contour", profile="contour_wood", tabs={"count": 4, "lengthMm": 5, "heightMm": 1.5}),
             operation(id="op-1", op="mill_pocket", profile="pocket_wood", enabled=False),
-            runs_on(unit="cloud://global/worlds/fab-cell/world.json#cnc-1", channel="gcode", name="cnc"),
+            runs_on(unit="cloud://global/worlds/fab-cell/world.tsx#cnc-1", channel="gcode", name="cnc"),
         ))
         self.assertEqual(d["format"], "cam")
         self.assertEqual(d["document"], {
@@ -27,7 +27,7 @@ class FabTests(unittest.TestCase):
                 {"id": "op-2", "op": "mill_contour", "profile": "contour_wood", "tabs": {"count": 4, "lengthMm": 5, "heightMm": 1.5}},
                 {"id": "op-1", "op": "mill_pocket", "profile": "pocket_wood", "enabled": False},
             ],
-            "runsOn": {"unit": "cloud://global/worlds/fab-cell/world.json#cnc-1", "channel": "gcode", "name": "cnc"},
+            "runsOn": {"unit": "cloud://global/worlds/fab-cell/world.tsx#cnc-1", "channel": "gcode", "name": "cnc"},
         })
         with self.assertRaisesRegex(ValueError, r'<operation id="a"> needs profile'):
             declare_fab_document(cam(operation(id="a", op="face")))

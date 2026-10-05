@@ -8,7 +8,7 @@ its children::
         cam_machine(post="grbl", maxSpindleRpm=10000),
         fixture(name="left clamp", xMm=-14, yMm=25, wMm=20, dMm=20, zMm=4),
         operation(id="op-1", op="mill_adaptive", profile="adaptive_wood", params={"toolDiameterMm": 3.175}),
-        runs_on(unit="cloud://global/worlds/fab-cell/world.json#cnc-1", channel="gcode", name="cnc 3018 / 01"),
+        runs_on(unit="cloud://global/worlds/fab-cell/world.tsx#cnc-1", channel="gcode", name="cnc 3018 / 01"),
     )
     result = slicing(fab_source(fileId="carrier.stl", name="carrier.stl"), spool(materialId="pla", diameterMm=1.75),
                      profile="fdm_pla_0.20_draft")
