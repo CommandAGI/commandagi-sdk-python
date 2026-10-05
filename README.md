@@ -77,6 +77,11 @@ twod.rect(x=…, …), name="Layer 1"), name="Poster", width=800, height=600)`, 
 `twod.nest` alike. A call is one node, its keywords the node's inputs (`from_` for a Python word), its positional
 arguments the nodes it takes. Tests: `python -m unittest tests.test_twod`.
 
+Office documents are declared as calls with the same shapes as the TypeScript SDK's office JSX: `workbook(sheet(…,
+cell("A1", "Item", bold=True), cell("B2", formula="=B1*12")))`, `page(h1("Notes"), p("Text with ", b("bold"), "."))`
+and `deck(slide(shape("ellipse", x=160, y=160, w=400, h=400), layout="Blank"))`. A workbook and a page leave
+`run_module` as its `document` (the sheets and docs editors' own JSON); a deck is the deck's op graph.
+
 `commandagi.design.cadquery` is a CadQuery-style importer: `Workplane("XY").box(…).faces(">Z").workplane()
 .rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real
 topology (fillets, edge selectors).
@@ -91,13 +96,13 @@ A `.py` code part is a script. Its result is `main(**inputs)` if it defines `mai
 to `show_object`; otherwise its `result` variable. `param(name, default, unit=…)` declares an input and
 reads its value. In a CommandAGI editor, a `.py` code node runs under Pyodide in a sandboxed worker, where
 `import cadquery as cq` is this importer (OCCT does not run there). `run_module(source, path, inputs)` is
-what the sandbox calls. Tests: `python -m unittest tests.test_design tests.test_sheet`.
+what the sandbox calls. Tests: `python -m unittest tests.test_design tests.test_schematic tests.test_office`.
 
-`commandagi.design.sheet` is a schematic in Python (a `<name>.sch.py` the CommandAGI circuit editor opens and
+`commandagi.design.schematic` is a schematic in Python (a `<name>.sch.py` the CommandAGI circuit editor opens and
 edits), the same nodes as the TypeScript SDK's JSX schematic:
 
 ```python
-from commandagi.design.sheet import ground, group, resistor, trace, voltagesource
+from commandagi.design.schematic import ground, group, resistor, trace, voltagesource
 
 with group("Divider"):
     voltagesource("V1", voltage="9", sch_x=114.3, sch_y=114.3)

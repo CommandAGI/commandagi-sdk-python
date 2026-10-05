@@ -3,9 +3,9 @@ from (the source map the editor writes edits back with). Run: python -m unittest
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.sheet import sch_symbol_type_for
+from commandagi.design.schematic import sch_symbol_type_for
 
-DIVIDER = '''from commandagi.design.sheet import ground, group, resistor, trace, voltagesource
+DIVIDER = '''from commandagi.design.schematic import ground, group, resistor, trace, voltagesource
 
 with group("Divider"):
     voltagesource("V1", voltage="9", sch_x=114.3, sch_y=114.3)  # the supply
@@ -54,24 +54,24 @@ class SheetTests(unittest.TestCase):
         self.assertEqual(m["length"], len(DIVIDER))
         self.assertEqual([e["tag"] for e in m["elements"]], ["group", "voltagesource", "resistor", "ground", "trace", "trace"])
         self.assertEqual(m["elements"][0]["block"], {"end": len(DIVIDER) - 1, "indent": "    ", "pass": None})
-        self.assertEqual(m["imports"][0]["module"], "commandagi.design.sheet")
+        self.assertEqual(m["imports"][0]["module"], "commandagi.design.schematic")
         self.assertTrue(all(e["parent"] == 0 and e["child"] and e["statement"] and e["body"]["size"] == 5 for e in m["elements"][1:]))
 
     def test_offsets_count_utf16_units_as_the_editor_does(self):
-        text = '# Ω and 𝄞\nfrom commandagi.design.sheet import *\nwith group("Ü"):\n    resistor("R1", resistance="1k", sch_x=1, sch_y=2)\n'
+        text = '# Ω and 𝄞\nfrom commandagi.design.schematic import *\nwith group("Ü"):\n    resistor("R1", resistance="1k", sch_x=1, sch_y=2)\n'
         src = run(text, "u.sch.py")["nodes"]["R1"]["meta"]["source"]
         units = text.encode("utf-16-le")
         self.assertEqual(units[2 * src["start"]:2 * src["end"]].decode("utf-16-le"), 'resistor("R1", resistance="1k", sch_x=1, sch_y=2)')
 
     def test_a_call_in_a_loop_counts_each_run(self):
-        text = 'from commandagi.design.sheet import *\nwith group("L"):\n    for i in range(3):\n        capacitor("C%d" % i, capacitance="1u", sch_x=10 * i, sch_y=0)\n'
+        text = 'from commandagi.design.schematic import *\nwith group("L"):\n    for i in range(3):\n        capacitor("C%d" % i, capacitance="1u", sch_x=10 * i, sch_y=0)\n'
         g = run(text, "l.sch.py")
         src = g["nodes"]["C2"]["meta"]["source"]
         self.assertEqual(src["evaluations"], 3)
         self.assertFalse(g["meta"]["sourceMap"]["elements"][src["element"]]["child"], "a call in a loop is not where a sibling goes")
 
     def test_refused_by_name(self):
-        head = 'from commandagi.design.sheet import *\nwith group("S"):\n'
+        head = 'from commandagi.design.schematic import *\nwith group("S"):\n'
         cases = [
             ('    ground("GND1", sch_x=0, sch_y=0)\n', "starts with #"),
             ('    resistor("R1")\n    resistor("R2", sch_x=0, sch_y=0)\n    trace(".R1 > .pin1", ".R2 > .pin1")\n', "R1 is not on the sheet"),
@@ -82,7 +82,7 @@ class SheetTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, message):
                 run(head + body, "s.sch.py")
         with self.assertRaisesRegex(RuntimeError, "belongs inside `with group"):
-            run('from commandagi.design.sheet import *\nresistor("R1")\n', "s.sch.py")
+            run('from commandagi.design.schematic import *\nresistor("R1")\n', "s.sch.py")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 draws and edits (``sch.symbol.*``, ``sch.wire``, ``sch.junction``, ``sch.label``). The same declarations, node for
 node, as the TypeScript SDK's JSX schematic (``commandagi/design`` ``sheet.ts``); each call is one element:
 
-    from commandagi.design.sheet import group, resistor, voltagesource, ground, trace, netlabel
+    from commandagi.design.schematic import group, resistor, voltagesource, ground, trace, netlabel
 
     with group("Divider"):
         voltagesource("V1", voltage="9", sch_x=114.3, sch_y=114.3)
@@ -230,7 +230,7 @@ def _declare_sheet(children: List[_Element]) -> None:
         elif el.type in ("trace", "netlabel"):
             later.append(el)
         else:
-            raise ValueError(f"{el.type}() is not read on a schematic (see commandagi.design.sheet)")
+            raise ValueError(f"{el.type}() is not read on a schematic (see commandagi.design.schematic)")
 
     def end(sel: Any, el: _Element) -> Dict[str, str]:
         import re
