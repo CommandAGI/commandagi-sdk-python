@@ -62,6 +62,17 @@ class ToolCalls(unittest.TestCase):
         cagi.threads.create(intent="x", snapshot_id="simulation/warehouse", agentless=True)
         self.assertEqual(http.calls[0], ("create_thread", {"intent": "x", "snapshotId": "simulation/warehouse", "agentless": True}))
 
+    def test_postal_provider_is_a_keyword_lob_by_default(self):
+        cagi, http = client()
+        cagi.postal.send("Letters/Ada.letter.tsx")
+        cagi.postal.send("Letters/Ada.letter.tsx", provider="click2mail", owner_id="org_1")
+        self.assertEqual(http.calls, [
+            ("postal_send", {"source": "Letters/Ada.letter.tsx"}),
+            ("postal_send", {"source": "Letters/Ada.letter.tsx", "provider": "click2mail", "ownerId": "org_1"}),
+        ])
+        with self.assertRaises(TypeError):
+            cagi.postal.send("Letters/Ada.letter.tsx", carrier="lob")
+
     def test_an_omitted_optional_never_travels_as_null(self):
         cagi, http = client(thread_id=None)
         cagi.threads.list()
