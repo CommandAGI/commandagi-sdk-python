@@ -51,7 +51,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "boolean": _C, "clip": _C,
     # painting and photo: layers, masks, adjustments, filters
     "raster": _C, "gradient": _C, "mask": _C,
-    "exposure": _C, "curves": _C, "hsl": _C, "vibrance": _C, "colorBalance": _C, "blackWhite": _C, "invert": _C, "posterize": _C,
+    "exposure": _C, "curves": _C, "hsl": _C, "vibrance": _C, "colorBalance": _C, "blackWhite": _C, "invert": _C, "posterize": _C, "develop": _C,
     "gaussianBlur": _C, "unsharpMask": _C, "sharpen": _C, "noise": _C,
     # nest
     "sheet": {}, "stock": {}, "options": {}, "part": {},
@@ -255,7 +255,7 @@ def _drawing(root: Element, name: str) -> Dict[str, Any]:
 #: The fields every layer of a stack carries (a chain's top stands in for its layer in the stack).
 _COMMON = ("name", "visible", "opacity", "blend", "clip", "locked")
 _COMMON_DEFAULTS = {"name": "Layer", "visible": True, "opacity": 1, "blend": "normal"}
-PHOTO_ADJUSTMENTS = ("exposure", "levels", "curves", "hsl", "vibrance", "colorBalance", "blackWhite", "invert", "threshold", "posterize")
+PHOTO_ADJUSTMENTS = ("exposure", "levels", "curves", "hsl", "vibrance", "colorBalance", "blackWhite", "invert", "threshold", "posterize", "develop")
 PHOTO_FILTERS = ("gaussianBlur", "unsharpMask", "sharpen", "noise")
 _MIME = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "gif": "image/gif", "bmp": "image/bmp"}
 
@@ -284,6 +284,15 @@ def _stroke_points(v: Any, what: str) -> List[Dict[str, Any]]:
     return out
 
 
+def _adjustment_layer(el: Element, node_type: str) -> tuple:
+    """An adjustment tag as a layer: the layer's own fields, and the rest as its ``adjustment``."""
+    common: Dict[str, Any] = {}
+    adjustment: Dict[str, Any] = {"type": el.tag}
+    for k, v in _attrs(el).items():
+        (common if k in _COMMON else adjustment)[k] = v
+    return node_type, {**common, "adjustment": adjustment}
+
+
 def _paint_layer(el: Element) -> Optional[tuple]:
     if el.tag == "layer":
         a = _attrs(el, ("src",))
@@ -292,6 +301,8 @@ def _paint_layer(el: Element) -> Optional[tuple]:
         return "paint.layer", a
     if el.tag in ("fill", "group"):
         return f"paint.{el.tag}", _attrs(el)
+    if el.tag in PHOTO_ADJUSTMENTS:
+        return _adjustment_layer(el, "paint.adjust")
     return None
 
 
@@ -316,11 +327,7 @@ def _photo_layer(el: Element) -> Optional[tuple]:
     if el.tag in ("fill", "gradient", "group"):
         return f"photo.{el.tag}", _attrs(el)
     if el.tag in PHOTO_ADJUSTMENTS:
-        common: Dict[str, Any] = {}
-        adjustment: Dict[str, Any] = {"type": el.tag}
-        for k, v in _attrs(el).items():
-            (common if k in _COMMON else adjustment)[k] = v
-        return "photo.adjust", {**common, "adjustment": adjustment}
+        return _adjustment_layer(el, "photo.adjust")
     return None
 
 
