@@ -107,11 +107,13 @@ def tree_of_element(root: Element, v: Vocabulary) -> DocTree:
         seen = set()
         for c in children:
             r = v.tags[c["tag"]]
-            ident = f"{c['tag']}#{_text(c['attrs'].get(r['key']))}" if r.get("key") else c["tag"] if r.get("single") else None
+            # A record whose key is not written is told apart by its place (as ``identities`` does).
+            keyed = r.get("key") and r["key"] in c["attrs"]
+            ident = f"{c['tag']}#{_text(c['attrs'].get(r['key']))}" if keyed else c["tag"] if r.get("single") else None
             if ident is None:
                 continue
             if ident in seen:
-                raise ValueError(f'two <{c["tag"]}> in <{el.tag}> have {r["key"]} "{_text(c["attrs"].get(r["key"]))}"' if r.get("key")
+                raise ValueError(f'two <{c["tag"]}> in <{el.tag}> have {r["key"]} "{_text(c["attrs"].get(r["key"]))}"' if keyed
                                  else f"<{el.tag}> has one <{c['tag']}>")
             seen.add(ident)
         tree: DocTree = {"tag": el.tag, "attrs": attrs, "children": children}
