@@ -1,7 +1,9 @@
-"""A video or a song, declared as the media editors' own documents — the same nodes the TypeScript SDK's
-``media.ts`` declares from JSX (``.vid.tsx``, ``.mus.tsx``), from elements built in Python::
+"""A VIDEO OR A SONG IN PYTHON — the media editors' own documents, declared as the nodes the CommandAGI video editor
+(``.vid.py``: ``video.source``, ``video.clip``, ``video.track``, ``video.composite``) and music studio (``.mus.py``:
+``midiClip``, ``instrument``, ``fx.*``, ``track``, ``master``) store and edit. The same elements, node for node, as the
+TypeScript SDK's ``media.ts`` (``.vid.tsx``, ``.mus.tsx``)::
 
-    from commandagi.design.media import video, track, clip, title, song, synth, note
+    from commandagi.design.media import clip, note, song, synth, title, track, video
 
     result = video(
         track(clip(src="media/sky.png", start=0, duration=3), title(text="Hello", start=0, duration=2), name="V1"),
@@ -11,83 +13,38 @@
 
     result = song(
         track(synth(wave="triangle"), clip(note(pitch="C4", start=0, duration=1), name="Keys 1", start=0, length=4), name="Keys"),
-        name="Loop", tempo=120, timeSignature="4/4", bars=8,
+        name="Loop", tempo=120, time_signature="4/4", bars=8,
     )
 
-An element's props are the JSX attributes, spelled the same (``in_`` is ``in``, which Python reserves). Media
-files are named by path relative to the file, never inlined. Times on a video's timeline are seconds; in a song,
-beats. Anything the vocabulary cannot say is refused by name.
+One call per tag (``commandagi.design.element``): children positional, attributes as snake_case keywords (``font_size``
+is ``fontSize``; ``in_`` is ``in``). Media files are named by path relative to the file, never inlined. Times on a
+video's timeline are seconds; in a song, beats. Each node carries the call that declared it in ``meta.source``; what a
+node holds that is not a node (a clip's effects, transition, intro, outro and keyframes; a midi clip's notes; a video's
+markers) carries its call in ``meta.sources``, by key. Anything the vocabulary cannot say is refused by name.
 """
 from __future__ import annotations
 
-import copy
 import json
 import math
 import re
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from .ir import Declaration, slug
+from .element import Element, child_elements, declares, define
+from .ir import slug
 
 MEDIA_ROOTS = ("video", "song")
 
+_HOLDS: Dict[str, Any] = {"holds": "children"}
+#: Every tag of a video and a song: what it holds (the TypeScript SDK's ``SIGNATURES``; absent: a leaf).
+SIGNATURES: Dict[str, Dict[str, Any]] = {
+    "video": _HOLDS, "song": _HOLDS, "track": _HOLDS, "clip": _HOLDS, "title": _HOLDS, "shape": _HOLDS, "adjustment": _HOLDS,
+    "midi": _HOLDS, "effect": _HOLDS,
+    "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {},
+    "synth": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {},
+}
 
-class Element:
-    """One declared element: its tag, its props and its children (what JSX makes)."""
-
-    def __init__(self, type: str, props: Dict[str, Any], children: List[Any]):
-        self.type = type
-        self.props = props
-        self.children = children
-
-    def __repr__(self) -> str:
-        return f"<{self.type} {self.props}>"
-
-
-def _flat(children: Any) -> List[Element]:
-    out: List[Element] = []
-    for c in children if isinstance(children, (list, tuple)) else [children]:
-        if c is None or isinstance(c, bool):
-            continue
-        if isinstance(c, (list, tuple)):
-            out.extend(_flat(c))
-        elif isinstance(c, Element):
-            out.append(c)
-        else:
-            raise ValueError("an element's children are elements")
-    return out
-
-
-def _tag(name: str) -> Callable[..., Element]:
-    def make(*children: Any, **props: Any) -> Element:
-        if "in_" in props:
-            props["in"] = props.pop("in_")
-        return Element(name, props, _flat(list(children)))
-
-    make.__name__ = name
-    return make
-
-
-video = _tag("video")
-track = _tag("track")
-clip = _tag("clip")
-title = _tag("title")
-transition = _tag("transition")
-intro = _tag("intro")
-outro = _tag("outro")
-shape = _tag("shape")
-adjustment = _tag("adjustment")
-midi = _tag("midi")
-effect = _tag("effect")
-keyframe = _tag("keyframe")
-marker = _tag("marker")
-song = _tag("song")
-synth = _tag("synth")
-gain = _tag("gain")
-filter_ = _tag("filter")
-delay = _tag("delay")
-reverb = _tag("reverb")
-eq = _tag("eq")
-note = _tag("note")
+__all__ = ["MEDIA_ROOTS", "SIGNATURES", "declare_video", "declare_song", "media_kind", "pitch_of", "pitch_name", "tempo_of",
+           "time_signature_of", *define(globals(), "media", SIGNATURES)]
 
 
 def _where(el: Element) -> str:
@@ -99,7 +56,7 @@ def _where(el: Element) -> str:
 
 def _refuse_unknown(el: Element, allowed: List[str]) -> None:
     for k in el.props:
-        if k not in allowed:
+        if k != "key" and k not in allowed:
             raise ValueError(f"{_where(el)}: prop {k} is not read on a <{el.type}>")
 
 
@@ -169,6 +126,16 @@ def _wire(node: str, port: str) -> Dict[str, Any]:
     return {"wire": {"node": node, "port": port}}
 
 
+def _meta_of(el: Element, sources: Optional[Dict[str, Any]] = None, extra: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    """A node's meta: the call it came from, and the calls of what it holds, by key."""
+    meta: Dict[str, Any] = dict(extra or {})
+    if el.source is not None:
+        meta["source"] = el.source
+    if sources:
+        meta["sources"] = sources
+    return meta or None
+
+
 # ── Video ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 _EXT = {**{e: "video" for e in ("mp4", "webm", "mov", "mkv", "m4v", "ogv")},
@@ -224,7 +191,7 @@ def _common(c: Element) -> Dict[str, Any]:
     return out
 
 
-def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) ->Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
     transition_in: Dict[str, Any] = {"kind": "none", "duration": 0}
     anims: Dict[str, Any] = {}
     notes: List[Dict[str, Any]] = []
@@ -242,16 +209,19 @@ def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], Dict[str, 
         if track_ is None:
             track_ = {"property": prop, "keys": []}
             keyframes.append(track_)
-        track_["keys"].append({"id": kf_id(f"kf_{clip_id}"), "time": time, "value": value, "easing": _or(_str(el, "easing", EASINGS), "linear")})
+        kid = kf_id(f"kf_{clip_id}")
+        track_["keys"].append({"id": kid, "time": time, "value": value, "easing": _or(_str(el, "easing", EASINGS), "linear")})
         track_["keys"].sort(key=lambda k: k["time"])
+        sources[f"keyframe:{kid}"] = el.source
 
-    for el in c.children:
+    for el in child_elements(c):
         if el.type == "transition":
             _refuse_unknown(el, ["kind", "duration"])
             if saw:
                 raise ValueError(f"{_where(c)}: a clip has one <transition> (into it)")
             saw = True
             transition_in = {"kind": _or(_str(el, "kind", TRANSITIONS), "crossDissolve"), "duration": _or(_num(el, "duration", 0), 0.5)}
+            sources["transition"] = el.source
         elif el.type == "note":
             if c.type != "midi":
                 raise ValueError(f"<note> is read in a <midi> clip, not a <{c.type}>")
@@ -262,7 +232,9 @@ def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], Dict[str, 
             start, dur = _num(el, "start", 0), _num(el, "duration", 0)
             if start is None or dur is None:
                 raise ValueError("<note>: a note has a start and a duration (seconds in the clip)")
-            notes.append({"id": note_id(f"note_{clip_id}"), "pitch": pitch, "start": start, "duration": dur, "velocity": _or(_num(el, "velocity", 0, 1), 0.8)})
+            nid = note_id(f"note_{clip_id}")
+            notes.append({"id": nid, "pitch": pitch, "start": start, "duration": dur, "velocity": _or(_num(el, "velocity", 0, 1), 0.8)})
+            sources[f"note:{nid}"] = el.source
         elif el.type in ("intro", "outro"):
             _refuse_unknown(el, ["preset", "duration"])
             k = "animIn" if el.type == "intro" else "animOut"
@@ -272,6 +244,7 @@ def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], Dict[str, 
             if not preset:
                 raise ValueError(f"<{el.type}> names its preset ({', '.join(ANIM_PRESETS)})")
             anims[k] = {"preset": preset, "duration": _or(_num(el, "duration", 0), 1)}
+            sources[el.type] = el.source
         elif el.type == "effect":
             t = _str(el, "type", EFFECT_TYPES)
             if not t:
@@ -279,9 +252,9 @@ def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], Dict[str, 
             fid = fx_id(f"fx_{t}")
             params = {}
             for k, v in el.props.items():
-                if k in ("type", "enabled", "colors"):
+                if k in ("key", "type", "enabled", "colors"):
                     continue
-                if isinstance(v, bool) or not isinstance(v, (int, float)):
+                if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
                     raise ValueError(f'<effect type="{t}">: {k} is a number, not {json.dumps(v)}')
                 params[k] = v
             fx: Dict[str, Any] = {"id": fid, "type": t, "enabled": _or(_bool(el, "enabled"), True), "params": params}
@@ -291,7 +264,8 @@ def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], Dict[str, 
                     raise ValueError(f'<effect type="{t}">: colors is {{ name: "#rrggbb" }}')
                 fx["colors"] = dict(colors)
             effects.append(fx)
-            for k in el.children:
+            sources[f"effect:{fid}"] = el.source
+            for k in child_elements(el):
                 if k.type != "keyframe":
                     raise ValueError(f"<{k.type}> is not read in an <effect> (its keyframes are <keyframe param time value>)")
                 _refuse_unknown(k, ["param", "time", "value", "easing"])
@@ -310,7 +284,7 @@ def _clip_children(c: Element, clip_id: str) -> Tuple[Dict[str, Any], Dict[str, 
     return transition_in, anims, effects, keyframes, notes
 
 
-def declare_video(root: Element) -> Declaration:
+def declare_video(root: Element) -> Dict[str, Any]:
     """Declare a video (``video(...)`` and its tracks) as the video editor's own op graph."""
     _refuse_unknown(root, ["name", *VIDEO_SETTINGS])
     name = _or(_str(root, "name"), "Video")
@@ -321,13 +295,16 @@ def declare_video(root: Element) -> Declaration:
     new_id("composite")
     track_wires: List[Any] = []
     markers: List[Dict[str, Any]] = []
-    for tr in root.children:
+    composite_sources: Dict[str, Any] = {}
+    for tr in child_elements(root):
         if tr.type == "marker":
             _refuse_unknown(tr, ["name", "time", "color"])
             t = _num(tr, "time", 0)
             if t is None:
                 raise ValueError(f"{_where(tr)}: a marker has a time")
-            markers.append({"id": new_id(f"marker_{len(markers) + 1}"), "time": t, "name": _or(_str(tr, "name"), "Marker"), "color": _or(_str(tr, "color"), "#f5c542")})
+            mid = new_id(f"marker_{len(markers) + 1}")
+            markers.append({"id": mid, "time": t, "name": _or(_str(tr, "name"), "Marker"), "color": _or(_str(tr, "color"), "#f5c542")})
+            composite_sources[f"marker:{mid}"] = tr.source
             continue
         if tr.type != "track":
             raise ValueError(f"<{tr.type}> is not read in a <video> (it holds <track> and <marker>)")
@@ -336,7 +313,7 @@ def declare_video(root: Element) -> Declaration:
         track_name = _or(_str(tr, "name"), "A" if kind == "audio" else "M" if kind == "midi" else "V")
         track_id = new_id(f"track_{track_name}")
         clip_wires: List[Any] = []
-        for c in tr.children:
+        for c in child_elements(tr):
             if c.type == "clip":
                 _refuse_unknown(c, ["src", *_CLIP_PROPS])
                 src = _str(c, "src")
@@ -430,7 +407,8 @@ def declare_video(root: Element) -> Declaration:
             if kind == "midi" and c.type != "midi":
                 raise ValueError(f"{_where(c)}: a midi track holds <midi> clips")
             clip_id = new_id(f"clip_{clip_name}")
-            transition_in, anims, effects, keyframes, notes = _clip_children(c, clip_id)
+            sources: Dict[str, Any] = {}
+            transition_in, anims, effects, keyframes, notes = _clip_children(c, clip_id, sources)
             inputs["transitionIn"] = transition_in
             inputs.update(anims)
             inputs["effects"] = effects
@@ -441,14 +419,14 @@ def declare_video(root: Element) -> Declaration:
                 inputs["midi"] = {"notes": notes, "instrument": _or(_str(c, "instrument", MIDI_INSTRUMENTS), MIDI_CLIP["instrument"]),
                                   "gain": _or(_num(c, "gain", 0), MIDI_CLIP["gain"])}
             inputs["source"] = source
-            nodes[clip_id] = _node(clip_id, "video.clip", inputs, clip_name)
+            nodes[clip_id] = _node(clip_id, "video.clip", inputs, clip_name, _meta_of(c, sources))
             clip_wires.append(_wire(clip_id, "frames"))
         track_inputs: Dict[str, Any] = {"kind": kind, "name": track_name, "muted": _or(_bool(tr, "muted"), False), "hidden": _or(_bool(tr, "hidden"), False),
                                         "locked": _or(_bool(tr, "locked"), False), "height": _or(_num(tr, "height", 16), _TRACK_HEIGHT[kind]),
                                         "volume": _or(_num(tr, "volume", 0), 1)}
         for i, w in enumerate(clip_wires):
             track_inputs[f"clips.{i + 1}"] = w
-        nodes[track_id] = _node(track_id, "video.track", track_inputs, track_name)
+        nodes[track_id] = _node(track_id, "video.track", track_inputs, track_name, _meta_of(tr))
         track_wires.append(_wire(track_id, "frames"))
     project_id = slug(f"proj_{name}")
     composite: Dict[str, Any] = {"id": project_id, "name": name, "settings": settings}
@@ -457,8 +435,8 @@ def declare_video(root: Element) -> Declaration:
     composite.update({"createdAt": 0, "updatedAt": 0})
     for i, w in enumerate(track_wires):
         composite[f"tracks.{i + 1}"] = w
-    nodes["composite"] = _node("composite", "video.composite", composite, name)
-    return Declaration("video", copy.deepcopy({"id": project_id, "nodes": nodes, "outputs": ["composite"], "meta": {"kind": "video"}}))
+    nodes["composite"] = _node("composite", "video.composite", composite, name, _meta_of(root, composite_sources))
+    return {"id": project_id, "nodes": nodes, "outputs": ["composite"], "meta": {"kind": "video"}}
 
 
 # ── Song ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -523,7 +501,7 @@ def tempo_of(v: Any) -> Optional[List[Dict[str, float]]]:
     return out if out[0]["atBeat"] <= 0 else None
 
 
-def declare_song(root: Element) -> Declaration:
+def declare_song(root: Element) -> Dict[str, Any]:
     """Declare a song (``song(...)`` and its tracks) as the music studio's own op graph."""
     _refuse_unknown(root, ["name", "volumeDb", "tempo", "timeSignature", "bars"])
     name = _or(_str(root, "name"), "Song")
@@ -538,7 +516,7 @@ def declare_song(root: Element) -> Declaration:
     new_id("master")
     master: Dict[str, Any] = {"name": "Master", "volumeDb": _or(_num(root, "volumeDb"), 0), "tempo": tempo, "timeSig": time_sig, "bars": _or(_num(root, "bars", 1), 8)}
     order = 0
-    for tr in root.children:
+    for tr in child_elements(root):
         if tr.type != "track":
             raise ValueError(f"<{tr.type}> is not read in a <song> (it holds <track>)")
         _refuse_unknown(tr, ["name", "colorIndex", "volumeDb", "pan", "mute", "solo"])
@@ -547,7 +525,7 @@ def declare_song(root: Element) -> Declaration:
         upstream: Optional[str] = None
         instrument: Optional[str] = None
         clips: List[str] = []
-        for el in tr.children:
+        for el in child_elements(tr):
             if el.type == "synth":
                 if instrument:
                     raise ValueError(f"{_where(tr)}: a track plays one <synth>")
@@ -557,7 +535,7 @@ def declare_song(root: Element) -> Declaration:
                     spec[k] = _or(_num(el, k), SYNTH[k])
                 spec["env"] = {k: _or(_num(el, k, 0), d) for k, d in ENVELOPE.items()}
                 instrument = new_id(f"inst_{track_name}")
-                nodes[instrument] = _node(instrument, "instrument", {"name": _or(_str(el, "name"), track_name), "spec": spec})
+                nodes[instrument] = _node(instrument, "instrument", {"name": _or(_str(el, "name"), track_name), "spec": spec}, meta=_meta_of(el))
                 upstream = instrument
             elif el.type in SONG_EFFECTS:
                 fx_type, fx_name, defaults = SONG_EFFECTS[el.type]
@@ -568,24 +546,28 @@ def declare_song(root: Element) -> Declaration:
                 for k, d in defaults.items():
                     spec[k] = _or(_num(el, k), d) if isinstance(d, (int, float)) else _or(_str(el, k, ("lowpass", "highpass", "bandpass")), d)
                 fid = new_id(f"fx_{track_name}_{el.type}")
-                nodes[fid] = _node(fid, fx_type, {"name": _or(_str(el, "name"), fx_name), "spec": spec, "audio": _wire(upstream, "audio")})
+                nodes[fid] = _node(fid, fx_type, {"name": _or(_str(el, "name"), fx_name), "spec": spec, "audio": _wire(upstream, "audio")},
+                                 meta=_meta_of(el))
                 upstream = fid
             elif el.type == "clip":
                 _refuse_unknown(el, ["name", "start", "length", "loop"])
                 clip_name = _or(_str(el, "name"), f"{track_name} {len(clips) + 1}")
                 cid = new_id(f"clip_{clip_name}")
                 notes = []
-                for n in el.children:
+                sources: Dict[str, Any] = {}
+                for n in child_elements(el):
                     if n.type != "note":
                         raise ValueError(f"<{n.type}> is not read in a <clip> (it holds <note>)")
                     _refuse_unknown(n, ["pitch", "start", "duration", "velocity"])
                     p = pitch_of(n.props.get("pitch"))
                     if p is None:
                         raise ValueError(f'<note>: pitch is a MIDI number (0–127) or a name ("C4", "F#3"), not {json.dumps(n.props.get("pitch"))}')
-                    notes.append({"id": f"{cid}_n{len(notes) + 1}", "pitch": p, "start": _or(_num(n, "start", 0), 0), "dur": _or(_num(n, "duration", 0), 1),
+                    nid = f"{cid}_n{len(notes) + 1}"
+                    notes.append({"id": nid, "pitch": p, "start": _or(_num(n, "start", 0), 0), "dur": _or(_num(n, "duration", 0), 1),
                                   "vel": _or(_num(n, "velocity", 0, 1), 0.8)})
+                    sources[f"note:{nid}"] = n.source
                 nodes[cid] = _node(cid, "midiClip", {"name": clip_name, "start": _or(_num(el, "start", 0), 0), "length": _or(_num(el, "length", 0), 4),
-                                                     "notes": notes, "loop": _or(_bool(el, "loop"), False)})
+                                                     "notes": notes, "loop": _or(_bool(el, "loop"), False)}, meta=_meta_of(el, sources))
                 clips.append(cid)
             else:
                 raise ValueError(f"<{el.type}> is not read on a <track> (it holds <synth>, effects ({', '.join(SONG_EFFECTS)}) and <clip>)")
@@ -598,17 +580,16 @@ def declare_song(root: Element) -> Declaration:
                                         "mute": _or(_bool(tr, "mute"), False), "solo": _or(_bool(tr, "solo"), False), "colorIndex": _or(_num(tr, "colorIndex", 0), order)}
         if upstream:
             track_inputs["audio"] = _wire(upstream, "audio")
-        nodes[track_id] = _node(track_id, "track", track_inputs, meta={"order": order})
+        nodes[track_id] = _node(track_id, "track", track_inputs, meta=_meta_of(tr, None, {"order": order}))
         master[f"audio.{order + 1}"] = _wire(track_id, "audio")
         order += 1
-    nodes["master"] = _node("master", "master", master)
-    return Declaration("music", copy.deepcopy({"id": slug(f"music_{name}"), "nodes": nodes, "outputs": ["master"], "meta": {"domain": "music", "name": name}}))
+    nodes["master"] = _node("master", "master", master, meta=_meta_of(root))
+    return {"id": slug(f"music_{name}"), "nodes": nodes, "outputs": ["master"], "meta": {"domain": "music", "name": name}}
 
 
-def from_media(root: Element) -> Declaration:
-    """Declare a media root element: a ``video(...)`` or a ``song(...)``."""
-    if root.type == "video":
-        return declare_video(root)
-    if root.type == "song":
-        return declare_song(root)
-    raise ValueError(f"<{root.type}> is not a media root (a video or a song)")
+def _declare(root: Element, stem: str) -> Dict[str, Any]:
+    return {"graph": declare_video(root) if root.tag == "video" else declare_song(root)}
+
+
+declares("media", "video", _declare)
+declares("media", "song", _declare)

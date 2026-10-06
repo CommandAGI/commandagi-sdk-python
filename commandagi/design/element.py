@@ -15,7 +15,8 @@ Each element asks ``source.here()`` which call of the running file made it and k
 declaration copies it where the TypeScript SDK copies an element's ``source``.
 
 A vocabulary module declares its tags with ``define(globals(), "module", {tag: signature})``; a signature is the
-TypeScript SDK's ``SIGNATURES`` entry: ``{"args": [...], "holds": "children" | "text"}`` (absent: a leaf). A root
+TypeScript SDK's ``SIGNATURES`` entry: ``{"args": [...], "holds": "children" | "text"}`` (absent: a leaf), and
+``"snake": [...]``, the attribute names that are snake_case in TypeScript too (read as written). A root
 tag's declaration is registered with ``declares(module, tag, fn)``; ``run_module`` finds it with ``declarer_of``.
 """
 from __future__ import annotations
@@ -88,6 +89,9 @@ def _flatten(values: Sequence[Any], out: List[Any]) -> List[Any]:
 def _make(module: str, tag: str, signature: Dict[str, Any]) -> Callable[..., Element]:
     args: Sequence[str] = tuple(signature.get("args") or ())
     holds: Optional[str] = signature.get("holds")
+    # An attribute whose TypeScript name is itself snake_case (a world's `size_mm`) is written as it is: the snake_case
+    # of `size_mm` is `size_mm`, so a writer needs nothing more; only the reading needs the tag's list.
+    keep = frozenset(signature.get("snake") or ())
 
     def make(*given: Any, **attributes: Any) -> Element:
         source = here()
@@ -96,7 +100,7 @@ def _make(module: str, tag: str, signature: Dict[str, Any]) -> Callable[..., Ele
         for name, value in zip(args, given):
             props[name] = value
         for written, value in attributes.items():
-            name = attr_name(written, where)
+            name = written if written in keep else attr_name(written, where)
             if name in props:
                 raise TypeError(f"{where}{written} is given twice")
             props[name] = value

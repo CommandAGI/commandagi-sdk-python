@@ -66,63 +66,95 @@ Snapshot ids come from `cagi.call("list_snapshots")`, e.g. `simulation/warehouse
 
 ## Design in code: `commandagi.design`
 
-The same structure-declaring primitives as the TypeScript SDK's `commandagi/design`, producing the same op
-graph (plain JSON). They cover CAD (`part`, `box`, `cylinder`, `sketch`, `extrude`, `subtract`, `hole`,
-`linear_pattern` and the rest), EDA (`circuit`, `board`, `component`, `net`, `connect`, `footprints`), a board
-in code (`pcb_board`, `pcb_component`, `pcb_trace`, `pcb_via`: the same nodes as a `.pcb.tsx`) and any graph (`graph`, `node`, `input_`, `code`). There is no kernel, solver, router or renderer; importing
-`commandagi.design` needs nothing but the standard library.
+The same structure-declaring primitives as the TypeScript SDK's `commandagi/design`, producing the same op graph
+(plain JSON). `commandagi.design` itself holds the code-part primitives: CAD (`part`, `box`, `cylinder`, `sketch`,
+`extrude`, `subtract`, `hole`, `linear_pattern` and the rest), EDA (`circuit`, `board`, `component`, `net`, `connect`,
+`footprints`), any graph (`graph`, `node`, `input_`, `code`) and `run_module`. There is no kernel, solver, router or
+renderer; importing `commandagi.design` needs nothing but the standard library.
 
-`commandagi.design.twod` declares 2D documents the way the TypeScript SDK's JSX does: `twod.drawing(twod.layer(
-twod.rect(x=…, …), name="Layer 1"), name="Poster", width=800, height=600)`, and `twod.painting`, `twod.photo` and
-`twod.nest` alike. A call is one node, its keywords the node's inputs (`from_` for a Python word), its positional
-arguments the nodes it takes. Tests: `python -m unittest tests.test_twod`.
+### Documents: one module per vocabulary
 
-Office documents are declared as calls with the same shapes as the TypeScript SDK's office JSX: `workbook(sheet(…,
-cell("A1", "Item", bold=True), cell("B2", formula="=B1*12")))`, `page(h1("Notes"), p("Text with ", b("bold"), "."))`
-and `deck(slide(shape("ellipse", x=160, y=160, w=400, h=400), layout="Blank"))`. A workbook and a page leave
-`run_module` as its `document` (the sheets and docs editors' own JSON); a deck is the deck's op graph.
-The ontology's own files have the same declarations as the TypeScript SDK's JSX, with calls in place of tags:
-`world(name, kind, space(…), unit(uid=…, name=…, device=…, position=[…], rotation=0), …)`, `device(name,
-channel(id=…, …))`, `dashboard(name, split("x", 0.5, pane(id="a", …), pane(id="b", …)), region(side=…, …))`,
-`geoproject(id, name, date_range(…), camera(…))` and `opgraph(graph_node(id, type, x=…, y=…, …), wire("a:out",
-"b:in"))`. Keyword arguments are the record's fields, verbatim (a Python keyword takes a trailing underscore:
-`from_=`). They declare what the JSX declares: a world, a definition, a dashboard or a geo project leaves `run_module`
-as its `document`; a node graph is the editor's op graph.
+Every document a TypeScript file writes in JSX, a Python file writes as calls, element for element. One module per
+vocabulary, one function per tag, named by the tag:
 
-`commandagi.design.cadquery` is a CadQuery-style importer: `Workplane("XY").box(…).faces(">Z").workplane()
-.rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real
-topology (fillets, edge selectors).
+| module | documents |
+| --- | --- |
+| `commandagi.design.schematic` | a schematic (`group`) |
+| `commandagi.design.pcb` | a board in code (`board`) |
+| `commandagi.design.threed` | a 3D part or assembly |
+| `commandagi.design.fab` | a machining setup (`cam`), a slicing setup (`slicing`) |
+| `commandagi.design.office` | a workbook, a page, a deck |
+| `commandagi.design.twod` | a drawing, a painting, a photo, a nest |
+| `commandagi.design.media` | a video, a song |
+| `commandagi.design.ontology` | a world, a device definition, a dashboard, a geo project, a node graph |
+| `commandagi.design.business` | a company, an RFC, a case |
+| `commandagi.design.tasks` | a task, a project |
+| `commandagi.design.records` | a contract, a product instance |
 
-`commandagi.design.threed` declares a whole 3D document element by element, as the TypeScript SDK's JSX
-does in a `.3d.tsx`: `h(tag, *children, **fields)` makes an element, and a `part` (or `assembly`) element
-with `parameter`, `plane`, one element per feature named by its type (`sketch` with its `point`, `line`,
-`circle` and `constraint` children, `extrude`, `fillet`, `hole` …), `body` and `slot` declares the 3D
-document's graph itself, node for node. Tests: `python -m unittest tests.test_threed`.
+The rules of a call, the same in every module:
 
-A `.py` code part is a script. Its result is `main(**inputs)` if it defines `main`; otherwise what it passed
-to `show_object`; otherwise its `result` variable. `param(name, default, unit=…)` declares an input and
-reads its value. In a CommandAGI editor, a `.py` code node runs under Pyodide in a sandboxed worker, where
-`import cadquery as cq` is this importer (OCCT does not run there). `run_module(source, path, inputs)` is
-what the sandbox calls. Tests: `python -m unittest tests.test_design tests.test_schematic tests.test_office`.
-
-`commandagi.design.schematic` is a schematic in Python (a `<name>.sch.py` the CommandAGI circuit editor opens and
-edits), the same nodes as the TypeScript SDK's JSX schematic:
+- `tag(*children, **attributes)`. The function's name is the tag: `-` becomes `_` (`brush_stroke`), a Python keyword
+  gets a trailing `_` (`from_`), the case is kept (`Company`).
+- Children are positional, in order. A tag that holds text takes texts and inline elements:
+  `p("The run ", b("passed"), ".")`. A loop is a starred argument: `layer(*[rect(x=i * 10) for i in range(3)])`.
+  A leaf takes no children.
+- Attributes are keywords in snake_case of the TypeScript name: `frozen_rows=1` is `frozenRows`, `sch_x=114.3` is
+  `schX`. A keyword with an uppercase letter is refused by name.
+- Only the schematic has positional attributes: `resistor("R1", …)`, `group("Divider", …)`, `trace(from, to)`,
+  `netlabel(net, connection)`, `unit(part, unit)`.
+- The file's result is `result = <root>(…)` (or `main()`, or `show_object`).
 
 ```python
-from commandagi.design.schematic import ground, group, resistor, trace, voltagesource
+from commandagi.design.twod import drawing, ellipse, group, layer, rect
 
-with group("Divider"):
-    voltagesource("V1", voltage="9", sch_x=114.3, sch_y=114.3)
-    resistor("R1", resistance="3k", sch_x=114.3, sch_y=88.9, sch_rotation=90)
-    ground("#PWR1", sch_x=139.7, sch_y=114.3)
-    trace(".V1 > .pos", ".R1 > .pin1")
+result = drawing(
+    layer(
+        rect(x=40, y=40, w=200, h=120, fill="#3b82f6"),
+        group(ellipse(cx=500, cy=300, rx=60, ry=60, fill="#f59e0b"), name="Badge"),
+        name="Layer 1",
+    ),
+    name="Poster", width=800, height=600, background="#ffffff",
+)
 ```
 
-The `with group(...)` block is the file's result. `run_module` maps the file's calls with Python's `ast`
-(`commandagi.design.source`): each node a call declares carries `meta.source` (the call's span, each keyword's span
-and literal value or expression, how many times it ran), so the editor writes each edit back into the file as the
-smallest text edit. A keyword that is an expression is never replaced with a literal (the edit is refused with its
-line).
+```python
+from commandagi.design.schematic import ground, group, netlabel, resistor, trace, voltagesource
+
+result = group(
+    "Divider",
+    voltagesource("V1", voltage="9", sch_x=114.3, sch_y=114.3),
+    resistor("R1", resistance="3k", sch_x=114.3, sch_y=88.9, sch_rotation=90),
+    ground("#PWR1", sch_x=139.7, sch_y=114.3),
+    trace(".V1 > .pos", ".R1 > .pin1"),
+    netlabel("OUT", ".R1 > .pin2"),
+)
+```
+
+A graph document (a schematic, a board, a 3D part, a drawing, a deck, a video, a node graph) leaves `run_module` as
+its graph. Any other document (a workbook, a world, a company, a task …) leaves as `document` (`{format, document,
+sources}`) beside an empty graph.
+
+### Where each element is written
+
+`run_module` maps the file's calls with Python's `ast` (`commandagi.design.source`). Each element records the call
+that made it. A declaration puts that call where the TypeScript SDK puts a JSX element's source: a node's
+`meta.source`, a node's `meta.sources` by key, a document's `sources` by key. Each one holds the call's span, each
+keyword's span with its literal value or its expression, and how many times the call ran. The whole map rides on the
+graph as `meta.sourceMap`: every call with its arguments, its parent element, its slot among its parent's children,
+and whether it runs in a loop. The editor writes each edit back into the file as the smallest text edit. A keyword
+that is an expression is never replaced with a literal: the edit is refused with its line.
+
+### Code parts and CadQuery
+
+`commandagi.design.cadquery` is a CadQuery-style importer: `Workplane("XY").box(…).faces(">Z").workplane()
+.rarray(…).hole(…)` records the same features the primitives declare. It refuses, by name, what needs real topology
+(fillets, edge selectors).
+
+A `.py` code part is a script. Its result is `main(**inputs)` if it defines `main`; otherwise what it passed to
+`show_object`; otherwise its `result` variable. `param(name, default, unit=…)` declares an input and reads its value.
+In a CommandAGI editor, a `.py` code node runs under Pyodide in a sandboxed worker, where `import cadquery as cq` is
+this importer (OCCT does not run there). `run_module(source, path, inputs)` is what the sandbox calls. Tests:
+`python -m unittest discover -s tests`.
 
 ## Reinforcement learning
 

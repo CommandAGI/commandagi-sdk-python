@@ -100,6 +100,11 @@ class KeywordTests(unittest.TestCase):
         self.assertEqual([attr_name(k) for k in ("frozen_rows", "sch_x", "from_", "foo_u_r_l", "x", "pin1")],
                          ["frozenRows", "schX", "from", "fooURL", "x", "pin1"])
 
+    def test_a_name_snake_case_in_typescript_too_is_read_as_written(self):
+        from commandagi.design.ontology import space, unit
+        self.assertEqual(space(origin_mm=[0, 0, 0], size_mm=[1, 1, 1]).props, {"origin_mm": [0, 0, 0], "size_mm": [1, 1, 1]})
+        self.assertEqual(unit(uid="a", manual_url="x", size_mm=[1, 1, 1]).props, {"uid": "a", "manualUrl": "x", "size_mm": [1, 1, 1]})
+
     def test_a_camel_case_keyword_is_refused_by_name(self):
         with self.assertRaisesRegex(TypeError, "frozenRows is written frozen_rows"):
             attr_name("frozenRows")
