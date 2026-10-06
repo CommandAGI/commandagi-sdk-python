@@ -923,6 +923,48 @@
             "withThread": false
           }
         ]
+      },
+      {
+        "name": "vpn",
+        "doc": "The VPN overlay (docs/vpn.md): its nodes and exits, and egress from an exit's address.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "status",
+            "tool": "vpn_status",
+            "doc": "The account's nodes, the exits it may use, the ACL and the exit grants.",
+            "params": [],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "fetch",
+            "tool": "vpn_fetch",
+            "doc": "Fetch a URL from a VPN exit's address (method, headers, body, exit in opts); refused without an exit grant.",
+            "params": [
+              {
+                "name": "url",
+                "key": "url",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
       }
     ]
   },
