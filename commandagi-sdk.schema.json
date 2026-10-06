@@ -634,6 +634,121 @@
         ]
       },
       {
+        "name": "postal",
+        "doc": "Paper mail (docs/postal.md): letters from a .letter.tsx in your files, and mailboxes that receive and scan mail.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "quote",
+            "tool": "postal_quote",
+            "doc": "What mailing the letter would cost, and how it would go. Costs nothing.",
+            "params": [
+              {
+                "name": "source",
+                "key": "source",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "send",
+            "tool": "postal_send",
+            "doc": "Mail the letter: charged first, recorded before it is sent, never retried. An agent needs a postal grant.",
+            "params": [
+              {
+                "name": "source",
+                "key": "source",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "status",
+            "tool": "postal_status",
+            "doc": "A sent piece's state and records; without a piece, the sent pieces.",
+            "params": [
+              {
+                "name": "piece",
+                "key": "piece",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "cancel",
+            "tool": "postal_cancel",
+            "doc": "Cancel a piece before it is printed; the charge comes back.",
+            "params": [
+              {
+                "name": "piece",
+                "key": "piece",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "inbox",
+            "tool": "postal_inbox",
+            "doc": "Your mailboxes, or one mailbox's received pieces with their scans.",
+            "params": [
+              {
+                "name": "mailbox",
+                "key": "mailbox",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
+      },
+      {
         "name": "social",
         "doc": "A single connected social account, bound: cagi.social('tiktok', '@brand').post(fileId).",
         "factory": [
