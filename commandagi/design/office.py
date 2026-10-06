@@ -33,14 +33,17 @@ The tags (keywords are snake_case of the TypeScript attribute: ``frozen_rows``, 
     sheet(*cells, name, rows, cols, frozen_rows, frozen_cols, color)
     cell(at, value | formula, num_fmt, bold, italic, align, bg, color, wrap)   one cell; a formula starts with "="
     column(at, width)  row(at, height)                        a column's width or a row's height, in pixels
-    page(*blocks, title)                                      the page
-    h1 h2 h3 p bullet numbered quote (*text)  todo(*text, checked)   a text block: its text and marks
+    page(*blocks, title, paper, font)                         the page; paper "letter" or "a4"; font "sans", "serif", "mono"
+    h1 h2 h3 p quote (*text, align)                           a text block: its text and marks; align "left", "center" …
+    bullet numbered (*text)  todo(*text, checked)             a list item, a checklist item
     pre(text, lang)  divider()  image(src, alt)               a code block, a rule, a picture
     b i u s code a(*text, href) br()                          marks inside a text
-    deck(*slides, name, width, height, dpi)                   the deck (1280 x 720 slide units unless it says)
+    deck(*slides, name, width, height, dpi, style)            the deck (1280 x 720 slide units unless it says); style
+                                                              "plain", "ink", "editorial" or "signal"
     slide(*elements, layout, name, notes, background, hidden)
     text(*text, placeholder, x, y, w, h, rotation, font_size, color, bold, italic, underline, align, valign …)
     shape(shape, x, y, w, h, fill, stroke, stroke_width, corner_radius)  image(src, x, y, w, h, fit, alt)
+                                                              every element also takes opacity, label, locked and group
 
 A workbook and a page are documents of their own: ``run_module`` hands them back beside an empty graph, with where
 each part was written in ``sources`` (``workbook``, ``sheet:<id>``, ``cell:<id>!A1``, ``column:<id>!B``,
@@ -237,6 +240,11 @@ def read_workbook(root: Element) -> Dict[str, Any]:
 # ── Page ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
 _TEXT_BLOCKS = {"h1": "h1", "h2": "h2", "h3": "h3", "p": "p", "bullet": "ul", "numbered": "ol", "todo": "todo", "quote": "quote"}
+#: The blocks that take an alignment, and the page's paper and typefaces (a few, not a font menu).
+_ALIGNED = ("h1", "h2", "h3", "p", "quote")
+_BLOCK_ALIGN = ["left", "center", "right", "justify"]
+PAPERS = ["letter", "a4"]
+PAGE_FONTS = ["sans", "serif", "mono"]
 _MARKS = {"b", "i", "u", "s", "code"}
 
 
@@ -287,7 +295,7 @@ def _plain_text(children: List[Any], at: str) -> str:
 
 def read_page(root: Element) -> Dict[str, Any]:
     """A ``page(...)`` as the page the docs editor opens, with where each block was written."""
-    _only(root, ["title"])
+    _only(root, ["title", "paper", "font"])
     sources: Dict[str, Any] = {"page": root.source}
     blocks = []
     for i, el in enumerate(child_elements(root)):
@@ -295,10 +303,11 @@ def read_page(root: Element) -> Dict[str, Any]:
         sources[f"block:{bid}"] = el.source
         kind = _TEXT_BLOCKS.get(el.tag)
         if kind:
-            _only(el, ["checked"] if kind == "todo" else [])
+            _only(el, ["checked"] if kind == "todo" else ["align"] if el.tag in _ALIGNED else [])
             checked = _bool(el, "checked")
             blocks.append(_defined({"id": bid, "type": kind, "html": inline_html(el.children, f"<{el.tag}>"),
-                                    "checked": (checked if checked is not None else False) if kind == "todo" else None}))
+                                    "checked": (checked if checked is not None else False) if kind == "todo" else None,
+                                    "align": _one_of(el, "align", _BLOCK_ALIGN) if el.tag in _ALIGNED else None}))
         elif el.tag == "pre":
             _only(el, ["lang"])
             blocks.append(_defined({"id": bid, "type": "code", "html": _escape(_plain_text(el.children, "<pre>")), "lang": _str(el, "lang")}))
@@ -312,7 +321,9 @@ def read_page(root: Element) -> Dict[str, Any]:
             raise ValueError(f"<{el.tag}> is not a block of a <page> (the blocks are h1, h2, h3, p, bullet, numbered, todo, quote, pre, "
                              f"divider and image)")
     title = _str(root, "title")
-    document = {"format": "page", "version": 1, "blocks": blocks, **({"meta": {"title": title}} if title is not None else {})}
+    setup = _defined({"paper": _one_of(root, "paper", PAPERS), "font": _one_of(root, "font", PAGE_FONTS)})
+    document = {"format": "page", "version": 1, "blocks": blocks, **({"meta": {"title": title}} if title is not None else {}),
+                **({"page": setup} if setup else {})}
     return {"format": "page", "document": document, "sources": sources}
 
 
@@ -321,7 +332,9 @@ def read_page(root: Element) -> Dict[str, Any]:
 #: The deck's node types (the decks editor's own).
 DECK_TYPES = {"doc": "deck.doc", "slide": "deck.slide", "text": "deck.text", "image": "deck.image", "shape": "deck.shape"}
 _BOX = ["x", "y", "w", "h", "rotation"]
-_COMMON = [*_BOX, "placeholder", "z", "visible", "opacity", "label"]
+_COMMON = [*_BOX, "placeholder", "z", "visible", "opacity", "label", "locked", "group"]
+#: The deck's styles: a few curated looks (the decks editor's own themes), not a theme editor.
+DECK_STYLES = ["plain", "ink", "editorial", "signal"]
 _MARK_STYLE = {"b": "bold", "i": "italic", "u": "underline", "s": "strike"}
 
 
@@ -367,7 +380,7 @@ def rich_text(children: List[Any], at: str) -> Dict[str, Any]:
 def read_deck(root: Element) -> Dict[str, Any]:
     """A ``deck(...)`` as the deck's op graph: ``doc``, then ``slide-N``, then ``slide-N.M`` for its elements. A slide
     names its layout by name (``layout``); the editor binds that name to its stock layouts."""
-    _only(root, ["name", "width", "height", "dpi"])
+    _only(root, ["name", "width", "height", "dpi", "style"])
     nodes: Dict[str, Dict[str, Any]] = {}
 
     def meta(el: Element) -> Dict[str, Any]:
@@ -384,7 +397,7 @@ def read_deck(root: Element) -> Dict[str, Any]:
             eid = f"{sid}.{k + 1}"
             box = _defined({p: _num(c, p) for p in _BOX})
             common = _defined({"box": box or None, "placeholder": _str(c, "placeholder"), "z": _num(c, "z"), "visible": _bool(c, "visible"),
-                               "opacity": _num(c, "opacity"), "label": _str(c, "label")})
+                               "opacity": _num(c, "opacity"), "label": _str(c, "label"), "locked": _bool(c, "locked"), "group": _str(c, "group")})
             if c.tag == "text":
                 _only(c, [*_COMMON, "fontSize", "color", "bold", "italic", "underline", "align", "valign", "fontFamily", "lineHeight", "overflow"])
                 kind = DECK_TYPES["text"]
@@ -418,7 +431,8 @@ def read_deck(root: Element) -> Dict[str, Any]:
     width, height = _num(root, "width"), _num(root, "height")
     nodes["doc"] = {"id": "doc", "type": DECK_TYPES["doc"],
                     "inputs": _defined({"name": name, "width": 1280 if width is None else width, "height": 720 if height is None else height,
-                                        "dpi": _num(root, "dpi"), **channels("slides", slides)}), **meta(root)}
+                                        "dpi": _num(root, "dpi"), "style": _one_of(root, "style", DECK_STYLES),
+                                        **channels("slides", slides)}), **meta(root)}
     return {"id": f"deck:{name}", "nodes": nodes, "outputs": ["doc"], "meta": {"domain": "deck", "name": name}}
 
 
