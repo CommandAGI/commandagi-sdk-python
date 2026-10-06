@@ -2,25 +2,30 @@
 open as ``<Name>.company.py``, ``<name>.rfc.py`` and ``<name>.case.py``, and the same elements as the TypeScript SDK's JSX
 (``commandagi/design`` ``business.ts``)::
 
-    from commandagi.design.business import Company, Entity, Books, CapTable, Registration
+    from commandagi.design.business import Books, CapTable, Company, Entity, Registration
 
     result = Company(
-        Entity(jurisdiction="US-DE", form="llc", formed="2024-01-31"),
+        Entity(jurisdiction="US-DE", form="llc", formed="2024-01-31", fiscal_year_end="12-31"),
         Books(journal="Northwind/books/main.journal"),
         CapTable(ocf="Northwind/captable/"),
         Registration(kind="tax-id", jurisdiction="US", id="12-3456789"),
-        name="Northwind", files=["Northwind/"],
+        name="Northwind",
+        files=["Northwind/"],
     )
 
-Each call is an element ``{"$$design": "element", "type": "Company", "props": {..., "children": [...]}}``, the node
-shape the JSX runtime makes. ``document_of`` reads one into the document the apps use: the company itself, or an RFC's
-or a case's ``{"id"?, "draft"}``. The standard's parts REF their files (the journal stays hledger, the cap table Open
-Cap Table Format). A change's ``parameter`` is the draft's ``key``. An unknown attribute or child is refused by name.
+Each call is one element (``./element.py``): its children positional, its attributes as snake_case keywords
+(``fiscal_year_end=`` is ``fiscalYearEnd``). ``document_of`` reads one into the document the apps use: the company
+itself, or an RFC's or a case's ``{"id"?, "draft"}``. The standard's parts REF their files (the journal stays hledger,
+the cap table Open Cap Table Format). A change's ``parameter`` is the draft's ``key``. Beside the document, ``sources``
+names the call each part was written in, by path (``""`` the root, ``entity``, ``options/0/changes/1``). An unknown
+attribute or child is refused by name.
 """
 from __future__ import annotations
 
 import math
 from typing import Any, Dict, List, Optional
+
+from .element import Element, child_elements, declares, define
 
 _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
 
@@ -48,49 +53,23 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Relief": {"props": {"kind": _TEXT, "description": _TEXT, "harmIds": _TEXTS, "amount": _AMOUNT, "days": _AMOUNT}, "required": ["kind"]},
 }
 
+#: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``): a tag that takes child tags holds children.
+SIGNATURES: Dict[str, Dict[str, Any]] = {t: ({"holds": "children"} if s.get("one") or s.get("many") else {}) for t, s in BUSINESS_TAGS.items()}
 
-def _element(tag: str):
-    def make(*children: Any, **props: Any) -> Dict[str, Any]:
-        p = {k: v for k, v in props.items() if v is not None}
-        if children:
-            p["children"] = list(children)
-        return {"$$design": "element", "type": tag, "props": p}
-    make.__name__ = tag
-    make.__doc__ = f"A <{tag}> element (commandagi.design.business)."
-    return make
+__all__ = ["BUSINESS_TAGS", "SIGNATURES", "read_business_node", "sources_of", "company_of", "rfc_of", "case_of", "document_of",
+           *define(globals(), "business", SIGNATURES)]
 
 
-Company = _element("Company")
-Entity = _element("Entity")
-Registration = _element("Registration")
-Books = _element("Books")
-CapTable = _element("CapTable")
-People = _element("People")
-Calendar = _element("Calendar")
-Matters = _element("Matters")
-Rfc = _element("Rfc")
-Option = _element("Option")
-Change = _element("Change")
-Case = _element("Case")
-Harm = _element("Harm")
-Relief = _element("Relief")
-
-
-def _is_element(v: Any) -> bool:
-    return isinstance(v, dict) and v.get("$$design") == "element"
-
-
-def _children(c: Any) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
-    if c is None or isinstance(c, bool):
-        return out
-    if isinstance(c, (list, tuple)):
-        for x in c:
-            out.extend(_children(x))
-        return out
-    if _is_element(c):
-        return [c]
-    raise ValueError("a design element's children are elements")
+def _plain(v: Any, what: str) -> Any:
+    if v is None or isinstance(v, (str, bool)):
+        return v
+    if isinstance(v, (int, float)):
+        return v
+    if isinstance(v, (list, tuple)):
+        return [_plain(x, f"{what}[{i}]") for i, x in enumerate(v)]
+    if isinstance(v, dict):
+        return {k: _plain(x, f"{what}.{k}") for k, x in v.items()}
+    raise ValueError(f"{what} is plain data (text, numbers, true or false, lists, objects)")
 
 
 def _value(tag: str, prop: str, kind: str, v: Any) -> Any:
@@ -107,18 +86,22 @@ def _value(tag: str, prop: str, kind: str, v: Any) -> Any:
     # An amount is as the form typed it (text) or as a file stored it (a number); each is kept as it is.
     if kind == _AMOUNT and (isinstance(v, bool) or not isinstance(v, (str, int, float)) or (isinstance(v, float) and not math.isfinite(v))):
         raise bad("text or a number")
-    return list(v) if kind == _TEXTS else v
+    if kind == _TEXTS:
+        return list(v)
+    if kind in (_RECORD, _DATA):
+        return _plain(v, f"<{tag}> {prop}")
+    return v
 
 
-def read_business_node(el: Dict[str, Any]) -> Dict[str, Any]:
-    """Read one element of the vocabulary and its children: ``{tag, props, one, many}``."""
-    tag = el.get("type")
+def read_business_node(el: Element) -> Dict[str, Any]:
+    """Read one element of the vocabulary and its children: ``{tag, props, one, many, source?}``."""
+    tag = el.tag
     spec = BUSINESS_TAGS.get(tag)
     if not spec:
         raise ValueError(f"<{tag}> is not a tag of a company, an RFC or a case")
     props: Dict[str, Any] = {}
-    for k, v in (el.get("props") or {}).items():
-        if k in ("children", "key") or v is None:
+    for k, v in el.props.items():
+        if k == "key" or v is None:
             continue
         kind = spec["props"].get(k)
         if not kind:
@@ -129,19 +112,40 @@ def read_business_node(el: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError(f"<{tag}> needs {k}")
     one: Dict[str, Optional[Dict[str, Any]]] = {f: None for f in spec.get("one", {})}
     many: Dict[str, List[Dict[str, Any]]] = {f: [] for f in spec.get("many", {})}
-    for child in _children((el.get("props") or {}).get("children")):
-        field = next(((f, "one") for f, t in spec.get("one", {}).items() if t == child["type"]), None) or \
-            next(((f, "many") for f, t in spec.get("many", {}).items() if t == child["type"]), None)
+    for child in child_elements(el):
+        field = next(((f, "one") for f, t in spec.get("one", {}).items() if t == child.tag), None) or \
+            next(((f, "many") for f, t in spec.get("many", {}).items() if t == child.tag), None)
         if not field:
-            raise ValueError(f"<{tag}> does not take <{child['type']}>")
+            takes = [*spec.get("one", {}).values(), *spec.get("many", {}).values()]
+            raise ValueError(f"<{tag}> does not take <{child.tag}> (it takes {', '.join(f'<{t}>' for t in takes) or 'no children'})")
         node = read_business_node(child)
         if field[1] == "one":
             if one[field[0]]:
-                raise ValueError(f"<{tag}> has two <{child['type']}>")
+                raise ValueError(f"<{tag}> has two <{child.tag}>")
             one[field[0]] = node
         else:
             many[field[0]].append(node)
-    return {"tag": tag, "props": props, "one": one, "many": many}
+    out: Dict[str, Any] = {"tag": tag, "props": props, "one": one, "many": many}
+    if el.source is not None:
+        out["source"] = el.source
+    return out
+
+
+def sources_of(node: Dict[str, Any], at: str = "", out: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Every element's source, by path (``""`` the root, ``entity``, ``options/0/changes/1``)."""
+    out = {} if out is None else out
+    if "source" in node:
+        out[at] = node["source"]
+
+    def join(f: str) -> str:
+        return f"{at}/{f}" if at else f
+    for f, n in node["one"].items():
+        if n:
+            sources_of(n, join(f), out)
+    for f, items in node["many"].items():
+        for i, n in enumerate(items):
+            sources_of(n, join(f"{f}/{i}"), out)
+    return out
 
 
 def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
@@ -196,7 +200,12 @@ _ROOTS = {"Company": ("company", company_of), "Rfc": ("rfc", rfc_of), "Case": ("
 def document_of(value: Any) -> Optional[Dict[str, Any]]:
     """``{"format", "document", "sources"}`` for a <Company>, <Rfc> or <Case> element, else None (``run_module`` hands it
     back beside an empty graph, as the TypeScript SDK's ``declarationOf`` does)."""
-    if not _is_element(value) or value["type"] not in _ROOTS:
+    if not isinstance(value, Element) or value.tag not in _ROOTS:
         return None
-    kind, read = _ROOTS[value["type"]]
-    return {"format": kind, "document": read(read_business_node(value)), "sources": {}}
+    kind, read = _ROOTS[value.tag]
+    node = read_business_node(value)
+    return {"format": kind, "document": read(node), "sources": sources_of(node)}
+
+
+for _root in _ROOTS:
+    declares("business", _root, lambda root, stem: {"document": document_of(root)})

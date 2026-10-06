@@ -91,14 +91,14 @@ def tree_of_element(root: Element, v: Vocabulary) -> DocTree:
         key = rule.get("key")
         attrs: Dict[str, Any] = {}
         for k, value in el.props.items():
-            if k == "key" or value is None:
+            if k == "key":  # None is a value (null), as a JSX attribute written {null} is
                 continue
             allowed = rule.get("attrs")
             if allowed is not None and k not in allowed:
                 raise ValueError(f"{_where(el, key)}: {k} is not read ({', '.join(allowed)})")
             attrs[k] = _plain(value, f"{_where(el, key)} {k}")
         for k in rule.get("required") or []:
-            if attrs.get(k) is None:
+            if k not in attrs:
                 raise ValueError(f"{_where(el, key)} needs {k}")
         for c in el.children:
             if isinstance(c, str) and c.strip():

@@ -1,9 +1,10 @@
 """A company, an RFC and a case declared in Python read as the same documents as the TypeScript SDK's JSX
-(business.test.ts). Run: python -m unittest discover -s tests"""
+(business.test.ts), and each part names the call it was written in. Run: python -m unittest discover -s tests"""
 import unittest
 
-from commandagi.design import (Books, CapTable, Case, Change, Company, Entity, Harm, Option, Registration, Relief, Rfc,
-                               document_of)
+from commandagi.design import run_module
+from commandagi.design.business import (Books, CapTable, Case, Change, Company, Entity, Harm, Option, Registration, Relief, Rfc,
+                                        document_of)
 
 
 class BusinessTests(unittest.TestCase):
@@ -28,7 +29,7 @@ class BusinessTests(unittest.TestCase):
         rfc = document_of(Rfc(Option(Change(op="set_parameter", parameter="rfcDepositCents", value="500"), title="Ten hours"), id="rfc_1", title="Rest"))
         self.assertEqual(rfc["document"], {"id": "rfc_1", "draft": {"title": "Rest", "options": [
             {"title": "Ten hours", "changes": [{"op": "set_parameter", "value": "500", "key": "rfcDepositCents"}]}]}})
-        case = document_of(Case(Harm(id="h1", interest="property", amount="4200"), Relief(kind="restitution", harmIds=["h1"]), respondent="Acme"))
+        case = document_of(Case(Harm(id="h1", interest="property", amount="4200"), Relief(kind="restitution", harm_ids=["h1"]), respondent="Acme"))
         self.assertEqual(case["document"], {"draft": {"respondent": "Acme", "harms": [{"id": "h1", "interest": "property", "amount": "4200"}],
                                                       "relief": [{"kind": "restitution", "harmIds": ["h1"]}]}})
         stored = document_of(Case(Harm(id="h1", amount=4200), Relief(kind="exclusion", amount=10.5, days=30)))
@@ -43,13 +44,28 @@ class BusinessTests(unittest.TestCase):
             document_of(Company(Harm(id="h"), name="X"))
         with self.assertRaisesRegex(ValueError, "<Company> needs name"):
             document_of(Company())
+        with self.assertRaisesRegex(TypeError, "holds nothing"):
+            Books(CapTable(ocf="x"), journal="j")
+        with self.assertRaisesRegex(TypeError, "fiscalYearEnd is written fiscal_year_end"):
+            Entity(jurisdiction="US", fiscalYearEnd="12-31")
 
-    def test_run_module_hands_a_company_back_as_its_document(self):
-        from commandagi.design import run_module
-        out = run_module('from commandagi.design import Company, Entity\nresult = Company(Entity(jurisdiction="US-DE"), name="N")', "N.company.py")
+    def test_run_module_names_each_part_by_its_call(self):
+        out = run_module(
+            "from commandagi.design.business import Change, Option, Rfc\n"
+            "result = Rfc(\n"
+            "    Option(Change(op=\"add_duty\", duty_id=\"rest\"), title=\"A\"),\n"
+            "    Option(title=\"B\"),\n"
+            "    title=\"Rest\",\n"
+            ")\n", "Rest.rfc.py")
         self.assertEqual(out["graph"]["nodes"], {})
-        self.assertEqual(out["document"]["format"], "company")
-        self.assertEqual(out["document"]["document"]["entity"]["jurisdiction"], "US-DE")
+        self.assertIn("sourceMap", out["graph"]["meta"])
+        self.assertEqual(out["document"]["document"]["draft"]["options"][0]["changes"], [{"op": "add_duty", "dutyId": "rest"}])
+        sources = out["document"]["sources"]
+        self.assertEqual(sorted(sources), ["", "options/0", "options/0/changes/0", "options/1"])
+        self.assertEqual((sources[""]["tag"], sources[""]["line"]), ("Rfc", 2))
+        self.assertEqual((sources["options/0/changes/0"]["tag"], sources["options/0/changes/0"]["line"]), ("Change", 3))
+        self.assertEqual(sources["options/0/changes/0"]["props"]["duty_id"]["value"], "rest")
+        self.assertEqual((sources["options/1"]["tag"], sources["options/1"]["line"]), ("Option", 4))
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ class FabTests(unittest.TestCase):
     def test_a_machining_setup_is_its_setup(self):
         d = declare_document(cam(
             stock(material_id="plywood", thickness_mm=6, x_mm=90, y_mm=70),
-            machine(post="grbl", max_spindle_rpm=10000, spindle_power_kw=None),
+            machine(post="grbl", max_spindle_rpm=10000),
             fixture(name="clamp", x_mm=-14, y_mm=25, w_mm=20, d_mm=20, z_mm=4),
             operation(id="op-2", op="mill_contour", profile="contour_wood", tabs={"count": 4, "lengthMm": 5, "heightMm": 1.5}),
             operation(id="op-1", op="mill_pocket", profile="pocket_wood", enabled=False),
