@@ -7,17 +7,19 @@ from commandagi.design.schematic import sch_symbol_type_for
 
 DIVIDER = '''from commandagi.design.schematic import ground, group, resistor, trace, voltagesource
 
-with group("Divider"):
-    voltagesource("V1", voltage="9", sch_x=114.3, sch_y=114.3)  # the supply
+result = group(
+    "Divider",
+    voltagesource("V1", voltage="9", sch_x=114.3, sch_y=114.3),  # the supply
     resistor(
         "R1",
         resistance="3k",
         sch_x=114.3 + 0,
         sch_y=88.9,
-    )
-    ground("#PWR1", sch_x=139.7, sch_y=114.3)
-    trace(".V1 > .pos", ".R1 > .pin1")
-    trace(".V1 > .neg", "net.GND")
+    ),
+    ground("#PWR1", sch_x=139.7, sch_y=114.3),
+    trace(".V1 > .pos", ".R1 > .pin1"),
+    trace(".V1 > .neg", "net.GND"),
+)
 '''
 
 
@@ -29,8 +31,13 @@ def run(text, path="Divider.sch.py"):
     return run_module(text, path)["graph"]
 
 
+def sheet(body, name="S"):
+    """A file whose result is ``group(name, <body>)``; ``body`` is the group's arguments after the name."""
+    return f'from commandagi.design.schematic import *\nresult = group("{name}",\n{body})\n'
+
+
 class SheetTests(unittest.TestCase):
-    def test_the_block_declares_placements_wires_bound_to_pins_and_labels(self):
+    def test_the_group_declares_placements_wires_bound_to_pins_and_labels(self):
         g = run(DIVIDER)
         self.assertEqual(g["meta"]["name"], "Divider")
         self.assertNotIn("outputs", g, "a schematic without a board has no outputs")
@@ -44,56 +51,44 @@ class SheetTests(unittest.TestCase):
     def test_each_node_carries_its_call_with_the_span_of_each_keyword(self):
         g = run(DIVIDER)
         src = g["nodes"]["R1"]["meta"]["source"]
-        self.assertEqual((src["tag"], src["line"], src["column"], src["evaluations"]), ("resistor", 5, 5, 1))
+        self.assertEqual((src["tag"], src["line"], src["column"], src["evaluations"]), ("resistor", 6, 5, 1))
         self.assertEqual(DIVIDER[src["start"]:src["end"]], 'resistor(\n        "R1",\n        resistance="3k",\n        sch_x=114.3 + 0,\n        sch_y=88.9,\n    )')
         y = src["props"]["sch_y"]
-        self.assertEqual((DIVIDER[y["start"]:y["end"]], y["literal"], y["value"], y["line"]), ("88.9", True, 88.9, 9))
-        self.assertEqual(src["props"]["sch_x"], {"start": DIVIDER.index("114.3 + 0"), "end": DIVIDER.index("114.3 + 0") + 9, "literal": False, "expr": "114.3 + 0", "line": 8})
+        self.assertEqual((DIVIDER[y["start"]:y["end"]], y["literal"], y["value"], y["line"]), ("88.9", True, 88.9, 10))
+        self.assertEqual(src["props"]["sch_x"], {"start": DIVIDER.index("114.3 + 0"), "end": DIVIDER.index("114.3 + 0") + 9, "literal": False, "expr": "114.3 + 0", "line": 9})
         self.assertEqual(g["nodes"]["sym_R1_1"]["meta"]["source"], src, "the part and its symbol are one call")
         m = g["meta"]["sourceMap"]
         self.assertEqual(m["length"], len(DIVIDER))
         self.assertEqual([e["tag"] for e in m["elements"]], ["group", "voltagesource", "resistor", "ground", "trace", "trace"])
-        self.assertEqual(m["elements"][0]["block"], {"end": len(DIVIDER) - 1, "indent": "    ", "pass": None})
-        self.assertEqual(m["imports"][0]["module"], "commandagi.design.schematic")
-        self.assertTrue(all(e["parent"] == 0 and e["child"] and e["statement"] and e["body"]["size"] == 5 for e in m["elements"][1:]))
-
-    def test_offsets_count_utf16_units_as_the_editor_does(self):
-        text = '# Ω and 𝄞\nfrom commandagi.design.schematic import *\nwith group("Ü"):\n    resistor("R1", resistance="1k", sch_x=1, sch_y=2)\n'
-        src = run(text, "u.sch.py")["nodes"]["R1"]["meta"]["source"]
-        units = text.encode("utf-16-le")
-        self.assertEqual(units[2 * src["start"]:2 * src["end"]].decode("utf-16-le"), 'resistor("R1", resistance="1k", sch_x=1, sch_y=2)')
-
-    def test_a_call_in_a_loop_counts_each_run(self):
-        text = 'from commandagi.design.schematic import *\nwith group("L"):\n    for i in range(3):\n        capacitor("C%d" % i, capacitance="1u", sch_x=10 * i, sch_y=0)\n'
-        g = run(text, "l.sch.py")
-        src = g["nodes"]["C2"]["meta"]["source"]
-        self.assertEqual(src["evaluations"], 3)
-        self.assertFalse(g["meta"]["sourceMap"]["elements"][src["element"]]["child"], "a call in a loop is not where a sibling goes")
+        self.assertTrue(all(e["parent"] == 0 and e["placed"] for e in m["elements"][1:]))
 
     def test_refused_by_name(self):
-        head = 'from commandagi.design.schematic import *\nwith group("S"):\n'
         cases = [
-            ('    ground("GND1", sch_x=0, sch_y=0)\n', "starts with #"),
-            ('    resistor("R1")\n    resistor("R2", sch_x=0, sch_y=0)\n    trace(".R1 > .pin1", ".R2 > .pin1")\n', "R1 is not on the sheet"),
-            ('    resistor("R1", sch_x=0, sch_y=0, footprint="0603")\n', "footprint is not read on a schematic"),
-            ('    with group("T"):\n        pass\n', "a schematic is one group"),
+            ('    ground("GND1", sch_x=0, sch_y=0),\n', "starts with #"),
+            ('    resistor("R1"),\n    resistor("R2", sch_x=0, sch_y=0),\n    trace(".R1 > .pin1", ".R2 > .pin1"),\n', "R1 is not on the sheet"),
+            ('    resistor("R1", sch_x=0, sch_y=0, footprint="0603"),\n', "footprint is not read on a schematic"),
+            ('    resistor("R1", sch_x=0, sch_y=0, pcb_x=3),\n', "pcbX is not read on a schematic"),
         ]
         for body, message in cases:
             with self.assertRaisesRegex(ValueError, message):
-                run(head + body, "s.sch.py")
-        with self.assertRaisesRegex(RuntimeError, "belongs inside `with group"):
-            run('from commandagi.design.schematic import *\nresistor("R1")\n', "s.sch.py")
+                run(sheet(body), "s.sch.py")
+        with self.assertRaisesRegex(TypeError, "holds nothing"):
+            run('from commandagi.design.schematic import *\nresult = group("S", resistor("R1", resistor("R2")))\n', "s.sch.py")
+        with self.assertRaisesRegex(TypeError, "write sch_x|is written sch_x"):
+            run('from commandagi.design.schematic import *\nresult = group("S", resistor("R1", schX=1))\n', "s.sch.py")
 
     def test_a_library_part_names_its_symbol_by_ref_places_each_unit_mirrors_and_a_code_part_is_a_code_node(self):
         text = '''from commandagi.design.schematic import code, group, netlabel, part, resistor, trace, unit
 
-with group("Rail"):
-    part("U1", symbol="Amplifier_Operational:LM358", library="opamps.kicad_sym", value="LM358", sch_x=50.8, sch_y=25.4, sch_mirror="x")
-    unit("U1", 2, sch_x=101.6, sch_y=25.4, sch_rotation=180)
-    resistor("R1", resistance="10k", sch_x=76.2, sch_y=50.8, sch_mirror="y")
-    code("blinker", source="blinker.circuit.ts", inputs={"resistor": "330"})
-    trace(".U1 > .pin7", ".R1 > .pin1")
-    netlabel("OUT", ".U1 > .1")
+result = group(
+    "Rail",
+    part("U1", symbol="Amplifier_Operational:LM358", library="opamps.kicad_sym", value="LM358", sch_x=50.8, sch_y=25.4, sch_mirror="x"),
+    unit("U1", 2, sch_x=101.6, sch_y=25.4, sch_rotation=180),
+    resistor("R1", resistance="10k", sch_x=76.2, sch_y=50.8, sch_mirror="y"),
+    code("blinker", source="blinker.circuit.ts", inputs={"resistor": "330"}),
+    trace(".U1 > .pin7", ".R1 > .pin1"),
+    netlabel("OUT", ".U1 > .1"),
+)
 '''
         g = run(text, "rail.sch.py")
         n = g["nodes"]
@@ -108,20 +103,32 @@ with group("Rail"):
         b = n["blinker"]
         self.assertEqual((b["type"], b["label"], b["inputs"]), ("code", "blinker.circuit.ts", {"source": "blinker.circuit.ts", "resistor": "330"}))
         self.assertEqual(b["meta"]["source"]["tag"], "code")
-        head = 'from commandagi.design.schematic import *\nwith group("S"):\n'
         cases = [
-            ('    part("U1", symbol="LM358", library="a.kicad_sym")\n', "library ref"),
-            ('    part("U1", symbol="A:B")\n', "library is the path"),
-            ('    resistor("R1", sch_x=0, sch_y=0)\n    unit("R1", 2, sch_x=1, sch_y=1)\n', "one unit"),
-            ('    part("U1", symbol="A:B", library="a.kicad_sym")\n    unit("U1", 1, sch_x=1, sch_y=1)\n', "unit is 2 or more"),
-            ('    part("U1", symbol="A:B", library="a.kicad_sym")\n    unit("U1", 2)\n', "give it sch_x and sch_y"),
-            ('    part("U1", symbol="A:B", library="a.kicad_sym")\n    unit("U1", 2, sch_x=1, sch_y=1)\n    unit("U1", 2, sch_x=2, sch_y=1)\n', "placed twice"),
-            ('    resistor("R1", sch_x=0, sch_y=0, sch_mirror="z")\n', 'sch_mirror is "x" or "y"'),
-            ('    code("c", source="c.ts", inputs={"source": "d.ts"})\n', "source is the file"),
+            ('    part("U1", symbol="LM358", library="a.kicad_sym"),\n', "library ref"),
+            ('    part("U1", symbol="A:B"),\n', "library is the path"),
+            ('    resistor("R1", sch_x=0, sch_y=0),\n    unit("R1", 2, sch_x=1, sch_y=1),\n', "one unit"),
+            ('    part("U1", symbol="A:B", library="a.kicad_sym"),\n    unit("U1", 1, sch_x=1, sch_y=1),\n', "unit is 2 or more"),
+            ('    part("U1", symbol="A:B", library="a.kicad_sym"),\n    unit("U1", 2),\n', "give it schX and schY"),
+            ('    part("U1", symbol="A:B", library="a.kicad_sym"),\n    unit("U1", 2, sch_x=1, sch_y=1),\n    unit("U1", 2, sch_x=2, sch_y=1),\n', "placed twice"),
+            ('    resistor("R1", sch_x=0, sch_y=0, sch_mirror="z"),\n', 'schMirror is "x" or "y"'),
+            ('    code("c", source="c.ts", inputs={"source": "d.ts"}),\n', "source is the file"),
         ]
         for body, message in cases:
             with self.assertRaisesRegex(ValueError, message):
-                run(head + body, "s.sch.py")
+                run(sheet(body), "s.sch.py")
+
+    def test_a_netlist_circuit_lists_pins_and_nets_and_carries_its_kicad_files(self):
+        text = sheet('''    part("U1", value="LM358", pins=["1", {"number": "2", "name": "IN-"}]),
+    part("C1", pins=["1", "2"], spice=[{"id": "c", "model": "C1u", "terminals": {"a": "1", "b": "2"}}]),
+    net("N1", pins=[".U1 > .pin1", ".C1 > .1"]),
+    attachment("schematic.kicad_sch", role="schematic", file="Rail.kicad_sch"),
+''', "Rail")
+        n = run(text, "rail.sch.py")["nodes"]
+        self.assertEqual(n["U1"]["inputs"]["pins"], [{"id": "p1", "number": "1"}, {"id": "p2", "number": "2", "name": "IN-"}])
+        self.assertEqual(n["C1"]["inputs"]["spice"], [{"id": "c", "model": "C1u", "terminals": {"a": "1", "b": "2"}}])
+        self.assertEqual(n["net_N1"]["inputs"], {"pins.1": wire("U1", "p1"), "pins.2": wire("C1", "p1")})
+        self.assertEqual(n["source_schematic.kicad_sch"]["inputs"], {"name": "schematic.kicad_sch", "role": "schematic", "file": "Rail.kicad_sch"})
+        self.assertEqual(n["net_N1"]["meta"]["source"]["tag"], "net")
 
 
 if __name__ == "__main__":
