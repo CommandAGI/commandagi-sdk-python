@@ -635,13 +635,13 @@
       },
       {
         "name": "postal",
-        "doc": "Paper mail (docs/postal.md): letters from a .letter.tsx in your files, and mailboxes that receive and scan mail.",
+        "doc": "Paper mail (docs/postal.md): letters from a .letter.tsx and postcards from a .postcard.tsx in your files, and mailboxes that receive and scan mail.",
         "factory": null,
         "methods": [
           {
             "name": "quote",
             "tool": "postal_quote",
-            "doc": "What mailing the letter would cost, and how it would go. Costs nothing.",
+            "doc": "What mailing the letter or postcard would cost, and how it would go. Costs nothing.",
             "params": [
               {
                 "name": "source",
@@ -668,7 +668,7 @@
           {
             "name": "send",
             "tool": "postal_send",
-            "doc": "Mail the letter: charged first, recorded before it is sent, never retried. An agent needs a postal grant.",
+            "doc": "Mail the letter or postcard: charged first, recorded before it is sent, never retried. An agent needs a postal grant.",
             "params": [
               {
                 "name": "source",
@@ -1374,6 +1374,78 @@
                   "type": "string",
                   "maxLength": 40,
                   "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "mouse_down",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "button": {
+                  "type": "string",
+                  "enum": [
+                    "left",
+                    "right",
+                    "middle"
+                  ],
+                  "description": "the button (default left); it stays down until mouse_up, and stop releases it"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "mouse_up",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "button": {
+                  "type": "string",
+                  "enum": [
+                    "left",
+                    "right",
+                    "middle"
+                  ],
+                  "description": "the button (default left); it stays down until mouse_up, and stop releases it"
                 },
                 "basis": {
                   "type": "string",
