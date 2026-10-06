@@ -90,6 +90,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.business` | a company, an RFC, a case |
 | `commandagi.design.tasks` | a task, a project |
 | `commandagi.design.records` | a contract, a product instance |
+| `commandagi.design.postal` | a letter, a postcard |
 
 The rules of a call, the same in every module:
 

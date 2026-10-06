@@ -31,7 +31,7 @@ from . import source as _source
 from .element import Element, declarer_of
 # The document vocabularies, one module each (``from commandagi.design.twod import drawing, rect``). Importing them
 # registers what each root element declares.
-from . import business, fab, media, office, ontology, pcb, records, schematic, tasks, threed, twod  # noqa: F401
+from . import business, fab, media, office, ontology, pcb, postal, records, schematic, tasks, threed, twod  # noqa: F401
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
