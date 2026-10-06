@@ -357,6 +357,57 @@
         ]
       },
       {
+        "name": "billing",
+        "doc": "Resold third-party services, charged at the provider's price (docs/billing.md).",
+        "factory": null,
+        "methods": [
+          {
+            "name": "prices",
+            "tool": "quote_passthrough",
+            "doc": "Every pass-through price, with its source and date.",
+            "params": [],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "quote",
+            "tool": "quote_passthrough",
+            "doc": "What a service costs before you buy it: {price: \"twilio/us-sms\", months?, units?, oneTime?}.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "charges",
+            "tool": "list_passthrough_charges",
+            "doc": "The account's pass-through line items, monthly items and balance.",
+            "params": [
+              {
+                "name": "limit",
+                "key": "limit",
+                "type": "integer",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
+      },
+      {
         "name": "memory",
         "doc": "The agent's durable memory: markdown files under memories/ in the thread's drive.",
         "factory": null,
