@@ -727,6 +727,202 @@
             "withThread": false
           }
         ]
+      },
+      {
+        "name": "phone",
+        "doc": "The account's phone lines (docs/phone.md). An agent texts and calls only under a phone grant its owner made.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "lines",
+            "tool": "list_phone_lines",
+            "doc": "The lines you own or may use.",
+            "params": [
+              {
+                "name": "ownerId",
+                "key": "ownerId",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "conversations",
+            "tool": "list_phone_conversations",
+            "doc": "A line's conversations, newest first.",
+            "params": [
+              {
+                "name": "lineId",
+                "key": "lineId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "read",
+            "tool": "read_phone_conversation",
+            "doc": "One conversation's records (phone/<line>/<correspondent>.jsonl); `after` is a record id or an ISO time.",
+            "params": [
+              {
+                "name": "lineId",
+                "key": "lineId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "correspondent",
+                "key": "correspondent",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "after",
+                "key": "after",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "quote",
+            "tool": "quote_phone_number",
+            "doc": "What buying a number charges now, monthly and per use. Buys nothing.",
+            "params": [
+              {
+                "name": "e164",
+                "key": "e164",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "country",
+                "key": "country",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "provider",
+                "key": "provider",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "text",
+            "tool": "send_text",
+            "doc": "Send a text (an MMS with drive-file media). Recorded before it is sent; never retried.",
+            "params": [
+              {
+                "name": "lineId",
+                "key": "lineId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "to",
+                "key": "to",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "body",
+                "key": "body",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "media",
+                "key": "media",
+                "type": "array",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "json"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "call",
+            "tool": "place_call",
+            "doc": "Click-to-call: ring the line's forward-to number (or a number your grant lists), then connect to `to`.",
+            "params": [
+              {
+                "name": "lineId",
+                "key": "lineId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "to",
+                "key": "to",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "bridgeTo",
+                "key": "bridgeTo",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
       }
     ]
   },
