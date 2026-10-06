@@ -11,6 +11,24 @@
     "transport": "POST {baseUrl}/mcp — JSON-RPC 2.0 `tools/call` {name, arguments}, `authorization: Bearer {apiKey}`; the result's text content is JSON. `call(tool, args)` reaches ANY platform tool by name.",
     "root": [
       {
+        "name": "constraints",
+        "tool": "agent_constraints",
+        "doc": "Inspect or impose an immutable device-action state machine for this thread's agent.",
+        "params": [
+          {
+            "name": "opts",
+            "key": null,
+            "type": "object",
+            "required": false,
+            "spread": true,
+            "prefix": null,
+            "cli": "spread"
+          }
+        ],
+        "bound": {},
+        "withThread": true
+      },
+      {
         "name": "whoami",
         "tool": "whoami",
         "doc": "The account this key belongs to.",
@@ -101,6 +119,49 @@
       }
     ],
     "namespaces": [
+      {
+        "name": "computer",
+        "doc": "Computer input with per-action authority and private variable references.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "screenshot",
+            "tool": "computer_screenshot",
+            "doc": "Observe the computer's current screen.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": true
+          },
+          {
+            "name": "act",
+            "tool": "computer_act",
+            "doc": "One action/payload or an ordered actions array. Stops on first failure. Type a granted variable with text: '${env:NAME}'.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": true
+          }
+        ]
+      },
       {
         "name": "threads",
         "doc": "Agent threads — the unit of work.",
@@ -1523,6 +1584,11 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 500
+                },
+                "textRef": {
+                  "type": "string",
+                  "pattern": "^\\$\\{env:[A-Za-z_][A-Za-z0-9_]*\\}$",
+                  "description": "private input reference; records keep this instead of text"
                 },
                 "basis": {
                   "type": "string",
