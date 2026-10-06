@@ -357,6 +357,57 @@
         ]
       },
       {
+        "name": "billing",
+        "doc": "Resold third-party services, charged at the provider's price (docs/billing.md).",
+        "factory": null,
+        "methods": [
+          {
+            "name": "prices",
+            "tool": "quote_passthrough",
+            "doc": "Every pass-through price, with its source and date.",
+            "params": [],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "quote",
+            "tool": "quote_passthrough",
+            "doc": "What a service costs before you buy it: {price: \"twilio/us-sms\", months?, units?, oneTime?}.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "charges",
+            "tool": "list_passthrough_charges",
+            "doc": "The account's pass-through line items, monthly items and balance.",
+            "params": [
+              {
+                "name": "limit",
+                "key": "limit",
+                "type": "integer",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
+      },
+      {
         "name": "memory",
         "doc": "The agent's durable memory: markdown files under memories/ in the thread's drive.",
         "factory": null,
@@ -460,6 +511,244 @@
         ]
       },
       {
+        "name": "web",
+        "doc": "Web search through many providers, one shape (docs/search.md): each result names who returned it; each call says what it cost.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "search",
+            "tool": "web_search",
+            "doc": "Search: kind search | news | academic | code | social | images | video; provider, limit, since, domains … in opts.",
+            "params": [
+              {
+                "name": "query",
+                "key": "query",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "join"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "fetch",
+            "tool": "web_fetch",
+            "doc": "One page as clean text.",
+            "params": [
+              {
+                "name": "url",
+                "key": "url",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "crawl",
+            "tool": "web_crawl",
+            "doc": "Many pages of one site (pages in opts).",
+            "params": [
+              {
+                "name": "url",
+                "key": "url",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "answer",
+            "tool": "web_answer",
+            "doc": "An answer with citations; depth research for a long report.",
+            "params": [
+              {
+                "name": "question",
+                "key": "question",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "join"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "providers",
+            "tool": "web_providers",
+            "doc": "The providers: what each offers and costs, and whether you can call it.",
+            "params": [],
+            "bound": {},
+            "withThread": false
+          }
+        ]
+      },
+      {
+        "name": "postal",
+        "doc": "Paper mail (docs/postal.md): letters from a .letter.tsx and postcards from a .postcard.tsx in your files, and mailboxes that receive and scan mail.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "quote",
+            "tool": "postal_quote",
+            "doc": "What mailing the letter or postcard would cost, and how it would go. Costs nothing.",
+            "params": [
+              {
+                "name": "source",
+                "key": "source",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "send",
+            "tool": "postal_send",
+            "doc": "Mail the letter or postcard: charged first, recorded before it is sent, never retried. An agent needs a postal grant.",
+            "params": [
+              {
+                "name": "source",
+                "key": "source",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "status",
+            "tool": "postal_status",
+            "doc": "A sent piece's state and records; without a piece, the sent pieces.",
+            "params": [
+              {
+                "name": "piece",
+                "key": "piece",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "cancel",
+            "tool": "postal_cancel",
+            "doc": "Cancel a piece before it is printed; the charge comes back.",
+            "params": [
+              {
+                "name": "piece",
+                "key": "piece",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "inbox",
+            "tool": "postal_inbox",
+            "doc": "Your mailboxes, or one mailbox's received pieces with their scans.",
+            "params": [
+              {
+                "name": "mailbox",
+                "key": "mailbox",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
+      },
+      {
         "name": "social",
         "doc": "A single connected social account, bound: cagi.social('tiktok', '@brand').post(fileId).",
         "factory": [
@@ -553,6 +842,244 @@
             "withThread": false
           }
         ]
+      },
+      {
+        "name": "phone",
+        "doc": "The account's phone lines (docs/phone.md). An agent texts and calls only under a phone grant its owner made.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "lines",
+            "tool": "list_phone_lines",
+            "doc": "The lines you own or may use.",
+            "params": [
+              {
+                "name": "ownerId",
+                "key": "ownerId",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "conversations",
+            "tool": "list_phone_conversations",
+            "doc": "A line's conversations, newest first.",
+            "params": [
+              {
+                "name": "lineId",
+                "key": "lineId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "read",
+            "tool": "read_phone_conversation",
+            "doc": "One conversation's records (phone/<line>/<correspondent>.jsonl); `after` is a record id or an ISO time.",
+            "params": [
+              {
+                "name": "lineId",
+                "key": "lineId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "correspondent",
+                "key": "correspondent",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "after",
+                "key": "after",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "quote",
+            "tool": "quote_phone_number",
+            "doc": "What buying a number charges now, monthly and per use. Buys nothing.",
+            "params": [
+              {
+                "name": "e164",
+                "key": "e164",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "country",
+                "key": "country",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "provider",
+                "key": "provider",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "text",
+            "tool": "send_text",
+            "doc": "Send a text (an MMS with drive-file media). Recorded before it is sent; never retried.",
+            "params": [
+              {
+                "name": "lineId",
+                "key": "lineId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "to",
+                "key": "to",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "body",
+                "key": "body",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "media",
+                "key": "media",
+                "type": "array",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "json"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "call",
+            "tool": "place_call",
+            "doc": "Click-to-call: ring the line's forward-to number (or a number your grant lists), then connect to `to`.",
+            "params": [
+              {
+                "name": "lineId",
+                "key": "lineId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "to",
+                "key": "to",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "bridgeTo",
+                "key": "bridgeTo",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
+      },
+      {
+        "name": "vpn",
+        "doc": "The VPN overlay (docs/vpn.md): its nodes and exits, and egress from an exit's address.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "status",
+            "tool": "vpn_status",
+            "doc": "The account's nodes, the exits it may use, the ACL and the exit grants.",
+            "params": [],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "fetch",
+            "tool": "vpn_fetch",
+            "doc": "Fetch a URL from a VPN exit's address (method, headers, body, exit in opts); refused without an exit grant.",
+            "params": [
+              {
+                "name": "url",
+                "key": "url",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
       }
     ]
   },
@@ -561,24 +1088,34 @@
     "vocabularies": [
       {
         "name": "desktop",
-        "doc": "Computers — pointer, keyboard and waits.",
+        "doc": "Computers — pointer, keyboard and waits, in pixels of the latest frame (docs/computer-use.md).",
         "actions": [
           {
             "name": "click",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -590,20 +1127,65 @@
           },
           {
             "name": "double_click",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
+                }
+              },
+              "required": [
+                "x",
+                "y"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "triple_click",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -615,20 +1197,30 @@
           },
           {
             "name": "right_click",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -640,20 +1232,30 @@
           },
           {
             "name": "middle_click",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -665,20 +1267,25 @@
           },
           {
             "name": "move",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -689,68 +1296,184 @@
             }
           },
           {
-            "name": "scroll",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "name": "drag",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
                 },
-                "dx": {
+                "toX": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
-                "dy": {
+                "toY": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
-                "dy"
+                "x",
+                "y",
+                "toX",
+                "toY"
               ],
               "additionalProperties": false
             }
           },
           {
-            "name": "type",
-            "channelId": "keyboard",
-            "label": "Keyboard",
+            "name": "scroll",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
-                "text": {
+                "x": {
+                  "type": "number",
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "dx": {
+                  "type": "integer",
+                  "minimum": -50,
+                  "maximum": 50
+                },
+                "dy": {
+                  "type": "integer",
+                  "minimum": -50,
+                  "maximum": 50,
+                  "description": "wheel notches; positive scrolls down"
+                },
+                "mods": {
                   "type": "string",
-                  "maxLength": 131072
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
-              "required": [
-                "text"
-              ],
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "mouse_down",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "button": {
+                  "type": "string",
+                  "enum": [
+                    "left",
+                    "right",
+                    "middle"
+                  ],
+                  "description": "the button (default left); it stays down until mouse_up, and stop releases it"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "mouse_up",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "button": {
+                  "type": "string",
+                  "enum": [
+                    "left",
+                    "right",
+                    "middle"
+                  ],
+                  "description": "the button (default left); it stays down until mouse_up, and stop releases it"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
+                }
+              },
+              "required": [],
               "additionalProperties": false
             }
           },
           {
             "name": "key",
-            "channelId": "keyboard",
-            "label": "Keyboard",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "key": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256
+                  "maxLength": 64,
+                  "description": "a key or a combo: enter, ctrl+l, ctrl+shift+t"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -760,18 +1483,43 @@
             }
           },
           {
+            "name": "type",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
             "name": "wait",
-            "channelId": "ctrl",
-            "label": "Control",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "ms": {
-                  "type": "number",
+                  "type": "integer",
                   "minimum": 0,
-                  "maximum": 600000
+                  "maximum": 10000
                 }
               },
+              "required": [],
               "additionalProperties": false
             }
           }
