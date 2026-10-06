@@ -460,6 +460,129 @@
         ]
       },
       {
+        "name": "web",
+        "doc": "Web search through many providers, one shape (docs/search.md): each result names who returned it; each call says what it cost.",
+        "factory": null,
+        "methods": [
+          {
+            "name": "search",
+            "tool": "web_search",
+            "doc": "Search: kind search | news | academic | code | social | images | video; provider, limit, since, domains … in opts.",
+            "params": [
+              {
+                "name": "query",
+                "key": "query",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "join"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "fetch",
+            "tool": "web_fetch",
+            "doc": "One page as clean text.",
+            "params": [
+              {
+                "name": "url",
+                "key": "url",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "crawl",
+            "tool": "web_crawl",
+            "doc": "Many pages of one site (pages in opts).",
+            "params": [
+              {
+                "name": "url",
+                "key": "url",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "answer",
+            "tool": "web_answer",
+            "doc": "An answer with citations; depth research for a long report.",
+            "params": [
+              {
+                "name": "question",
+                "key": "question",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "join"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "providers",
+            "tool": "web_providers",
+            "doc": "The providers: what each offers and costs, and whether you can call it.",
+            "params": [],
+            "bound": {},
+            "withThread": false
+          }
+        ]
+      },
+      {
         "name": "social",
         "doc": "A single connected social account, bound: cagi.social('tiktok', '@brand').post(fileId).",
         "factory": [
