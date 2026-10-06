@@ -561,24 +561,34 @@
     "vocabularies": [
       {
         "name": "desktop",
-        "doc": "Computers — pointer, keyboard and waits.",
+        "doc": "Computers — pointer, keyboard and waits, in pixels of the latest frame (docs/computer-use.md).",
         "actions": [
           {
             "name": "click",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -590,20 +600,65 @@
           },
           {
             "name": "double_click",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
+                }
+              },
+              "required": [
+                "x",
+                "y"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "triple_click",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -615,20 +670,30 @@
           },
           {
             "name": "right_click",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -640,20 +705,30 @@
           },
           {
             "name": "middle_click",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -665,20 +740,25 @@
           },
           {
             "name": "move",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -689,68 +769,112 @@
             }
           },
           {
-            "name": "scroll",
-            "channelId": "pointer",
-            "label": "Pointer",
+            "name": "drag",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "x": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
                 "y": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
                 },
-                "dx": {
+                "toX": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
                 },
-                "dy": {
+                "toY": {
                   "type": "number",
-                  "minimum": -100000,
-                  "maximum": 100000
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "mods": {
+                  "type": "string",
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
-                "dy"
+                "x",
+                "y",
+                "toX",
+                "toY"
               ],
               "additionalProperties": false
             }
           },
           {
-            "name": "type",
-            "channelId": "keyboard",
-            "label": "Keyboard",
+            "name": "scroll",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
-                "text": {
+                "x": {
+                  "type": "number",
+                  "description": "pixel column of the latest frame",
+                  "minimum": 0
+                },
+                "y": {
+                  "type": "number",
+                  "description": "pixel row of the latest frame",
+                  "minimum": 0
+                },
+                "dx": {
+                  "type": "integer",
+                  "minimum": -50,
+                  "maximum": 50
+                },
+                "dy": {
+                  "type": "integer",
+                  "minimum": -50,
+                  "maximum": 50,
+                  "description": "wheel notches; positive scrolls down"
+                },
+                "mods": {
                   "type": "string",
-                  "maxLength": 131072
+                  "maxLength": 40,
+                  "description": "modifiers held during the action: shift, ctrl, alt, super, joined by +"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
-              "required": [
-                "text"
-              ],
+              "required": [],
               "additionalProperties": false
             }
           },
           {
             "name": "key",
-            "channelId": "keyboard",
-            "label": "Keyboard",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "key": {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 256
+                  "maxLength": 64,
+                  "description": "a key or a combo: enter, ctrl+l, ctrl+shift+t"
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
                 }
               },
               "required": [
@@ -760,18 +884,43 @@
             }
           },
           {
+            "name": "type",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "basis": {
+                  "type": "string",
+                  "maxLength": 10,
+                  "description": "the id of the frame this action was planned on; refused as stale if the screen changed since"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
             "name": "wait",
-            "channelId": "ctrl",
-            "label": "Control",
+            "channelId": "computer",
+            "label": "Computer. Coordinates are pixels of the latest frame of this computer (0,0 top left); take a screenshot first.",
             "schema": {
               "type": "object",
               "properties": {
                 "ms": {
-                  "type": "number",
+                  "type": "integer",
                   "minimum": 0,
-                  "maximum": 600000
+                  "maximum": 10000
                 }
               },
+              "required": [],
               "additionalProperties": false
             }
           }
