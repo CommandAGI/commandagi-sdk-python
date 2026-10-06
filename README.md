@@ -36,7 +36,10 @@ schema**, `commandagi-sdk.schema.json`, so they can't drift apart:
 - **Tools**: `cagi.threads`, `cagi.embodiments`, `cagi.memory`, `cagi.integrations`,
   `cagi.social(platform, account)`, `whoami`, `search`, `run` and `post`. Each one is a typed wrapper
   over `call(tool, args)`. Options are passed as keyword arguments, e.g. `snapshot_id=…`, and sent
-  over the wire as camelCase (`snapshotId`).
+  over the wire as camelCase (`snapshotId`). Where the schema names the options, they are typed
+  keyword-only arguments: `cagi.postal.send("Letters/Ada.letter.tsx", provider="click2mail")` (the
+  provider is `"lob"`, the default, or `"click2mail"`, US only; omitted, the account's
+  `postal.providers` order picks it).
 - **Control vocabularies** on a live `Session`:
   - `session.desktop` for computers: `click`, `double_click`, `move`, `scroll`, `type`, `key`, `wait`
   - `session.robot` for physical robots: `joint`, `gripper`, `move`, `turn`, `home`, `stop`, …

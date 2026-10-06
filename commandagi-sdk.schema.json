@@ -641,7 +641,7 @@
           {
             "name": "quote",
             "tool": "postal_quote",
-            "doc": "What mailing the letter or postcard would cost, and how it would go. Costs nothing.",
+            "doc": "What mailing the letter or postcard would cost, and how it would go (its choices: the providers that can mail it). Costs nothing.",
             "params": [
               {
                 "name": "source",
@@ -659,7 +659,22 @@
                 "required": false,
                 "spread": true,
                 "prefix": null,
-                "cli": "spread"
+                "cli": "spread",
+                "options": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "lob",
+                      "click2mail"
+                    ],
+                    "doc": "Who prints and posts it: lob (the default; the US and every other country) or click2mail (US only). Omitted: automatic, the best provider for the destination in the account's postal.providers order, Lob first."
+                  },
+                  "ownerId": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "An organisation's id, to act for it. Omitted: your own account."
+                  }
+                }
               }
             ],
             "bound": {},
@@ -686,7 +701,22 @@
                 "required": false,
                 "spread": true,
                 "prefix": null,
-                "cli": "spread"
+                "cli": "spread",
+                "options": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "lob",
+                      "click2mail"
+                    ],
+                    "doc": "Who prints and posts it: lob (the default; the US and every other country) or click2mail (US only). Omitted: automatic, the best provider for the destination in the account's postal.providers order, Lob first."
+                  },
+                  "ownerId": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "An organisation's id, to act for it. Omitted: your own account."
+                  }
+                }
               }
             ],
             "bound": {},
