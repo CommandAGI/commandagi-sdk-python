@@ -56,7 +56,7 @@ PDF_MARKS: Dict[str, List[str]] = {
     "signature": ["id", "author", "rect", "typed", "style", "image", "strokes", "color", "width"],
     "redact": ["id", "rect", "fill", "overlay"],
     "field": ["id", "kind", "name", "rect", "rects", "value", "options", "checked", "multiline", "maxLength", "required",
-              "editable", "size"],
+              "readOnly", "tooltip", "default", "editable", "size"],
 }
 _REQUIRED = {"highlight": ["rects"], "underline": ["rects"], "strikeout": ["rects"], "squiggly": ["rects"], "note": ["at"],
              "textbox": ["rect", "text"], "ink": ["strokes"], "rectangle": ["rect"], "ellipse": ["rect"],
@@ -66,6 +66,9 @@ PDF_FIELDS = ["title", "author", "subject", "keywords", "creator"]
 PAGE_FIELDS = ["id", "src", "n", "rotate", "size", "width", "height"]
 BOOKMARK_FIELDS = ["id", "title", "page", "top", "open", "bold", "italic", "color", "url"]
 _LABEL = ["from", "style", "prefix", "start"]
+#: A review state a reply sets on its thread: "Completed" is resolved, "None" reopens it.
+REVIEW_STATES = ["Accepted", "Rejected", "Cancelled", "Completed", "None"]
+_REPLY = ["text", "author", "date", "state"]
 _ATTACH = ["src", "name", "description", "mimeType"]
 BAND_FIELDS = ["left", "center", "right", "size", "color", "family", "margin", "inset", "pages", "start", "date"]
 BATES_FIELDS = ["prefix", "suffix", "start", "digits", "position", "size", "color", "family", "margin", "inset"]
@@ -86,7 +89,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "bates": {},
 }
 
-__all__ = ["PAGE_SIZES", "PDF_MARKS", "PDF_FIELDS", "PAGE_FIELDS", "BOOKMARK_FIELDS", "BAND_FIELDS", "BATES_FIELDS", "SIGNATURES", "PDF_VOCABULARY",
+__all__ = ["PAGE_SIZES", "REVIEW_STATES", "PDF_MARKS", "PDF_FIELDS", "PAGE_FIELDS", "BOOKMARK_FIELDS", "BAND_FIELDS", "BATES_FIELDS", "SIGNATURES", "PDF_VOCABULARY",
            *define(globals(), "pdf", SIGNATURES)]
 
 
@@ -157,9 +160,17 @@ def _check_mark(c: DocTree) -> None:
         raise ValueError("<signature> is one of typed, image or strokes")
     if t == "stamp" and not any(k in a for k in ("name", "image", "label")):
         raise ValueError("<stamp> has a name (Approved, Draft …), a label or an image")
-    for k in ("text", "author", "name", "label", "image", "typed", "overlay"):
+    for k in ("text", "author", "name", "label", "image", "typed", "overlay", "tooltip"):
         if k in a and not isinstance(a[k], str):
             raise ValueError(f"{where} {k} is text")
+    for k in ("required", "readOnly", "multiline", "checked", "editable"):
+        if k in a and not isinstance(a[k], bool):
+            raise ValueError(f"{where} {k} is true or false")
+    if "default" in a and not (isinstance(a["default"], str) or (isinstance(a["default"], list) and all(isinstance(x, str) for x in a["default"]))):
+        raise ValueError(f"{where} default is text, or a list of texts")
+    for r in c["children"]:
+        if r["tag"] == "reply" and "state" in r["attrs"] and r["attrs"]["state"] not in REVIEW_STATES:
+            raise ValueError("<reply> state is " + ", ".join(f'"{x}"' for x in REVIEW_STATES))
 
 
 def _check_page(p: DocTree) -> None:
@@ -274,7 +285,7 @@ _TAGS: Dict[str, Dict[str, Any]] = {
     "pdf": {"parents": [], "attrs": PDF_FIELDS},
     "page": {"parents": ["pdf"], "key": "id", "attrs": PAGE_FIELDS},
     **{t: {"parents": ["page"], "key": "id", "required": _REQUIRED.get(t, []), "attrs": attrs} for t, attrs in PDF_MARKS.items()},
-    "reply": {"parents": ["note"], "required": ["text"], "attrs": ["text", "author", "date"]},
+    "reply": {"parents": ["note"], "required": ["text"], "attrs": _REPLY},
     "fill": {"parents": ["pdf"], "key": "name", "required": ["name", "value"], "attrs": ["name", "value"]},
     "bookmark": {"parents": ["pdf", "bookmark"], "key": "id", "required": ["title"], "attrs": BOOKMARK_FIELDS},
     "label": {"parents": ["pdf"], "required": ["from"], "attrs": _LABEL},
