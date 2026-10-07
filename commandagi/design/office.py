@@ -41,9 +41,17 @@ The tags (keywords are snake_case of the TypeScript attribute: ``frozen_rows``, 
     deck(*slides, name, width, height, dpi, style)            the deck (1280 x 720 slide units unless it says); style
                                                               "plain", "ink", "editorial" or "signal"
     slide(*elements, layout, name, notes, background, hidden)
-    text(*text, placeholder, x, y, w, h, rotation, font_size, color, bold, italic, underline, align, valign …)
+    text(*text, placeholder, x, y, w, h, rotation, font_size, color, bold, italic, underline, align, valign,
+         columns, gutter, inset)                              a text box; columns, gutter and inset frame its text
     shape(shape, x, y, w, h, fill, stroke, stroke_width, corner_radius)  image(src, x, y, w, h, fit, alt)
-                                                              every element also takes opacity, label, locked and group
+                                                              every element also takes opacity, label and locked
+    group(*elements, name)                                    elements (and groups) that select and move as one
+    master(*parts, background)                                how the master differs from the stock one: its own
+                                                              elements, and its text styles and layouts:
+    textStyle(role, font_size, color, bold, italic, font_family, line_height, align)
+                                                              the text style of a role ("title", "body" …)
+    layout(*placeholders, name)  placeholder(name, role, x, y, w, h, valign, prompt, font_size, color, bold …)
+                                                              a layout's placeholders, saying what differs from stock
 
 A workbook and a page are documents of their own: ``run_module`` hands them back beside an empty graph, with where
 each part was written in ``sources`` (``workbook``, ``sheet:<id>``, ``cell:<id>!A1``, ``column:<id>!B``,
@@ -69,7 +77,8 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "page": _C, "h1": _T, "h2": _T, "h3": _T, "p": _T, "bullet": _T, "numbered": _T, "todo": _T, "quote": _T, "pre": _T,
     "divider": {}, "image": {},
     "b": _T, "i": _T, "u": _T, "s": _T, "code": _T, "a": _T, "br": {},
-    "deck": _C, "slide": _C, "text": _T, "shape": {},
+    "deck": _C, "slide": _C, "text": _T, "shape": {}, "group": _C,
+    "master": _C, "textStyle": {}, "layout": _C, "placeholder": {},
 }
 
 __all__ = ["SIGNATURES", "OFFICE_ROOTS", "DECK_TYPES", "read_workbook", "read_page", "read_deck", "inline_html", "rich_text",
@@ -332,7 +341,9 @@ def read_page(root: Element) -> Dict[str, Any]:
 #: The deck's node types (the decks editor's own).
 DECK_TYPES = {"doc": "deck.doc", "slide": "deck.slide", "text": "deck.text", "image": "deck.image", "shape": "deck.shape"}
 _BOX = ["x", "y", "w", "h", "rotation"]
-_COMMON = [*_BOX, "placeholder", "z", "visible", "opacity", "label", "locked", "group"]
+_COMMON = [*_BOX, "placeholder", "z", "visible", "opacity", "label", "locked"]
+#: A text frame's columns, the gutter between them and the inset from its edges, in slide units.
+_TEXT_FRAME = ["columns", "gutter", "inset"]
 #: The deck's styles: a few curated looks (the decks editor's own themes), not a theme editor.
 DECK_STYLES = ["plain", "ink", "editorial", "signal"]
 _MARK_STYLE = {"b": "bold", "i": "italic", "u": "underline", "s": "strike"}
@@ -377,62 +388,162 @@ def rich_text(children: List[Any], at: str) -> Dict[str, Any]:
     return {"paragraphs": paragraphs or [{"runs": []}]}
 
 
+_ROLES = ["title", "subtitle", "body", "image", "caption", "footer", "slideNumber"]
+_TEXT_STYLE = ["fontSize", "color", "bold", "italic", "fontFamily", "lineHeight", "align"]
+_TEXT_ALIGN = ["left", "center", "right", "justify"]
+
+
+def _text_style(el: Element) -> Dict[str, Any]:
+    return _defined({"fontSizePx": _num(el, "fontSize"), "color": _str(el, "color"), "bold": _bool(el, "bold"), "italic": _bool(el, "italic"),
+                     "fontFamily": _str(el, "fontFamily"), "lineHeight": _num(el, "lineHeight"), "align": _one_of(el, "align", _TEXT_ALIGN)})
+
+
+def _meta(el: Element, sources: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    if el.source is None:
+        return {}
+    return {"meta": {"source": el.source, **({"sources": sources} if sources else {})}}
+
+
+def _read_element(c: Element, eid: str, k: int, at: str, groups: List[str]) -> Dict[str, Any]:
+    box = _defined({p: _num(c, p) for p in _BOX})
+    common = _defined({"box": box or None, "placeholder": _str(c, "placeholder"), "z": _num(c, "z"), "visible": _bool(c, "visible"),
+                       "opacity": _num(c, "opacity"), "label": _str(c, "label"), "locked": _bool(c, "locked"), "groups": list(groups) or None})
+    if c.tag == "text":
+        _only(c, [*_COMMON, "fontSize", "color", "bold", "italic", "underline", "align", "valign", "fontFamily", "lineHeight", "overflow", *_TEXT_FRAME])
+        kind = DECK_TYPES["text"]
+        columns = _num(c, "columns")
+        if columns is not None and (columns != int(columns) or columns < 1):
+            raise ValueError(f"{_where(c)}: columns is a whole number from 1")
+        inputs = _defined({**common, "text": rich_text(c.children, f"<text> of {at}"), "fontSizePx": _num(c, "fontSize"),
+                           "color": _str(c, "color"), "bold": _bool(c, "bold"), "italic": _bool(c, "italic"), "underline": _bool(c, "underline"),
+                           "align": _one_of(c, "align", _TEXT_ALIGN),
+                           "valign": _one_of(c, "valign", ["top", "middle", "bottom"]), "fontFamily": _str(c, "fontFamily"),
+                           "lineHeight": _num(c, "lineHeight"), "overflow": _one_of(c, "overflow", ["visible", "clip", "ellipsis"]),
+                           "columns": columns, "gutter": _num(c, "gutter"), "inset": _num(c, "inset")})
+    elif c.tag == "shape":
+        _only(c, [*_COMMON, "shape", "fill", "stroke", "strokeWidth", "cornerRadius"])
+        kind = DECK_TYPES["shape"]
+        inputs = _defined({**common, "shape": _one_of(c, "shape", ["rect", "ellipse", "triangle", "line"]) or "rect", "fill": _str(c, "fill"),
+                           "stroke": _str(c, "stroke"), "strokeWidth": _num(c, "strokeWidth"), "cornerRadius": _num(c, "cornerRadius")})
+    elif c.tag == "image":
+        _only(c, [*_COMMON, "src", "fit", "alt"])
+        kind = DECK_TYPES["image"]
+        inputs = _defined({**common, "src": _str(c, "src") or "", "fit": _one_of(c, "fit", ["fill", "contain", "cover", "none"]),
+                           "alt": _str(c, "alt")})
+    else:
+        raise ValueError(f"<{c.tag}> is not an element of {at} (text, shape, image, group)")
+    if not common.get("placeholder") and any(box.get(p) is None for p in ("x", "y", "w", "h")):
+        raise ValueError(f"the <{c.tag}> {k} of {at} needs x, y, w and h (or a placeholder to take them from)")
+    return {"id": eid, "type": kind, "inputs": inputs, **_meta(c)}
+
+
+def _read_elements(children: List[Element], owner: str, at: str, nodes: Dict[str, Dict[str, Any]], sources: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """The elements of a slide or a master in paint order, each naming the groups around it (outermost first)."""
+    wires: List[Dict[str, Any]] = []
+    names: set = set()
+
+    def walk(kids: List[Element], groups: List[str]) -> None:
+        for c in kids:
+            if c.tag == "group":
+                _only(c, ["name"])
+                name = _str(c, "name")
+                if not name:
+                    raise ValueError(f"a <group> of {at} needs a name")
+                if name in names:
+                    raise ValueError(f"two groups of {at} are called {name}")
+                names.add(name)
+                if not child_elements(c):
+                    raise ValueError(f'the <group name="{name}"> of {at} holds no element')
+                sources[f"group:{name}"] = c.source
+                walk(child_elements(c), [*groups, name])
+                continue
+            eid = f"{owner}.{len(wires) + 1}"
+            nodes[eid] = _read_element(c, eid, len(wires) + 1, at, groups)
+            wires.append({"wire": {"node": eid, "port": "out"}})
+
+    walk(children, [])
+    return wires
+
+
+def _read_master(el: Element, nodes: Dict[str, Dict[str, Any]]) -> None:
+    _only(el, ["background"])
+    sources: Dict[str, Any] = {}
+    text_styles: Dict[str, Any] = {}
+    layouts: List[str] = []
+    decoration: List[Element] = []
+    for c in child_elements(el):
+        if c.tag == "textStyle":
+            _only(c, ["role", *_TEXT_STYLE])
+            role = _one_of(c, "role", _ROLES)
+            if not role:
+                raise ValueError(f"a <textStyle> needs a role ({', '.join(_ROLES)})")
+            if role in text_styles:
+                raise ValueError(f"two text styles of the master are for {role}")
+            text_styles[role] = _text_style(c)
+            sources[f"textStyle:{role}"] = c.source
+        elif c.tag == "layout":
+            _only(c, ["name"])
+            name = _str(c, "name")
+            if not name:
+                raise ValueError("a <layout> needs a name")
+            if name in layouts:
+                raise ValueError(f"two layouts are called {name}")
+            layouts.append(name)
+            lid = f"master.layout-{len(layouts)}"
+            own: Dict[str, Any] = {}
+            placeholders = []
+            for p in child_elements(c):
+                if p.tag != "placeholder":
+                    raise ValueError(f"<{p.tag}> is not read in a <layout> (it holds <placeholder>s)")
+                _only(p, ["name", "role", "x", "y", "w", "h", "valign", "prompt", *_TEXT_STYLE])
+                pname = _str(p, "name")
+                if not pname:
+                    raise ValueError(f"a <placeholder> of the layout {name} needs a name")
+                if f"placeholder:{pname}" in own:
+                    raise ValueError(f"two placeholders of the layout {name} are called {pname}")
+                own[f"placeholder:{pname}"] = p.source
+                box = _defined({k: _num(p, k) for k in ("x", "y", "w", "h")})
+                placeholders.append(_defined({"name": pname, "role": _one_of(p, "role", _ROLES), "box": box or None, **_text_style(p),
+                                              "valign": _one_of(p, "valign", ["top", "middle", "bottom"]), "prompt": _str(p, "prompt")}))
+            nodes[lid] = {"id": lid, "type": "deck.layout", "inputs": {"name": name, "placeholders": placeholders}, **_meta(c, own)}
+        else:
+            decoration.append(c)
+    wires = _read_elements(decoration, "master", "the master", nodes, sources)
+    nodes["master"] = {"id": "master", "type": "deck.master",
+                       "inputs": _defined({"background": _str(el, "background"), "textStyles": text_styles or None, **channels("elements", wires)}),
+                       **({} if el.source is None else {"meta": {"source": el.source, "sources": sources}})}
+
+
 def read_deck(root: Element) -> Dict[str, Any]:
     """A ``deck(...)`` as the deck's op graph: ``doc``, then ``slide-N``, then ``slide-N.M`` for its elements. A slide
-    names its layout by name (``layout``); the editor binds that name to its stock layouts."""
+    names its layout by name (``layout``); the editor binds that name to its layouts. A ``master(...)`` says how the
+    deck's master and layouts differ from the stock ones."""
     _only(root, ["name", "width", "height", "dpi", "style"])
     nodes: Dict[str, Dict[str, Any]] = {}
-
-    def meta(el: Element) -> Dict[str, Any]:
-        return {} if el.source is None else {"meta": {"source": el.source}}
-
     slides = []
-    for i, el in enumerate(child_elements(root)):
+    for el in child_elements(root):
+        if el.tag == "master":
+            if "master" in nodes:
+                raise ValueError("a <deck> has one <master>")
+            _read_master(el, nodes)
+            continue
         if el.tag != "slide":
-            raise ValueError(f"<{el.tag}> is not read in a <deck> (it holds <slide>s)")
+            raise ValueError(f"<{el.tag}> is not read in a <deck> (it holds a <master> and <slide>s)")
         _only(el, ["layout", "name", "notes", "background", "hidden"])
-        sid = f"slide-{i + 1}"
-        elements = []
-        for k, c in enumerate(child_elements(el)):
-            eid = f"{sid}.{k + 1}"
-            box = _defined({p: _num(c, p) for p in _BOX})
-            common = _defined({"box": box or None, "placeholder": _str(c, "placeholder"), "z": _num(c, "z"), "visible": _bool(c, "visible"),
-                               "opacity": _num(c, "opacity"), "label": _str(c, "label"), "locked": _bool(c, "locked"), "group": _str(c, "group")})
-            if c.tag == "text":
-                _only(c, [*_COMMON, "fontSize", "color", "bold", "italic", "underline", "align", "valign", "fontFamily", "lineHeight", "overflow"])
-                kind = DECK_TYPES["text"]
-                inputs = _defined({**common, "text": rich_text(c.children, f"<text> of {sid}"), "fontSizePx": _num(c, "fontSize"),
-                                   "color": _str(c, "color"), "bold": _bool(c, "bold"), "italic": _bool(c, "italic"), "underline": _bool(c, "underline"),
-                                   "align": _one_of(c, "align", ["left", "center", "right", "justify"]),
-                                   "valign": _one_of(c, "valign", ["top", "middle", "bottom"]), "fontFamily": _str(c, "fontFamily"),
-                                   "lineHeight": _num(c, "lineHeight"), "overflow": _one_of(c, "overflow", ["visible", "clip", "ellipsis"])})
-            elif c.tag == "shape":
-                _only(c, [*_COMMON, "shape", "fill", "stroke", "strokeWidth", "cornerRadius"])
-                kind = DECK_TYPES["shape"]
-                inputs = _defined({**common, "shape": _one_of(c, "shape", ["rect", "ellipse", "triangle", "line"]) or "rect", "fill": _str(c, "fill"),
-                                   "stroke": _str(c, "stroke"), "strokeWidth": _num(c, "strokeWidth"), "cornerRadius": _num(c, "cornerRadius")})
-            elif c.tag == "image":
-                _only(c, [*_COMMON, "src", "fit", "alt"])
-                kind = DECK_TYPES["image"]
-                inputs = _defined({**common, "src": _str(c, "src") or "", "fit": _one_of(c, "fit", ["fill", "contain", "cover", "none"]),
-                                   "alt": _str(c, "alt")})
-            else:
-                raise ValueError(f"<{c.tag}> is not an element of a <slide> (text, shape, image)")
-            if not common.get("placeholder") and any(box.get(p) is None for p in ("x", "y", "w", "h")):
-                raise ValueError(f"the <{c.tag}> {k + 1} of {sid} needs x, y, w and h (or a placeholder to take them from)")
-            nodes[eid] = {"id": eid, "type": kind, "inputs": inputs, **meta(c)}
-            elements.append({"wire": {"node": eid, "port": "out"}})
+        sid = f"slide-{len(slides) + 1}"
+        sources: Dict[str, Any] = {}
+        elements = _read_elements(child_elements(el), sid, sid, nodes, sources)
         nodes[sid] = {"id": sid, "type": DECK_TYPES["slide"],
                       "inputs": _defined({"layout": _str(el, "layout") or "Title and body", "name": _str(el, "name"), "notes": _str(el, "notes"),
                                           "background": _str(el, "background"), "hidden": _bool(el, "hidden"), **channels("elements", elements)}),
-                      **meta(el)}
+                      **_meta(el, sources)}
         slides.append({"wire": {"node": sid, "port": "out"}})
     name = _str(root, "name") or "Deck"
     width, height = _num(root, "width"), _num(root, "height")
     nodes["doc"] = {"id": "doc", "type": DECK_TYPES["doc"],
                     "inputs": _defined({"name": name, "width": 1280 if width is None else width, "height": 720 if height is None else height,
                                         "dpi": _num(root, "dpi"), "style": _one_of(root, "style", DECK_STYLES),
-                                        **channels("slides", slides)}), **meta(root)}
+                                        **channels("slides", slides)}), **_meta(root)}
     return {"id": f"deck:{name}", "nodes": nodes, "outputs": ["doc"], "meta": {"domain": "deck", "name": name}}
 
 
