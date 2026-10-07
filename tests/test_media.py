@@ -111,3 +111,26 @@ class SongTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VideoVocabularyTests(unittest.TestCase):
+    def test_crop_a_lut_transition_settings_audio_effects_and_a_bezier_key(self):
+        from commandagi.design.media import compressor, distortion, eq, filter, gain
+        n = declare_video(video(
+            track(clip(transition(kind="iris", duration=1, align="end", shape=2), effect(type="lut", src="looks/a.cube", amount=0.5),
+                       filter(mode="highpass"), keyframe(property="opacity", time=0, value=1, easing="bezier", bezier=[0.4, 0, 0.2, 1]),
+                       src="a.mp4", out=2, crop_left=0.1),
+                  distortion(amount=0.2), name="V1"),
+            compressor(ratio=2), gain(gain=0.5, enabled=False)))["nodes"]
+        c = n["clip_a.mp4"]["inputs"]
+        self.assertEqual(c["crop"], {"top": 0, "right": 0, "bottom": 0, "left": 0.1})
+        self.assertEqual(c["transitionIn"], {"kind": "iris", "duration": 1, "params": {"align": "end", "shape": 2}})
+        self.assertEqual(c["effects"], [{"id": "fx_lut", "type": "lut", "enabled": True, "params": {"amount": 0.5}, "src": "looks/a.cube"}])
+        self.assertEqual(c["audioEffects"], [{"id": "afx_highpass", "type": "highpass", "enabled": True, "params": {"frequency": 300, "q": 1}}])
+        self.assertEqual(c["keyframes"][0]["keys"][0]["bezier"], [0.4, 0, 0.2, 1])
+        self.assertEqual(n["track_V1"]["inputs"]["audioEffects"][0]["params"], {"amount": 0.2, "mix": 1})
+        self.assertEqual([e["type"] for e in n["composite"]["inputs"]["masterEffects"]], ["compressor", "gain"])
+        with self.assertRaisesRegex(ValueError, "a LUT names its .cube file"):
+            declare_video(video(track(clip(effect(type="lut"), src="a.mp4", out=1))))
+        with self.assertRaisesRegex(ValueError, "has no sound"):
+            declare_video(video(track(clip(eq(), src="a.png", duration=1))))

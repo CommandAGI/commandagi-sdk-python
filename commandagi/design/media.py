@@ -40,7 +40,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "video": _HOLDS, "song": _HOLDS, "track": _HOLDS, "clip": _HOLDS, "title": _HOLDS, "shape": _HOLDS, "adjustment": _HOLDS,
     "midi": _HOLDS, "effect": _HOLDS,
     "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {},
-    "synth": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {},
+    "synth": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {},
 }
 
 __all__ = ["MEDIA_ROOTS", "SIGNATURES", "declare_video", "declare_song", "media_kind", "pitch_of", "pitch_name", "tempo_of",
@@ -148,13 +148,47 @@ def media_kind(src: str) -> Optional[str]:
     return _EXT.get(m.group(1).lower()) if m else None
 
 
-EASINGS = ("linear", "easeIn", "easeOut", "easeInOut", "hold")
+EASINGS = ("linear", "easeIn", "easeOut", "easeInOut", "hold", "bezier")
 TRANSITIONS = ("none", "cut", "crossDissolve", "fadeToBlack", "fadeToWhite", "dipToColor", "wipeLeft", "wipeRight", "wipeUp",
                "wipeDown", "diagonalWipe", "barnDoors", "iris", "diamond", "clockWipe", "pixelDissolve", "pushLeft", "pushRight",
                "slideUp", "slideDown", "zoomIn", "zoomBlur", "glitch", "kineticMatte", "shapeWipe")
 EFFECT_TYPES = ("brightnessContrast", "saturation", "hueRotate", "gaussianBlur", "sharpen", "pixelate", "chromaKey", "twist", "wave",
                 "mirror", "vignette", "glow", "grayscale", "sepia", "invert", "posterize", "edges", "chromaticAberration", "bulge",
-                "duotone", "colorWheels", "mask")
+                "duotone", "colorWheels", "mask", "lut")
+#: A transition's alignment on the cut.
+TRANSITION_ALIGN = ("start", "center", "end")
+#: A video's audio effects (a clip's, a track's or the master's chain), by tag: each prop and its default.
+VIDEO_AUDIO_EFFECTS: Dict[str, Dict[str, Any]] = {
+    "gain": {"gain": 1},
+    "eq": {"lowGain": 0, "midGain": 0, "highGain": 0},
+    "filter": {"mode": "lowpass", "freq": 1200, "q": 1},
+    "delay": {"time": 0.3, "feedback": 0.4, "mix": 0.35},
+    "reverb": {"decay": 2, "mix": 0.35},
+    "compressor": {"threshold": -24, "ratio": 4, "attack": 0.003, "release": 0.25},
+    "distortion": {"amount": 0.4, "mix": 1},
+}
+FILTER_MODES = ("lowpass", "highpass", "bandpass")
+FILTER_DEFAULTS = {"lowpass": {"frequency": 1200, "q": 1}, "highpass": {"frequency": 300, "q": 1}, "bandpass": {"frequency": 1500, "q": 2}}
+_AUDIO_BOUNDS = {"gain": (0, 16), "lowGain": (-40, 40), "midGain": (-40, 40), "highGain": (-40, 40), "freq": (10, 24000), "q": (0.0001, 100),
+                 "time": (0, 2), "feedback": (0, 0.95), "mix": (0, 1), "decay": (0.01, 20), "threshold": (-100, 0), "ratio": (1, 20),
+                 "attack": (0, 1), "release": (0, 1), "amount": (0, 1)}
+
+
+def _audio_effect(el: Element, make_id: Callable[[str], str]) -> Dict[str, Any]:
+    """One audio effect element as the editor's effect: the tag's engine type (a filter is its mode) and its params."""
+    spec = VIDEO_AUDIO_EFFECTS[el.type]
+    _refuse_unknown(el, [*spec, "enabled"])
+    params: Dict[str, Any] = {}
+    t = el.type
+    if t == "filter":
+        t = _or(_str(el, "mode", FILTER_MODES), "lowpass")
+        d = FILTER_DEFAULTS[t]
+        params["frequency"] = _or(_num(el, "freq", *_AUDIO_BOUNDS["freq"]), d["frequency"])
+        params["q"] = _or(_num(el, "q", *_AUDIO_BOUNDS["q"]), d["q"])
+    else:
+        for k, d in spec.items():
+            params[k] = _or(_num(el, k, *_AUDIO_BOUNDS[k]), d)
+    return {"id": make_id(f"afx_{t}"), "type": t, "enabled": _or(_bool(el, "enabled"), True), "params": params}
 ANIM_PRESETS = ("fade", "slideL", "slideR", "slideU", "slideD", "pop", "rise", "spin")
 ANIMATABLE = ("opacity", "volume", "transform.x", "transform.y", "transform.scaleX", "transform.scaleY", "transform.rotation")
 CLIP_TRANSFORM = {"x": 0, "y": 0, "scaleX": 1, "scaleY": 1, "rotation": 0, "anchorX": 0.5, "anchorY": 0.5}
@@ -175,7 +209,9 @@ MIDI_CLIP = {"instrument": "grandPiano", "gain": 0.8}
 def shape_content(kind: str) -> str:
     """A shape's content when not given: the star's glyph, else none."""
     return "\u2b50" if kind == "star" else ""
-_CLIP_PROPS = ["name", "start", "duration", "in", "out", "speed", "opacity", "volume", "blendMode", "fitMode", *CLIP_TRANSFORM, *CLIP_COLOR]
+#: A clip's crop: the fraction of its picture hidden at each edge.
+CLIP_CROP = {"cropTop": "top", "cropRight": "right", "cropBottom": "bottom", "cropLeft": "left"}
+_CLIP_PROPS = ["name", "start", "duration", "in", "out", "speed", "opacity", "volume", "blendMode", "fitMode", *CLIP_TRANSFORM, *CLIP_COLOR, *CLIP_CROP]
 
 
 def _common(c: Element) -> Dict[str, Any]:
@@ -188,17 +224,20 @@ def _common(c: Element) -> Dict[str, Any]:
         out["fitMode"] = fit
     out["transform"] = transform
     out["color"] = color
+    if any(k in c.props for k in CLIP_CROP):
+        out["crop"] = {edge: _or(_num(c, k, 0, 0.49), 0) for k, edge in CLIP_CROP.items()}
     return out
 
 
-def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) ->Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
     transition_in: Dict[str, Any] = {"kind": "none", "duration": 0}
     anims: Dict[str, Any] = {}
     notes: List[Dict[str, Any]] = []
     note_id = _ids()
     effects: List[Dict[str, Any]] = []
+    audio: List[Dict[str, Any]] = []
     keyframes: List[Dict[str, Any]] = []
-    fx_id, kf_id = _ids(), _ids()
+    fx_id, kf_id, afx_id = _ids(), _ids(), _ids()
     saw = False
 
     def key(el: Element, prop: str) -> None:
@@ -210,17 +249,34 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) ->Tuple[Di
             track_ = {"property": prop, "keys": []}
             keyframes.append(track_)
         kid = kf_id(f"kf_{clip_id}")
-        track_["keys"].append({"id": kid, "time": time, "value": value, "easing": _or(_str(el, "easing", EASINGS), "linear")})
+        easing = _or(_str(el, "easing", EASINGS), "linear")
+        bezier = el.props.get("bezier")
+        if bezier is not None and easing != "bezier":
+            raise ValueError(f'{_where(el)}: bezier is read with easing="bezier"')
+        k = {"id": kid, "time": time, "value": value, "easing": easing}
+        if easing == "bezier":
+            ok = isinstance(bezier, (list, tuple)) and len(bezier) == 4 and all(
+                not isinstance(v, bool) and isinstance(v, (int, float)) and math.isfinite(v) for v in bezier) and 0 <= bezier[0] <= 1 and 0 <= bezier[2] <= 1
+            if not ok:
+                raise ValueError(f'{_where(el)}: an easing "bezier" names its curve: bezier=[x1, y1, x2, y2] (x1 and x2 from 0 to 1)')
+            k["bezier"] = list(bezier)
+        track_["keys"].append(k)
         track_["keys"].sort(key=lambda k: k["time"])
         sources[f"keyframe:{kid}"] = el.source
 
     for el in child_elements(c):
         if el.type == "transition":
-            _refuse_unknown(el, ["kind", "duration"])
+            _refuse_unknown(el, ["kind", "duration", "align", "color", "shape"])
             if saw:
                 raise ValueError(f"{_where(c)}: a clip has one <transition> (into it)")
             saw = True
             transition_in = {"kind": _or(_str(el, "kind", TRANSITIONS), "crossDissolve"), "duration": _or(_num(el, "duration", 0), 0.5)}
+            tparams: Dict[str, Any] = {}
+            for k, v in (("align", _str(el, "align", TRANSITION_ALIGN)), ("color", _str(el, "color")), ("shape", _num(el, "shape", 0))):
+                if v is not None:
+                    tparams[k] = v
+            if tparams:
+                transition_in["params"] = tparams
             sources["transition"] = el.source
         elif el.type == "note":
             if c.type != "midi":
@@ -250,9 +306,18 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) ->Tuple[Di
             if not t:
                 raise ValueError(f"{_where(c)}: an <effect> names its type")
             fid = fx_id(f"fx_{t}")
+            src = None
+            if t == "lut":
+                src = _str(el, "src")
+                if not src:
+                    raise ValueError('<effect type="lut">: a LUT names its .cube file (src="looks/film.cube", relative to this file)')
+                if re.match(r"^[a-z]+:|^/", src, re.I):
+                    raise ValueError(f'<effect type="lut">: src is a path relative to this file, not {src}')
+            elif el.props.get("src") is not None:
+                raise ValueError(f'<effect type="{t}">: src is read on a LUT (type="lut")')
             params = {}
             for k, v in el.props.items():
-                if k in ("key", "type", "enabled", "colors"):
+                if k in ("key", "type", "enabled", "colors", "src"):
                     continue
                 if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
                     raise ValueError(f'<effect type="{t}">: {k} is a number, not {json.dumps(v)}')
@@ -263,25 +328,33 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) ->Tuple[Di
                 if not isinstance(colors, dict) or any(not isinstance(x, str) for x in colors.values()):
                     raise ValueError(f'<effect type="{t}">: colors is {{ name: "#rrggbb" }}')
                 fx["colors"] = dict(colors)
+            if src is not None:
+                fx["src"] = src
             effects.append(fx)
             sources[f"effect:{fid}"] = el.source
             for k in child_elements(el):
                 if k.type != "keyframe":
                     raise ValueError(f"<{k.type}> is not read in an <effect> (its keyframes are <keyframe param time value>)")
-                _refuse_unknown(k, ["param", "time", "value", "easing"])
+                _refuse_unknown(k, ["param", "time", "value", "easing", "bezier"])
                 param = _str(k, "param")
                 if not param:
                     raise ValueError(f"{_where(k)}: an effect's keyframe names its param")
                 key(k, f"effect.{fid}.{param}")
         elif el.type == "keyframe":
-            _refuse_unknown(el, ["property", "time", "value", "easing"])
+            _refuse_unknown(el, ["property", "time", "value", "easing", "bezier"])
             prop = _str(el, "property", ANIMATABLE)
             if not prop:
                 raise ValueError(f"{_where(el)}: a keyframe names its property ({', '.join(ANIMATABLE)})")
             key(el, prop)
+        elif el.type in VIDEO_AUDIO_EFFECTS:
+            if (c.type != "clip" and c.type != "midi") or (c.type == "clip" and media_kind(str(c.props.get("src") or "")) == "image"):
+                raise ValueError(f"<{el.type}> is an audio effect: {_where(c)} has no sound")
+            fx = _audio_effect(el, afx_id)
+            audio.append(fx)
+            sources[f"audio:{fx['id']}"] = el.source
         else:
-            raise ValueError(f"<{el.type}> is not read in a <{c.type}> (a clip holds <transition>, <intro>, <outro>, <effect> and <keyframe>; a <midi> clip its <note>s)")
-    return transition_in, anims, effects, keyframes, notes
+            raise ValueError(f"<{el.type}> is not read in a <{c.type}> (a clip holds <transition>, <intro>, <outro>, <effect>, <keyframe> and audio effects ({', '.join(VIDEO_AUDIO_EFFECTS)}); a <midi> clip its <note>s)")
+    return transition_in, anims, effects, audio, keyframes, notes
 
 
 def declare_video(root: Element) -> Dict[str, Any]:
@@ -296,7 +369,14 @@ def declare_video(root: Element) -> Dict[str, Any]:
     track_wires: List[Any] = []
     markers: List[Dict[str, Any]] = []
     composite_sources: Dict[str, Any] = {}
+    master: List[Dict[str, Any]] = []
+    master_id = _ids()
     for tr in child_elements(root):
+        if tr.type in VIDEO_AUDIO_EFFECTS:
+            fx = _audio_effect(tr, master_id)
+            master.append(fx)
+            composite_sources[f"audio:{fx['id']}"] = tr.source
+            continue
         if tr.type == "marker":
             _refuse_unknown(tr, ["name", "time", "color"])
             t = _num(tr, "time", 0)
@@ -307,13 +387,21 @@ def declare_video(root: Element) -> Dict[str, Any]:
             composite_sources[f"marker:{mid}"] = tr.source
             continue
         if tr.type != "track":
-            raise ValueError(f"<{tr.type}> is not read in a <video> (it holds <track> and <marker>)")
+            raise ValueError(f"<{tr.type}> is not read in a <video> (it holds <track>, <marker> and the master's audio effects)")
         _refuse_unknown(tr, ["name", "kind", "muted", "hidden", "locked", "volume", "height"])
         kind = _or(_str(tr, "kind", VIDEO_TRACK_KINDS), "video")
         track_name = _or(_str(tr, "name"), "A" if kind == "audio" else "M" if kind == "midi" else "V")
         track_id = new_id(f"track_{track_name}")
         clip_wires: List[Any] = []
+        track_fx: List[Dict[str, Any]] = []
+        track_sources: Dict[str, Any] = {}
+        track_fx_id = _ids()
         for c in child_elements(tr):
+            if c.type in VIDEO_AUDIO_EFFECTS:
+                fx = _audio_effect(c, track_fx_id)
+                track_fx.append(fx)
+                track_sources[f"audio:{fx['id']}"] = c.source
+                continue
             if c.type == "clip":
                 _refuse_unknown(c, ["src", *_CLIP_PROPS])
                 src = _str(c, "src")
@@ -393,7 +481,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
                                          "stroke": _or(_str(c, "stroke"), SHAPE_LOOK["stroke"]), "strokeWidth": _or(_num(c, "strokeWidth", 0), SHAPE_LOOK["strokeWidth"])}
                 source = None
             elif c.type == "midi":
-                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed")] + list(MIDI_CLIP))
+                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed") and p not in CLIP_CROP] + list(MIDI_CLIP))
                 if kind != "midi":
                     raise ValueError(f'{_where(c)}: a <midi> clip goes on a midi track (kind="midi")')
                 clip_name = _or(_str(c, "name"), "MIDI")
@@ -403,15 +491,17 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 inputs = {"kind": "midi", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1, **_common(c)}
                 source = None
             else:
-                raise ValueError(f"<{c.type}> is not read on a <track> (it holds <clip>, <title>, <shape>, <adjustment> and <midi>)")
+                raise ValueError(f"<{c.type}> is not read on a <track> (it holds <clip>, <title>, <shape>, <adjustment>, <midi> and audio effects)")
             if kind == "midi" and c.type != "midi":
                 raise ValueError(f"{_where(c)}: a midi track holds <midi> clips")
             clip_id = new_id(f"clip_{clip_name}")
             sources: Dict[str, Any] = {}
-            transition_in, anims, effects, keyframes, notes = _clip_children(c, clip_id, sources)
+            transition_in, anims, effects, audio, keyframes, notes = _clip_children(c, clip_id, sources)
             inputs["transitionIn"] = transition_in
             inputs.update(anims)
             inputs["effects"] = effects
+            if audio:
+                inputs["audioEffects"] = audio
             inputs["trackers"] = []
             if keyframes:
                 inputs["keyframes"] = keyframes
@@ -424,14 +514,18 @@ def declare_video(root: Element) -> Dict[str, Any]:
         track_inputs: Dict[str, Any] = {"kind": kind, "name": track_name, "muted": _or(_bool(tr, "muted"), False), "hidden": _or(_bool(tr, "hidden"), False),
                                         "locked": _or(_bool(tr, "locked"), False), "height": _or(_num(tr, "height", 16), _TRACK_HEIGHT[kind]),
                                         "volume": _or(_num(tr, "volume", 0), 1)}
+        if track_fx:
+            track_inputs["audioEffects"] = track_fx
         for i, w in enumerate(clip_wires):
             track_inputs[f"clips.{i + 1}"] = w
-        nodes[track_id] = _node(track_id, "video.track", track_inputs, track_name, _meta_of(tr))
+        nodes[track_id] = _node(track_id, "video.track", track_inputs, track_name, _meta_of(tr, track_sources))
         track_wires.append(_wire(track_id, "frames"))
     project_id = slug(f"proj_{name}")
     composite: Dict[str, Any] = {"id": project_id, "name": name, "settings": settings}
     if markers:
         composite["markers"] = markers
+    if master:
+        composite["masterEffects"] = master
     composite.update({"createdAt": 0, "updatedAt": 0})
     for i, w in enumerate(track_wires):
         composite[f"tracks.{i + 1}"] = w
