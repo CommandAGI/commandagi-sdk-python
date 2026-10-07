@@ -6,7 +6,7 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.twod import (blur, drawing, ellipse, exposure, fill, from_twod, gaussianBlur, gradient, group, image, layer, mask,
+from commandagi.design.twod import (artboard, blur, drawing, ellipse, exposure, fill, from_twod, gaussianBlur, gradient, group, image, layer, mask,
                                     nest, options, painting, part, path, photo, raster, raster_layer, rect, sheet, stock, stroke,
                                     subpaths_of)
 
@@ -38,6 +38,27 @@ class DrawingTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["Edge"]["inputs"]["subpaths"], [
             {"start": {"x": 0, "y": 0}, "segs": [{"to": {"x": 10, "y": 0}}, {"c1": {"x": 1, "y": 2}, "c2": {"x": 3, "y": 4}, "to": {"x": 5, "y": 6}}, {"c1": {"x": 7, "y": 8}, "to": {"x": 9, "y": 9}}], "closed": True},
         ])
+
+    def test_a_drawing_is_its_first_artboard_and_each_artboard_after_its_layers_is_another(self):
+        g = from_twod(drawing(
+            layer(rect(x=1, y=2, w=3, h=4), name="Front"),
+            artboard(layer(ellipse(cx=5, cy=6, rx=7, ry=7), name="Text"), name="Back", width=400, height=300, background="#eeeeee"),
+            artboard(width=200, height=100),
+            name="Card", width=400, height=300, background="#ffffff",
+        ))
+        self.assertEqual(g["outputs"], ["composite", "Back", "Artboard_3"])
+        self.assertEqual(g["meta"]["pages"], [
+            {"id": "composite", "name": "Card", "width": 400, "height": 300, "background": "#ffffff", "compositeId": "composite"},
+            {"id": "Back", "name": "Back", "width": 400, "height": 300, "background": "#eeeeee", "compositeId": "Back"},
+            {"id": "Artboard_3", "name": "Artboard 3", "width": 200, "height": 100, "compositeId": "Artboard_3"},
+        ])
+        self.assertEqual(g["nodes"]["Back"]["inputs"], {"background": "#eeeeee", "layers.1": wire("group_2")})
+        self.assertEqual(g["nodes"]["Back"]["label"], "Back")
+        self.assertNotIn("pages", from_twod(drawing(layer()))["meta"])
+        with self.assertRaisesRegex(ValueError, "its layers come before its <artboard>s"):
+            from_twod(drawing(artboard(), layer()))
+        with self.assertRaisesRegex(ValueError, r"x is not read \(an artboard has name, width, height, background\)"):
+            from_twod(drawing(artboard(x=4)))
 
     def test_an_image_and_a_raster_layer_name_their_files(self):
         g = from_twod(drawing(layer(image(src="photos/harbour.jpg", x=10, y=20, w=40, h=30), raster_layer(src="scan.png"), name="Pictures"),
