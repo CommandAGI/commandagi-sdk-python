@@ -6,7 +6,7 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.twod import (blur, drawing, ellipse, exposure, fill, from_twod, gaussianBlur, gradient, group, image, layer, mask,
+from commandagi.design.twod import (blur, bucket, drawing, ellipse, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, group, image, layer, line, mask, move,
                                     nest, options, painting, part, path, photo, raster, raster_layer, rect, sheet, stock, stroke,
                                     subpaths_of)
 
@@ -87,6 +87,30 @@ class StackTests(unittest.TestCase):
             "brush": {"kind": "round", "size": 4}, "color": [0, 0, 0, 1], "src": wire("paint.layer"),
         })
         self.assertEqual(g["meta"], {"domain": "paint", "name": "Sketch"})
+
+    def test_a_paintings_bucket_gradient_and_move_chain_on_a_layer_a_shape_is_a_layer(self):
+        selection = [{"rect": [10, 10, 40, 30], "feather": 4}, {"op": "subtract", "polygon": [[20, 20], [30, 20], [25, 30]]}]
+        g = from_twod(painting(
+            layer(
+                stroke(points=[[1, 2, 0.5, 0]], color=[0, 0, 0, 1], selection=selection),
+                bucket(x=5, y=6, tolerance=20, contiguous=True, color=[1, 0, 0, 1]),
+                gradientFill(shape="linear", from_=[0, 0], to=[100, 0], stops=[{"at": 0, "color": [0, 0, 0, 1]}, {"at": 1, "color": [1, 1, 1, 1]}]),
+                move(dx=12, dy=-3, selection=[{"wand": [5, 6], "tolerance": 32, "contiguous": False}]),
+                name="Paint",
+            ),
+            rect(name="Rectangle 1", x=4, y=5, w=30, h=20, fill=[0, 0, 1, 1], stroke=[0, 0, 0, 1], stroke_width=2),
+            line(name="Line 1", from_=[0, 0], to=[10, 10], stroke=[1, 0, 0, 1], stroke_width=3),
+            width=100, height=80,
+        ))
+        n = g["nodes"]
+        self.assertEqual(n["paint.stroke"]["inputs"]["selection"], selection)
+        self.assertEqual(n["paint.bucket"]["inputs"], {"name": "Paint", "visible": True, "opacity": 1, "blend": "normal", "x": 5, "y": 6,
+                                                       "tolerance": 20, "contiguous": True, "color": [1, 0, 0, 1], "src": wire("paint.stroke")})
+        self.assertEqual(n["paint.gradientFill"]["inputs"]["from"], [0, 0])
+        self.assertEqual(n["doc"]["inputs"]["layers.1"], wire("paint.move"))
+        self.assertEqual(n["paint.shape"]["inputs"], {"name": "Rectangle 1", "x": 4, "y": 5, "w": 30, "h": 20, "fill": [0, 0, 1, 1],
+                                                      "stroke": [0, 0, 0, 1], "strokeWidth": 2, "shape": "rect"})
+        self.assertEqual(n["paint.shape_2"]["inputs"]["shape"], "line")
 
     def test_a_photos_adjustments_are_tags_and_a_rasters_children_its_filters(self):
         g = from_twod(photo(
