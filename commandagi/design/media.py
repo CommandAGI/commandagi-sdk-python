@@ -13,12 +13,15 @@ TypeScript SDK's ``media.ts`` (``.vid.tsx``, ``.mus.tsx``)::
 
     result = song(
         track(synth(wave="triangle"), clip(note(pitch="C4", start=0, duration=1), name="Keys 1", start=0, length=4), name="Keys"),
-        name="Loop", tempo=120, time_signature="4/4", bars=8,
+        track(clip(src="media/tone.wav", start=4, length=2, in_=0.25, volume=0.8), name="Tone"),
+        track(sampler(src="media/tone.wav", root="A4"), clip(name="Bells 1", start=0, length=4), name="Bells"),
+        name="Loop", tempo=120, time_signature="4/4", bars=8, cycle_start=0, cycle_end=16,
     )
 
 One call per tag (``commandagi.design.element``): children positional, attributes as snake_case keywords (``font_size``
 is ``fontSize``; ``in_`` is ``in``). Media files are named by path relative to the file, never inlined. Times on a
-video's timeline are seconds; in a song, beats. Each node carries the call that declared it in ``meta.source``; what a
+video's timeline are seconds; in a song, beats (an audio clip's ``in``, where it starts in its file, is seconds, as on a
+video). Each node carries the call that declared it in ``meta.source``; what a
 node holds that is not a node (a clip's effects, transition, intro, outro and keyframes; a midi clip's notes; a video's
 markers) carries its call in ``meta.sources``, by key. Anything the vocabulary cannot say is refused by name.
 """
@@ -40,7 +43,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "video": _HOLDS, "song": _HOLDS, "track": _HOLDS, "clip": _HOLDS, "title": _HOLDS, "shape": _HOLDS, "adjustment": _HOLDS,
     "midi": _HOLDS, "effect": _HOLDS,
     "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {},
-    "synth": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {},
+    "synth": {}, "sampler": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {},
 }
 
 __all__ = ["MEDIA_ROOTS", "SIGNATURES", "declare_video", "declare_song", "media_kind", "pitch_of", "pitch_name", "tempo_of",
@@ -595,9 +598,30 @@ def tempo_of(v: Any) -> Optional[List[Dict[str, float]]]:
     return out if out[0]["atBeat"] <= 0 else None
 
 
+SAMPLER = {"root": 69, "gain": 1}
+AUDIO_CLIP = {"in": 0, "volume": 1, "loop": False}
+
+
+def _sound_src(el: Element) -> str:
+    src = _str(el, "src")
+    if not src:
+        raise ValueError(f'<{el.type}> names its sound file (src="media/tone.wav", relative to this file)')
+    if re.match(r"^[a-z]+:|^/", src, re.I):
+        raise ValueError(f"{_where(el)}: src is a path relative to this file, not {src}")
+    if media_kind(src) != "audio":
+        raise ValueError(f"{_where(el)}: {src} is not a sound file this studio reads")
+    return src
+
+
+def _stem(src: str) -> str:
+    return re.sub(r"\.[^.]+$", "", re.sub(r"^.*/", "", src))
+
+
 def declare_song(root: Element) -> Dict[str, Any]:
-    """Declare a song (``song(...)`` and its tracks) as the music studio's own op graph."""
-    _refuse_unknown(root, ["name", "volumeDb", "tempo", "timeSignature", "bars"])
+    """Declare a song (``song(...)`` and its tracks) as the music studio's own op graph. A track plays a ``synth`` or a
+    ``sampler`` (an instrument: its clips hold notes), or holds audio clips (``clip(src=...)``: a sound file placed on
+    the song, played by the track's player); effects follow the instrument or the player."""
+    _refuse_unknown(root, ["name", "volumeDb", "tempo", "timeSignature", "bars", "cycleStart", "cycleEnd"])
     name = _or(_str(root, "name"), "Song")
     tempo = [{"atBeat": 0, "bpm": 120}] if root.props.get("tempo") is None else tempo_of(root.props["tempo"])
     if not tempo:
@@ -609,6 +633,13 @@ def declare_song(root: Element) -> Dict[str, Any]:
     new_id = _ids()
     new_id("master")
     master: Dict[str, Any] = {"name": "Master", "volumeDb": _or(_num(root, "volumeDb"), 0), "tempo": tempo, "timeSig": time_sig, "bars": _or(_num(root, "bars", 1), 8)}
+    cycle_start, cycle_end = _num(root, "cycleStart", 0), _num(root, "cycleEnd", 0)
+    if (cycle_start is None) != (cycle_end is None):
+        raise ValueError("<song>: a cycle names both its cycleStart and its cycleEnd (beats)")
+    if cycle_start is not None and cycle_end is not None:
+        if not cycle_end > cycle_start:
+            raise ValueError(f"<song>: cycleEnd ({json.dumps(cycle_end)}) comes after cycleStart ({json.dumps(cycle_start)})")
+        master["cycle"] = {"start": cycle_start, "end": cycle_end}
     order = 0
     for tr in child_elements(root):
         if tr.type != "track":
@@ -616,17 +647,31 @@ def declare_song(root: Element) -> Dict[str, Any]:
         _refuse_unknown(tr, ["name", "colorIndex", "volumeDb", "pan", "mute", "solo"])
         track_name = _or(_str(tr, "name"), f"Track {order + 1}")
         track_id = new_id(f"track_{track_name}")
+        children = list(child_elements(tr))
+        audio_track = bool(children) and not any(el.type in ("synth", "sampler") for el in children)
         upstream: Optional[str] = None
         instrument: Optional[str] = None
+        player: Optional[str] = None
         clips: List[str] = []
-        for el in child_elements(tr):
-            if el.type == "synth":
+        if audio_track:
+            player = new_id(f"player_{track_name}")
+            nodes[player] = _node(player, "player", {"name": track_name})
+            upstream = player
+        for el in children:
+            if el.type in ("synth", "sampler"):
                 if instrument:
-                    raise ValueError(f"{_where(tr)}: a track plays one <synth>")
-                _refuse_unknown(el, ["name", *SYNTH, *ENVELOPE])
-                spec: Dict[str, Any] = {"kind": "synth", "wave": _or(_str(el, "wave", WAVES), SYNTH["wave"])}
-                for k in ("gain", "detune", "voices", "transpose"):
-                    spec[k] = _or(_num(el, k), SYNTH[k])
+                    raise ValueError(f"{_where(tr)}: a track plays one instrument (a <synth> or a <sampler>)")
+                if el.type == "synth":
+                    _refuse_unknown(el, ["name", *SYNTH, *ENVELOPE])
+                    spec: Dict[str, Any] = {"kind": "synth", "wave": _or(_str(el, "wave", WAVES), SYNTH["wave"])}
+                    for k in ("gain", "detune", "voices", "transpose"):
+                        spec[k] = _or(_num(el, k), SYNTH[k])
+                else:
+                    _refuse_unknown(el, ["name", "src", "root", "gain", *ENVELOPE])
+                    base = SAMPLER["root"] if el.props.get("root") is None else pitch_of(el.props.get("root"))
+                    if base is None:
+                        raise ValueError(f'<sampler>: root is the pitch the file sounds at, a MIDI number (0–127) or a name ("A4"), not {json.dumps(el.props.get("root"))}')
+                    spec = {"kind": "sampler", "src": _sound_src(el), "baseNote": base, "gain": _or(_num(el, "gain", 0), SAMPLER["gain"])}
                 spec["env"] = {k: _or(_num(el, k, 0), d) for k, d in ENVELOPE.items()}
                 instrument = new_id(f"inst_{track_name}")
                 nodes[instrument] = _node(instrument, "instrument", {"name": _or(_str(el, "name"), track_name), "spec": spec}, meta=_meta_of(el))
@@ -634,7 +679,7 @@ def declare_song(root: Element) -> Dict[str, Any]:
             elif el.type in SONG_EFFECTS:
                 fx_type, fx_name, defaults = SONG_EFFECTS[el.type]
                 if not upstream:
-                    raise ValueError(f"<{el.type}> comes after the track's <synth> (the chain runs synth → effects → track)")
+                    raise ValueError(f"<{el.type}> comes after the track's instrument (the chain runs instrument → effects → track)")
                 _refuse_unknown(el, ["name", *defaults])
                 spec = {"type": el.type}
                 for k, d in defaults.items():
@@ -643,7 +688,20 @@ def declare_song(root: Element) -> Dict[str, Any]:
                 nodes[fid] = _node(fid, fx_type, {"name": _or(_str(el, "name"), fx_name), "spec": spec, "audio": _wire(upstream, "audio")},
                                  meta=_meta_of(el))
                 upstream = fid
+            elif el.type == "clip" and player and el.props.get("src") is not None:
+                _refuse_unknown(el, ["name", "src", "start", "length", "in", "volume", "loop"])
+                if list(child_elements(el)):
+                    raise ValueError(f"{_where(el)}: an audio clip holds no notes (notes go in a clip on a track with a <synth> or a <sampler>)")
+                src = _sound_src(el)
+                clip_name = _or(_str(el, "name"), _stem(src))
+                cid = new_id(f"clip_{clip_name}")
+                nodes[cid] = _node(cid, "sample", {"name": clip_name, "src": src, "start": _or(_num(el, "start", 0), 0), "length": _or(_num(el, "length", 0), 4),
+                                                   "offsetSeconds": _or(_num(el, "in", 0), AUDIO_CLIP["in"]), "gain": _or(_num(el, "volume", 0), AUDIO_CLIP["volume"]),
+                                                   "loop": _or(_bool(el, "loop"), AUDIO_CLIP["loop"])}, meta=_meta_of(el))
+                clips.append(cid)
             elif el.type == "clip":
+                if el.props.get("src") is not None:
+                    raise ValueError(f"{_where(tr)}: a track that plays an instrument holds clips of notes; an audio clip (src) goes on a track without one")
                 _refuse_unknown(el, ["name", "start", "length", "loop"])
                 clip_name = _or(_str(el, "name"), f"{track_name} {len(clips) + 1}")
                 cid = new_id(f"clip_{clip_name}")
@@ -664,12 +722,15 @@ def declare_song(root: Element) -> Dict[str, Any]:
                                                      "notes": notes, "loop": _or(_bool(el, "loop"), False)}, meta=_meta_of(el, sources))
                 clips.append(cid)
             else:
-                raise ValueError(f"<{el.type}> is not read on a <track> (it holds <synth>, effects ({', '.join(SONG_EFFECTS)}) and <clip>)")
-        if clips and not instrument:
-            raise ValueError(f"{_where(tr)}: its clips need a <synth> to play them")
+                raise ValueError(f"<{el.type}> is not read on a <track> (it holds a <synth> or a <sampler>, effects ({', '.join(SONG_EFFECTS)}) and <clip>)")
         if instrument:
             for i, c in enumerate(clips):
                 nodes[instrument]["inputs"][f"midi.{i + 1}"] = _wire(c, "midi")
+        if player:
+            if any(nodes[c]["type"] == "midiClip" for c in clips):
+                raise ValueError(f"{_where(tr)}: its clips need a <synth> or a <sampler> to play them")
+            for i, c in enumerate(clips):
+                nodes[player]["inputs"][f"audio.{i + 1}"] = _wire(c, "audio")
         track_inputs: Dict[str, Any] = {"name": track_name, "volumeDb": _or(_num(tr, "volumeDb"), 0), "pan": _or(_num(tr, "pan", -1, 1), 0),
                                         "mute": _or(_bool(tr, "mute"), False), "solo": _or(_bool(tr, "solo"), False), "colorIndex": _or(_num(tr, "colorIndex", 0), order)}
         if upstream:
