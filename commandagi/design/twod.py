@@ -22,7 +22,8 @@ a sheet, ``.nest.py``).
 
 ONE RULE FOR EVERY TAG: an element is one node, its keywords are the node's inputs (snake_case of the input's name:
 ``stroke_width`` is ``strokeWidth``), and its positional arguments are the nodes it takes, in order. ``id``, ``label``
-and ``disabled`` set the node's own fields. The encodings are the TypeScript SDK's: a top-level group of a drawing is a
+and ``disabled`` set the node's own fields. The encodings are the TypeScript SDK's: a drawing is its first artboard, and
+each ``artboard(layer(…), name=…, width=…, height=…)`` after its layers is another; a top-level group of a drawing is a
 ``layer``; a path's ``d`` (absolute M L H V C Q Z); a drawn brush stroke's ``[x, y]`` points; a paint stroke's
 ``[x, y, pressure, t]`` points; a modifier (``blur``, ``transform``, ``fill`` …) wraps the one node it takes; ``clip``
 takes its content, then its mask; in a painting or a photo a ``mask`` child of a layer, a stroke or a filter holds the
@@ -45,7 +46,7 @@ _C: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the 2D documents: what it holds (absent: a leaf). The TypeScript SDK's ``SIGNATURES.twod``.
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     # roots
-    "drawing": _C, "painting": _C, "photo": _C, "nest": _C,
+    "drawing": _C, "artboard": _C, "painting": _C, "photo": _C, "nest": _C,
     # drawing: groups, shapes, pixels, modifiers
     "layer": _C, "group": _C,
     "rect": {}, "ellipse": {}, "polygon": {}, "path": {}, "text": {}, "brush-stroke": {}, "image": {}, "raster-layer": {},
@@ -234,8 +235,11 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
     raise ValueError(f"<{t}> is not read in a drawing (see commandagi.design.twod)")
 
 
+_BOARD = ("name", "width", "height", "background")
+
+
 def _drawing(root: Element, name: str) -> Dict[str, Any]:
-    a = _attrs(root, ("name", "width", "height", "background"))
+    a = _attrs(root, _BOARD)
     if a:
         raise ValueError(f"<drawing>: {next(iter(a))} is not read (a drawing has name, width, height, background)")
     # A drawing with no name of its own declares none; the file's name only names the graph.
@@ -246,10 +250,38 @@ def _drawing(root: Element, name: str) -> Dict[str, Any]:
             m[k] = _plain(root.props[k], f"<drawing> {k}")
     s = Scope(f"draw:{slug(own if own is not None else name)}", m)
     with using(s):
-        layers = [_drawn(s, c, True) for c in child_elements(root)]
+        # The drawing is its first artboard: its layers are its own; each artboard after them is another.
+        children = child_elements(root)
+        boards = [c for c in children if c.tag == "artboard"]
+        first = next((i for i, c in enumerate(children) if c.tag == "artboard"), -1)
+        if first >= 0 and any(c.tag != "artboard" for c in children[first:]):
+            raise ValueError("<drawing>: its layers come before its <artboard>s (the drawing is the first artboard)")
+        layers = [_drawn(s, c, True) for c in children if c.tag != "artboard"]
         comp = s.add("composite", {**({"background": m["background"]} if "background" in m else {}), **channels("layers", layers)},
                      id="composite", label="Output", meta=_meta(root))
         s.output(comp)
+        if boards:
+            pages = [{"id": "composite", "name": own if own is not None else "Artboard 1",
+                      **{k: m[k] for k in ("width", "height", "background") if k in m}, "compositeId": "composite"}]
+            for i, b in enumerate(boards):
+                extra = _attrs(b, _BOARD)
+                if extra:
+                    raise ValueError(f"{_where(b)}: {next(iter(extra))} is not read (an artboard has name, width, height, background)")
+                board_name = b.props.get("name") if isinstance(b.props.get("name"), str) else f"Artboard {i + 2}"
+                fields = {k: _plain(b.props[k], f"{_where(b)} {k}") for k in ("width", "height", "background") if b.props.get(k) is not None}
+                board_layers = []
+                for c in child_elements(b):
+                    if c.tag == "artboard":
+                        raise ValueError(f"{_where(b)}: an <artboard> is a child of the <drawing>, not of another artboard")
+                    board_layers.append(_drawn(s, c, True))
+                nid = b.props.get("id")
+                if nid is not None and not isinstance(nid, str):
+                    raise ValueError(f"{_where(b)}: id is a string")
+                ref = s.add("composite", {**({"background": fields["background"]} if "background" in fields else {}), **channels("layers", board_layers)},
+                            id=nid or None, label=board_name, meta=_meta(b))
+                s.output(ref)
+                pages.append({"id": ref.id, "name": board_name, **fields, "compositeId": ref.id})
+            s.meta["pages"] = pages
     return s.build()
 
 
