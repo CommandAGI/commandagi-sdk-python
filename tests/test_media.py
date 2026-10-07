@@ -4,8 +4,8 @@ element's source. Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.media import (clip, declare_song, declare_video, effect, keyframe, marker, note, pitch_name, pitch_of, reverb,
-                                     song, synth, title, track, transition, video)
+from commandagi.design.media import (clip, declare_song, declare_video, effect, gain, keyframe, marker, note, pitch_name, pitch_of, reverb,
+                                     sampler, song, synth, title, track, transition, video)
 
 
 def wire(node, port):
@@ -92,6 +92,29 @@ class SongTests(unittest.TestCase):
         self.assertEqual(pitch_name(61), "C#4")
         with self.assertRaisesRegex(ValueError, "need a <synth>"):
             declare_song(song(track(clip())))
+
+    def test_a_song_holds_audio_clips_a_sampler_and_a_cycle(self):
+        n = declare_song(song(
+            track(gain(gain=0.5), clip(src="media/tone.wav", start=2, length=3, in_=0.25, volume=0.8), clip(src="media/tone.wav", name="Again", start=8),
+                  name="Tone"),
+            track(sampler(src="media/tone.wav", root="C5", release=1), clip(note(pitch="E5")), name="Bells"),
+            cycle_start=4, cycle_end=12))["nodes"]
+        self.assertEqual(n["master"]["inputs"]["cycle"], {"start": 4, "end": 12})
+        self.assertEqual(n["player_Tone"]["inputs"], {"name": "Tone", "audio.1": wire("clip_tone", "audio"), "audio.2": wire("clip_Again", "audio")})
+        self.assertEqual(n["fx_Tone_gain"]["inputs"]["audio"], wire("player_Tone", "audio"))
+        self.assertEqual(n["clip_tone"]["inputs"], {"name": "tone", "src": "media/tone.wav", "start": 2, "length": 3, "offsetSeconds": 0.25, "gain": 0.8, "loop": False})
+        self.assertEqual(n["inst_Bells"]["inputs"]["spec"], {"kind": "sampler", "src": "media/tone.wav", "baseNote": 72, "gain": 1,
+                                                             "env": {"attack": 0.01, "decay": 0.15, "sustain": 0.6, "release": 1}})
+        self.assertEqual(n["inst_Bells"]["inputs"]["midi.1"], wire("clip_Bells_1", "midi"))
+        for bad, message in [(track(clip(src="/abs/tone.wav")), "relative to this file"), (track(clip(src="take.mp4")), "not a sound file"),
+                             (track(synth(), clip(src="tone.wav")), "goes on a track without one"),
+                             (track(clip(src="tone.wav"), clip()), "need a <synth> or a <sampler>"), (track(sampler(src="a.wav", root="Q")), "root is the pitch")]:
+            with self.assertRaisesRegex(ValueError, message):
+                declare_song(song(bad))
+        with self.assertRaisesRegex(ValueError, "names both"):
+            declare_song(song(cycle_start=4))
+        with self.assertRaisesRegex(ValueError, "comes after"):
+            declare_song(song(cycle_start=4, cycle_end=4))
 
     def test_a_note_written_in_a_loop_names_its_one_call(self):
         n = run_module(
