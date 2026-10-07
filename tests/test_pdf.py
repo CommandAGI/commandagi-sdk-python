@@ -4,7 +4,7 @@ by name. Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design.documents import declare_document
-from commandagi.design.pdf import attach, bookmark, field, fill, highlight, label, note, page, pdf, redact, reply, signature, stamp
+from commandagi.design.pdf import attach, bates, bookmark, field, fill, footer, header, highlight, label, note, page, pdf, redact, reply, signature, stamp
 
 
 class PdfTests(unittest.TestCase):
@@ -23,6 +23,9 @@ class PdfTests(unittest.TestCase):
             bookmark(bookmark(title="Payment", page=2, top=500), title="Terms", page=2),
             label(from_=1, style="r"),
             attach(src="data.csv"),
+            header(right="{file}", size=8),
+            footer(center="Page {page} of {pages}", pages="2-"),
+            bates(prefix="ACME-", digits=6, position="bottom-right"),
             title="Signed", author="Ada",
         ))
         self.assertEqual(d["format"], "pdf")
@@ -42,6 +45,9 @@ class PdfTests(unittest.TestCase):
             "bookmarks": [{"title": "Terms", "page": 2, "children": [{"title": "Payment", "page": 2, "top": 500}]}],
             "labels": [{"from": 1, "style": "r"}],
             "attachments": [{"src": "data.csv"}],
+            "header": {"right": "{file}", "size": 8},
+            "footer": {"center": "Page {page} of {pages}", "pages": "2-"},
+            "bates": {"prefix": "ACME-", "digits": 6, "position": "bottom-right"},
         })
 
     def test_what_it_cannot_say_is_refused(self):
@@ -53,6 +59,10 @@ class PdfTests(unittest.TestCase):
             declare_document(pdf(page(stamp(rect=[0, 0, 10, 10]), size="a4")))
         with self.assertRaisesRegex(ValueError, "one of typed, image or strokes"):
             declare_document(pdf(page(signature(rect=[0, 0, 10, 10], typed="A", image="s.png"), size="a4")))
+        with self.assertRaisesRegex(ValueError, "<footer> has text in left, center or right"):
+            declare_document(pdf(page(size="a4"), footer(size=9)))
+        with self.assertRaisesRegex(ValueError, "<bates> position is top-left"):
+            declare_document(pdf(page(size="a4"), bates(position="middle")))
 
 
 if __name__ == "__main__":

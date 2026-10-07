@@ -1,7 +1,7 @@
 """A PDF assembled in Python: a ``.pdf.py``. The same document and the same elements as the TypeScript SDK's JSX
 (``commandagi/design`` ``pdf.ts``)::
 
-    from commandagi.design.pdf import bookmark, fill, highlight, note, page, pdf, reply, stamp
+    from commandagi.design.pdf import bates, bookmark, fill, footer, highlight, note, page, pdf, reply, stamp
 
     result = pdf(
         page(src="Contract.pdf", n=1),
@@ -14,13 +14,17 @@
         page(size="a4"),
         fill(name="Name", value="Ada Lovelace"),
         bookmark(bookmark(title="Payment", page=2, top=500), title="Terms", page=2),
+        footer(center="Page {page} of {pages}", pages="2-"),
+        bates(prefix="ACME-", digits=6, position="bottom-right"),
         title="Signed contract",
     )
 
 The rule of the ontology's files: a record is an element and its fields are the element's attributes (snake_case
 keywords: ``text_color`` is ``textColor``; ``from_`` is ``from``). Pages and page numbers are 1-based; coordinates
 are PDF points from the page's lower-left corner; a colour is ``[r, g, b]``, each 0..1; a ``src`` is a ref relative
-to the file's folder. Nothing adds a default. A run gives back ``{"format", "document", "sources"}`` beside an empty
+to the file's folder. A header or footer is text in its ``left``, ``center`` and ``right`` slots with ``{page}``,
+``{pages}``, ``{date}`` and ``{file}`` in it, on every page or ``pages``; Bates numbers run from ``start``. Nothing adds
+a default. A run gives back ``{"format", "document", "sources"}`` beside an empty
 graph.
 """
 from __future__ import annotations
@@ -63,6 +67,9 @@ PAGE_FIELDS = ["id", "src", "n", "rotate", "size", "width", "height"]
 BOOKMARK_FIELDS = ["id", "title", "page", "top", "open", "bold", "italic", "color", "url"]
 _LABEL = ["from", "style", "prefix", "start"]
 _ATTACH = ["src", "name", "description", "mimeType"]
+BAND_FIELDS = ["left", "center", "right", "size", "color", "family", "margin", "inset", "pages", "start", "date"]
+BATES_FIELDS = ["prefix", "suffix", "start", "digits", "position", "size", "color", "family", "margin", "inset"]
+BATES_POSITIONS = ["top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"]
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
@@ -74,9 +81,12 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "bookmark": {"holds": "children"},
     "label": {},
     "attach": {},
+    "header": {},
+    "footer": {},
+    "bates": {},
 }
 
-__all__ = ["PAGE_SIZES", "PDF_MARKS", "PDF_FIELDS", "PAGE_FIELDS", "BOOKMARK_FIELDS", "SIGNATURES", "PDF_VOCABULARY",
+__all__ = ["PAGE_SIZES", "PDF_MARKS", "PDF_FIELDS", "PAGE_FIELDS", "BOOKMARK_FIELDS", "BAND_FIELDS", "BATES_FIELDS", "SIGNATURES", "PDF_VOCABULARY",
            *define(globals(), "pdf", SIGNATURES)]
 
 
@@ -174,6 +184,28 @@ def _check_page(p: DocTree) -> None:
         _check_mark(c)
 
 
+def _check_band(t: DocTree) -> None:
+    a, where = t["attrs"], f"<{t['tag']}>"
+    if t["tag"] != "bates" and not any(isinstance(a.get(k), str) and a[k].strip() for k in ("left", "center", "right")):
+        raise ValueError(f"{where} has text in left, center or right")
+    for k in ("left", "center", "right", "pages", "date", "prefix", "suffix"):
+        if k in a and not isinstance(a[k], str):
+            raise ValueError(f"{where} {k} is text")
+    for k in ("size", "margin", "inset"):
+        if k in a and not (_num(a[k]) and a[k] >= 0):
+            raise ValueError(f"{where} {k} is points, 0 or more")
+    if "color" in a and not _color(a["color"]):
+        raise ValueError(f"{where} color is [r, g, b], each 0 to 1")
+    if "family" in a and a["family"] not in ("sans", "serif", "mono"):
+        raise ValueError(f'{where} family is "sans", "serif" or "mono"')
+    if "start" in a and not (_int(a["start"]) and a["start"] >= 0):
+        raise ValueError(f"{where} start is a whole number")
+    if "digits" in a and not (_int(a["digits"]) and 1 <= a["digits"] <= 15):
+        raise ValueError("<bates> digits is 1 to 15")
+    if "position" in a and a["position"] not in BATES_POSITIONS:
+        raise ValueError(f"<bates> position is {', '.join(BATES_POSITIONS)}")
+
+
 def _bookmark(t: DocTree) -> Dict[str, Any]:
     b = _own(t["attrs"], BOOKMARK_FIELDS)
     if not isinstance(b.get("title"), str):
@@ -193,6 +225,7 @@ def _pdf(t: DocTree) -> Dict[str, Any]:
     bookmarks: List[Dict[str, Any]] = []
     labels: List[Dict[str, Any]] = []
     attachments: List[Dict[str, Any]] = []
+    bands: Dict[str, Dict[str, Any]] = {}
     for c in t["children"]:
         if c["tag"] == "page":
             _check_page(c)
@@ -217,6 +250,11 @@ def _pdf(t: DocTree) -> Dict[str, Any]:
             labels.append(lab)
         elif c["tag"] == "attach":
             attachments.append(_own(c["attrs"], _ATTACH))
+        elif c["tag"] in ("header", "footer", "bates"):
+            if c["tag"] in bands:
+                raise ValueError(f"a PDF has one <{c['tag']}>")
+            _check_band(c)
+            bands[c["tag"]] = _own(c["attrs"], BATES_FIELDS if c["tag"] == "bates" else BAND_FIELDS)
     return {
         **_own(t["attrs"], PDF_FIELDS),
         "pages": pages,
@@ -224,6 +262,7 @@ def _pdf(t: DocTree) -> Dict[str, Any]:
         **({"bookmarks": bookmarks} if bookmarks else {}),
         **({"labels": labels} if labels else {}),
         **({"attachments": attachments} if attachments else {}),
+        **bands,
     }
 
 
@@ -240,6 +279,9 @@ _TAGS: Dict[str, Dict[str, Any]] = {
     "bookmark": {"parents": ["pdf", "bookmark"], "key": "id", "required": ["title"], "attrs": BOOKMARK_FIELDS},
     "label": {"parents": ["pdf"], "required": ["from"], "attrs": _LABEL},
     "attach": {"parents": ["pdf"], "required": ["src"], "attrs": _ATTACH},
+    "header": {"parents": ["pdf"], "attrs": BAND_FIELDS},
+    "footer": {"parents": ["pdf"], "attrs": BAND_FIELDS},
+    "bates": {"parents": ["pdf"], "attrs": BATES_FIELDS},
 }
 
 PDF_VOCABULARY = Vocabulary("pdf", "a PDF", "pdf", _TAGS, _pdf, _never, lambda _: {"pages": []})
