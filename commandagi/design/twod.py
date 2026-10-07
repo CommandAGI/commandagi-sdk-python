@@ -50,7 +50,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "transform": _C, "offset": _C, "array": _C, "mirror": _C, "stroke": _C, "fill": _C, "blur": _C, "levels": _C,
     "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "boolean": _C, "clip": _C,
     # painting and photo: layers, masks, adjustments, filters
-    "raster": _C, "gradient": _C, "mask": _C,
+    "raster": _C, "gradient": _C, "mask": _C, "line": {}, "bucket": {}, "gradientFill": {}, "move": {},
     "exposure": _C, "curves": _C, "hsl": _C, "vibrance": _C, "colorBalance": _C, "blackWhite": _C, "invert": _C, "posterize": _C, "develop": _C,
     "gaussianBlur": _C, "unsharpMask": _C, "sharpen": _C, "noise": _C,
     # nest
@@ -293,6 +293,12 @@ def _adjustment_layer(el: Element, node_type: str) -> tuple:
     return node_type, {**common, "adjustment": adjustment}
 
 
+#: What a painting chains on a pixel layer besides its strokes: the Paint Bucket, the Gradient, the Move tool.
+PAINT_CHAIN = ("stroke", "bucket", "gradientFill", "move")
+#: A painting's shape layers.
+PAINT_SHAPES = ("rect", "ellipse", "polygon", "line")
+
+
 def _paint_layer(el: Element) -> Optional[tuple]:
     if el.tag == "layer":
         a = _attrs(el, ("src",))
@@ -303,17 +309,19 @@ def _paint_layer(el: Element) -> Optional[tuple]:
         return f"paint.{el.tag}", _attrs(el)
     if el.tag in PHOTO_ADJUSTMENTS:
         return _adjustment_layer(el, "paint.adjust")
+    if el.tag in PAINT_SHAPES:
+        return "paint.shape", {**_attrs(el), "shape": el.tag}
     return None
 
 
 def _paint_chain(el: Element) -> Optional[Dict[str, Any]]:
-    if el.tag != "stroke":
+    if el.tag not in PAINT_CHAIN:
         return None
     a = _attrs(el)
     for k in _COMMON:
         if k in a:
-            raise ValueError(f"{_where(el)}: {k} is the layer's (write it on the layer the stroke is painted on)")
-    if "points" in a:
+            raise ValueError(f"{_where(el)}: {k} is the layer's (write it on the layer it is painted on)")
+    if el.tag == "stroke" and "points" in a:
         a["points"] = _stroke_points(a["points"], f"{_where(el)} points")
     return a
 
@@ -341,10 +349,10 @@ def _photo_chain(el: Element) -> Optional[Dict[str, Any]]:
     return {"filter": {"type": el.tag, **a}}
 
 
-#: Each stack: its root tag, its chain's node type, and how a layer and a chain member read.
+#: Each stack: its root tag, a chain member's node type, and how a layer and a chain member read.
 _STACKS = {
-    "paint": ("painting", "paint.stroke", _paint_layer, _paint_chain),
-    "photo": ("photo", "photo.filter", _photo_layer, _photo_chain),
+    "paint": ("painting", lambda el: f"paint.{el.tag}", _paint_layer, _paint_chain),
+    "photo": ("photo", lambda el: "photo.filter", _photo_layer, _photo_chain),
 }
 
 
@@ -397,7 +405,7 @@ def _stack(s: Scope, prefix: str, children: List[Element]) -> List[NodeRef]:
         carried = dict(_COMMON_DEFAULTS)
         carried.update({k: inputs[k] for k in _COMMON if inputs.get(k) is not None})
         for c in chain:
-            top = _add_masked(s, prefix, c, chain_type, {**carried, **chain_of(c), "src": top})
+            top = _add_masked(s, prefix, c, chain_type(c), {**carried, **chain_of(c), "src": top})
         slots.append(top)
     return slots
 
