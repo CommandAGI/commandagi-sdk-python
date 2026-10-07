@@ -26,7 +26,9 @@ and ``disabled`` set the node's own fields. The encodings are the TypeScript SDK
 ``layer``; a path's ``d`` (absolute M L H V C Q Z); a drawn brush stroke's ``[x, y]`` points; a paint stroke's
 ``[x, y, pressure, t]`` points; a modifier (``blur``, ``transform``, ``fill`` …) wraps the one node it takes; ``clip``
 takes its content, then its mask; in a painting or a photo a ``mask`` child of a layer, a stroke or a filter holds the
-one layer that masks it. PIXELS ARE NOT CODE: a pixel layer names its image file by relative path (``src``). Each node
+one layer that masks it (``mask(enabled=False)`` is one turned off); a painting's ``textLayer`` is a type layer (its
+words, face, size and colour; the pixels are made at render); a painting layer's ``fx`` holds its styles
+(``dropShadow``, ``innerShadow``, ``outerGlow``, ``stroke``, ``colorOverlay``, ``gradientOverlay``). PIXELS ARE NOT CODE: a pixel layer names its image file by relative path (``src``). Each node
 carries its element's call in ``meta.source``; a ``mask`` is not a node, so a masked node carries the mask's call in
 ``meta.sources.mask``. A tag the vocabulary does not have is refused by name.
 """
@@ -50,14 +52,15 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "transform": _C, "offset": _C, "array": _C, "mirror": _C, "stroke": _C, "fill": _C, "blur": _C, "levels": _C,
     "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "boolean": _C, "clip": _C,
     # painting and photo: layers, masks, adjustments, filters
-    "raster": _C, "gradient": _C, "mask": _C, "line": {}, "bucket": {}, "gradientFill": {}, "move": {},
+    "raster": _C, "gradient": _C, "mask": _C, "line": {}, "bucket": {}, "gradientFill": {}, "move": {}, "textLayer": _C,
+    "fx": _C, "dropShadow": {}, "innerShadow": {}, "outerGlow": {}, "colorOverlay": {}, "gradientOverlay": {},
     "exposure": _C, "curves": _C, "hsl": _C, "vibrance": _C, "colorBalance": _C, "blackWhite": _C, "invert": _C, "posterize": _C, "develop": _C,
     "gaussianBlur": _C, "unsharpMask": _C, "sharpen": _C, "noise": _C,
     # nest
     "sheet": {}, "stock": {}, "options": {}, "part": {},
 }
 
-__all__ = ["SIGNATURES", "TWOD_ROOTS", "PHOTO_ADJUSTMENTS", "PHOTO_FILTERS", "subpaths_of", "from_twod",
+__all__ = ["SIGNATURES", "TWOD_ROOTS", "PHOTO_ADJUSTMENTS", "PHOTO_FILTERS", "LAYER_STYLES", "subpaths_of", "from_twod",
            *define(globals(), "twod", SIGNATURES)]
 
 #: The roots of a 2D document.
@@ -257,6 +260,8 @@ _COMMON = ("name", "visible", "opacity", "blend", "clip", "locked")
 _COMMON_DEFAULTS = {"name": "Layer", "visible": True, "opacity": 1, "blend": "normal"}
 PHOTO_ADJUSTMENTS = ("exposure", "levels", "curves", "hsl", "vibrance", "colorBalance", "blackWhite", "invert", "threshold", "posterize", "develop")
 PHOTO_FILTERS = ("gaussianBlur", "unsharpMask", "sharpen", "noise")
+#: A painting layer's styles, the tags of its ``fx`` (Photoshop's Layer Style).
+LAYER_STYLES = ("dropShadow", "innerShadow", "outerGlow", "stroke", "colorOverlay", "gradientOverlay")
 _MIME = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "gif": "image/gif", "bmp": "image/bmp"}
 
 
@@ -307,6 +312,10 @@ def _paint_layer(el: Element) -> Optional[tuple]:
         return "paint.layer", a
     if el.tag in ("fill", "group"):
         return f"paint.{el.tag}", _attrs(el)
+    if el.tag == "textLayer":
+        if not isinstance(el.props.get("text"), str):
+            raise ValueError(f'{_where(el)}: text is the layer\'s words (text="Title")')
+        return "paint.text", _attrs(el)
     if el.tag in PHOTO_ADJUSTMENTS:
         return _adjustment_layer(el, "paint.adjust")
     if el.tag in PAINT_SHAPES:
@@ -365,20 +374,52 @@ def _mask_of(s: Scope, prefix: str, el: Element) -> tuple:
     if len(masks) > 1:
         raise ValueError(f"{_where(el)} has one <mask>")
     m = masks[0]
-    if _attrs(m):
-        raise ValueError(f"<mask> in {_where(el)} has no attributes (write them on the layer it holds)")
+    ma = _attrs(m)
+    for k, v in ma.items():
+        if k != "enabled" or not isinstance(v, bool):
+            raise ValueError(f"<mask> in {_where(el)} has one attribute, enabled (write the rest on the layer it holds)")
     held = child_elements(m)
     if len(held) != 1:
         raise ValueError(f"<mask> in {_where(el)} holds one layer")
-    return {"mask": _stack(s, prefix, held)[0]}, m.source
+    out = {"mask": _stack(s, prefix, held)[0]}
+    if ma.get("enabled") is False:
+        out["maskEnabled"] = False
+    return out, m.source
+
+
+def _styles_of(prefix: str, el: Element) -> tuple:
+    """A painting layer's ``fx``: its styles in order (the layer's ``fx``), and where each was written."""
+    blocks = [c for c in child_elements(el) if c.tag == "fx"]
+    if not blocks:
+        return None, {}
+    if prefix != "paint":
+        raise ValueError(f"{_where(el)}: <fx> (layer styles) is a painting's")
+    if len(blocks) > 1:
+        raise ValueError(f"{_where(el)} has one <fx>")
+    block = blocks[0]
+    if _attrs(block):
+        raise ValueError(f"<fx> in {_where(el)} has no attributes (write them on its styles)")
+    sources: Dict[str, Any] = {"fx": block.source}
+    fx = []
+    for i, c in enumerate(child_elements(block)):
+        if c.tag not in LAYER_STYLES:
+            raise ValueError(f"<{c.tag}> is not a layer style ({', '.join(LAYER_STYLES)})")
+        if child_elements(c):
+            raise ValueError(f"{_where(c)} in <fx> takes no children")
+        sources[f"fx.{i}"] = c.source
+        fx.append({"type": c.tag, **_attrs(c)})
+    return fx, sources
 
 
 def _add_masked(s: Scope, prefix: str, el: Element, type: str, inputs: Dict[str, Any]) -> NodeRef:
-    """Declare ``el`` as one node of ``type``, masked by its ``mask`` when it has one."""
+    """Declare ``el`` as one node of ``type``, masked by its ``mask`` when it has one, with its ``fx`` when it has them."""
     mask_inputs, at = _mask_of(s, prefix, el)
-    ref = _add(s, el, type, {**inputs, **mask_inputs})
+    fx, sources = _styles_of(prefix, el)
+    ref = _add(s, el, type, {**inputs, **mask_inputs, **({"fx": fx} if fx is not None else {})})
     if at is not None:
-        ref.node["meta"] = {**(ref.node.get("meta") or {}), "sources": {"mask": at}}
+        sources["mask"] = at
+    if sources:
+        ref.node["meta"] = {**(ref.node.get("meta") or {}), "sources": sources}
     return ref
 
 
@@ -395,7 +436,7 @@ def _stack(s: Scope, prefix: str, children: List[Element]) -> List[NodeRef]:
         stack: List[Element] = []
         chain: List[Element] = []
         for c in child_elements(el):
-            if c.tag != "mask":
+            if c.tag not in ("mask", "fx"):
                 (chain if chain_of(c) is not None else stack).append(c)
         if stack and kind != f"{prefix}.group":
             raise ValueError(f"{_where(el)}: only a <group> holds layers")
