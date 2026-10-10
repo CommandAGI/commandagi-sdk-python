@@ -9,9 +9,21 @@
 The rule of the ontology's files: a record is an element and its fields are the element's attributes (snake_case
 keywords: ``due_at`` is ``dueAt``). A task's subtasks are ``subtask(ref=…)`` children (each its own file, by path from
 this one), in order; a project's views are ``view`` children. Times (``startAt``, ``dueAt``, ``closedAt``,
-``createdAt``, ``updatedAt``) are epoch milliseconds in the document and may be written as a date (``"2026-10-20"``,
-UTC midnight) or a UTC time. A run gives back ``{"format", "document", "sources"}`` beside an empty graph; ``sources``
-names each element's call by its path (``""``, ``subtask#Ship it/Draft.task.py``, ``view#board``).
+``expires``, ``approvedAt``, ``createdAt``, ``updatedAt``) are epoch milliseconds in the document and may be written as
+a date (``"2026-10-20"``, UTC midnight) or a UTC time. A run gives back ``{"format", "document", "sources"}`` beside an
+empty graph; ``sources`` names each element's call by its path (``""``, ``subtask#Ship it/Draft.task.py``,
+``view#board``).
+
+A proposal is a task with status ``proposed``: ``sketch(ref=…)`` names the file that shows what it will do, and each
+``asks(…)`` has the shape of one standing grant (``world``, ``units``, ``channels``, ``verbs``; or ``folder`` and
+``files``; or ``folder``, ``venues``, ``symbols``, ``max_qty``, ``max_notional``, ``per_day``; each with ``hours`` and
+``note``)::
+
+    result = task(
+        sketch(ref="../worlds/shop-sim/runs/cut/run.json"),
+        asks(world="../worlds/shop/world.tsx", units=["cnc-1"], channels=["gcode"], verbs=["open", "arm", "run"], hours=4),
+        id="cut", title="Cut the bracket", status="proposed", assignees=["agent:claude"], expires="2026-10-11T18:00:00Z",
+    )
 """
 from __future__ import annotations
 
@@ -23,20 +35,25 @@ from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
 
 TASK_FIELDS = ["id", "title", "status", "priority", "glyph", "assignees", "projects", "blockedBy", "labels", "startAt", "dueAt",
-               "closedAt", "threadId", "createdBy", "readme", "createdAt", "updatedAt"]
+               "closedAt", "threadId", "createdBy", "readme", "expires", "approvedBy", "approvedAt", "grants", "createdAt",
+               "updatedAt"]
+ASK_FIELDS = ["world", "units", "channels", "verbs", "folder", "files", "venues", "symbols", "maxQty", "maxNotional", "perDay",
+              "hours", "note"]
 PROJECT_FIELDS = ["id", "name", "glyph", "defaultViewId", "subprojects", "archived", "readme", "createdAt", "updatedAt"]
 VIEW_FIELDS = ["id", "name", "mode", "groupBy", "filter", "laneOrder"]
-TIME_FIELDS = ["startAt", "dueAt", "closedAt", "createdAt", "updatedAt"]
+TIME_FIELDS = ["startAt", "dueAt", "closedAt", "expires", "approvedAt", "createdAt", "updatedAt"]
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "task": {"holds": "children"},
+    "sketch": {},
+    "asks": {},
     "subtask": {},
     "project": {"holds": "children"},
     "view": {},
 }
 
-__all__ = ["TASK_FIELDS", "PROJECT_FIELDS", "VIEW_FIELDS", "TIME_FIELDS", "SIGNATURES", "time_of", "TASK_VOCABULARY",
+__all__ = ["TASK_FIELDS", "ASK_FIELDS", "PROJECT_FIELDS", "VIEW_FIELDS", "TIME_FIELDS", "SIGNATURES", "time_of", "TASK_VOCABULARY",
            "PROJECT_VOCABULARY", *define(globals(), "tasks", SIGNATURES)]
 
 _TIME = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2}))?$")
@@ -71,7 +88,13 @@ def _task(t: DocTree) -> Dict[str, Any]:
     for ref in subtasks:
         if not isinstance(ref, str) or not ref:
             raise ValueError(f"<subtask> ref is a path to a .task.tsx file, not {ref!r}")
-    return {**_fields(t), **({"subtasks": subtasks} if subtasks else {})}
+    sketches = [c["attrs"].get("ref") for c in t["children"] if c["tag"] == "sketch"]
+    for ref in sketches:
+        if not isinstance(ref, str) or not ref:
+            raise ValueError(f"<sketch> ref is a path to the file that shows the work, not {ref!r}")
+    asks = [dict(c["attrs"]) for c in t["children"] if c["tag"] == "asks"]
+    return {**_fields(t), **({"sketch": sketches[0]} if sketches else {}), **({"asks": asks} if asks else {}),
+            **({"subtasks": subtasks} if subtasks else {})}
 
 
 def _project(t: DocTree) -> Dict[str, Any]:
@@ -85,6 +108,8 @@ def _never(_: Any) -> DocTree:
 
 TASK_VOCABULARY = Vocabulary("task", "a task", "task", {
     "task": {"parents": [], "required": ["id"], "attrs": TASK_FIELDS},
+    "sketch": {"parents": ["task"], "single": True, "required": ["ref"], "attrs": ["ref"]},
+    "asks": {"parents": ["task"], "attrs": ASK_FIELDS},
     "subtask": {"parents": ["task"], "key": "ref", "required": ["ref"], "attrs": ["ref"]},
 }, _task, _never)
 
