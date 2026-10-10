@@ -38,6 +38,12 @@ The reader declares the document's graph exactly: a feature is a node of its typ
 one ``3d.bodyMeta`` node. The order of the feature elements is the order of the left-hand list (``presentation.order``).
 Every node carries the call it came from in ``meta.source``; a sketch's entities and the bodies are listed by key in
 ``meta.sources``. Units are millimetres and radians, as stored. Anything else is refused by name, never guessed.
+
+A feature element is checked against its type's schema (``SCHEMA``; its keywords are typed in ``threed_elements.py``,
+``ExtrudeProps`` …): the feature ``{type: <tag>, name: <its id when absent>, …its fields}``, a sketch with the ``sketch``
+its children make. A wrong field is refused with the sentence an op panel shows for it, the same as the TypeScript
+SDK: ``<extrude id="e1">: distance: must be greater than 0 (got -1)``. A ``feature(type_=…)`` of an unknown type is not
+checked.
 """
 from __future__ import annotations
 
@@ -48,16 +54,12 @@ from typing import Any, Dict, List, Optional, Set
 
 from .element import Element, child_elements, declares, define
 from .ir import slug
+from .schema import describe_issue, validate
+from .threed_schema import SCHEMA
 
-#: The feature types a 3D document holds, by tag (``packages/domain/3d-core/types.ts`` Feature).
-THREED_FEATURES: List[str] = [
-    "sketch", "extrude", "revolve", "sweep", "loft", "fillet", "chamfer", "shell", "box", "import", "externalPart",
-    "cylinder", "sphere", "cone", "makehuman", "linearPattern", "circularPattern", "pathPattern", "mirror",
-    "datumPlane", "draft", "hole", "thread", "rib", "coil", "combine", "offsetFaces", "thicken", "split", "scale",
-    "dome", "wrapText", "deleteFace", "fullRound", "sheetFlange", "unfold", "copyBody", "transform", "subdivBody",
-    "meshBody", "meshModifier", "pointCloud", "gaussianSplat", "skeleton", "volume", "molecule", "graph", "generate",
-    "pcbTrace", "copperPour", "generateVia", "platedHole", "code",
-]
+#: The feature types a 3D document holds, by tag: the roots of ``SCHEMA`` (``threed_schema.py``), generated from the
+#: ``Feature`` union (``packages/domain/3d-core/types.ts``).
+THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
 _NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "point", "constraint", "projection", "line", "circle",
@@ -202,6 +204,16 @@ def _is_number(v: Any) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
+def _check_feature(el: Element, feature: Dict[str, Any]) -> None:
+    """Refuses a feature whose fields do not fit its type's schema, with every issue."""
+    d = SCHEMA["roots"].get(feature["type"])
+    if d is None:
+        return
+    issues = validate({"$ref": f"#/$defs/{d}"}, feature, SCHEMA["$defs"])
+    if issues:
+        raise ValueError(f"{_where(el)}: {'; '.join(describe_issue(x) for x in issues)}")
+
+
 def _builtin_planes_of(root: Element) -> List[str]:
     """The built-in planes a root says the document has (``builtinPlanes``); absent: all three."""
     v = root.props.get("builtinPlanes")
@@ -317,7 +329,10 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
                 raise ValueError(f"{_where(el)}: a sketch's points, segments and constraints are its child elements")
             sk, sources = _sketch_of(el)
             inputs = {**rest, "sketch": sk}
-        else:
+        if not generic:
+            _check_feature(el, {"type": ftype, "id": i, "name": label if label is not None else i,
+                                **({"suppressed": suppressed} if suppressed is not None else {}), **inputs})
+        if el.tag != "sketch":
             _no_children(el)
             if el.tag == "code":
                 # A code feature's `inputs` are ports of its node, beside `source` and `consumes` (the document graph's rule).

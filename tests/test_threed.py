@@ -4,8 +4,8 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.threed import (assembly, body, box, constraint, cylinder, declare_threed, extrude, feature, fillet, line,
-                                      parameter, part, plane, point, sketch, slot)
+from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, circle, constraint, cylinder, declare_threed, extrude,
+                                      feature, fillet, line, parameter, part, plane, point, pointCloud, sketch, slot)
 
 
 def plate():
@@ -17,7 +17,7 @@ def plate():
             constraint(id="c1", kind="horizontal", entities=["l1"]),
             id="sketch1", name="Sketch1", plane={"type": "datum", "plane": "plane_xy"}),
         extrude(id="extrude1", name="Extrude1", profile={"sketch": "sketch1"}, distance=6, operation="new"),
-        fillet(id="fillet1", name="Fillet1", radius=1, edges=[], consumes=["extrude1"], suppressed=True),
+        fillet(id="fillet1", name="Fillet1", radius=1, edges=[{"kind": "edge", "signature": {"point": [20, 0, 6]}}], consumes=["extrude1"], suppressed=True),
         body(id="extrude1", material="aluminium-6061"),
         slot(name="environment", value={"gravity": [0, 0, -9.81]}),
         name="Plate",
@@ -32,7 +32,7 @@ class ThreeDTests(unittest.TestCase):
         n = g["nodes"]
         self.assertEqual(n["depth"], {"id": "depth", "type": "input", "label": "depth", "inputs": {"value": 6, "unit": "mm", "drives": [{"target": "extrude1", "field": "distance"}]}})
         self.assertEqual(n["extrude1"], {"id": "extrude1", "type": "extrude", "label": "Extrude1", "inputs": {"profile": {"sketch": "sketch1"}, "distance": 6, "operation": "new"}})
-        self.assertEqual(n["fillet1"], {"id": "fillet1", "type": "fillet", "label": "Fillet1", "disabled": True, "inputs": {"radius": 1, "edges": [], "consumes": ["extrude1"]}})
+        self.assertEqual(n["fillet1"], {"id": "fillet1", "type": "fillet", "label": "Fillet1", "disabled": True, "inputs": {"radius": 1, "edges": [{"kind": "edge", "signature": {"point": [20, 0, 6]}}], "consumes": ["extrude1"]}})
         sk = n["sketch1"]["inputs"]["sketch"]
         self.assertEqual(sk["pointOrder"], ["p1", "p2", "p3"])
         self.assertEqual(sk["segments"]["l1"], {"id": "l1", "type": "line", "a": "p1", "b": "p2"})
@@ -52,9 +52,9 @@ class ThreeDTests(unittest.TestCase):
                "        point(id='p1', x=0, y=0),\n"
                "        point(id='p2', x=40, y=0),\n"
                "        line(id='l1', a='p1', b='p2'),\n"
-               "        id='s1',\n"
+               "        id='s1', plane={'type': 'datum', 'plane': 'plane_xy'},\n"
                "    ),\n"
-               "    extrude(id='e1', profile={'sketch': 's1'}, distance=6),\n"
+               "    extrude(id='e1', profile={'sketch': 's1'}, distance=6, operation='new'),\n"
                "    body(id='e1', material='steel'),\n"
                "    name='P',\n"
                ")\n")
@@ -104,11 +104,34 @@ class ThreeDTests(unittest.TestCase):
         xy = plane(id="XY", name="XY", origin=[0, 0, 0], normal=[0, 0, 1], x_axis=[1, 0, 0], builtin="XY")
         self.assertEqual(graph(xy)["nodes"]["XY"]["inputs"]["xAxis"], [1, 0, 0])
         self.assertEqual(planes(graph(xy, builtin_planes=["plane_xz"])), ["XY", "plane_xz"])
-        g = graph(cylinder(id="fan/bore", radius=2), feature(type_="rotate", id="r1", name="rotate_y_30", axis=[0, 1, 0], angle=30))
-        self.assertEqual(g["nodes"]["fan/bore"]["inputs"], {"radius": 2})
+        g = graph(cylinder(id="fan/bore", center=[0, 0, 0], axis=[0, 0, 1], radius=2, height=5, operation="cut"), feature(type_="rotate", id="r1", name="rotate_y_30", axis=[0, 1, 0], angle=30))
+        self.assertEqual(g["nodes"]["fan/bore"]["inputs"], {"center": [0, 0, 0], "axis": [0, 0, 1], "radius": 2, "height": 5, "operation": "cut"})
         self.assertEqual(g["nodes"]["r1"], {"id": "r1", "type": "rotate", "label": "rotate_y_30", "inputs": {"axis": [0, 1, 0], "angle": 30}})
         self.assertEqual(g["meta"]["presentation"], {"order": ["fan/bore", "r1"]})
         self.assertTrue(declare_threed(assembly(name="A"))["meta"]["isAssembly"])
+
+    def test_a_feature_whose_fields_do_not_fit_its_type_is_refused_with_the_op_panels_sentence(self):
+        def read(*children):
+            return lambda: declare_threed(part(*children, name="P"))
+
+        profile = {"sketch": "s1"}
+        cases = [
+            (read(extrude(id="e1", profile=profile, distance=-1, operation="new")), '<extrude id="e1">: distance: must be greater than 0 (got -1)'),
+            (read(extrude(id="e1", profile=profile, distance=5, operation="glue", colour="red")),
+             '<extrude id="e1">: operation: must be one of new, add, cut, intersect (got "glue"); colour: is not one of its fields'),
+            (read(extrude(id="e1", distance=5, operation="new")), '<extrude id="e1">: profile: is required'),
+            (read(sketch(circle(id="c", center="p", radius="big"), point(id="p", x=0, y=0), id="s1", plane={"type": "datum", "plane": "plane_xy"})),
+             '<sketch id="s1">: sketch/segments/c/radius: must be number (got "string")'),
+        ]
+        for fn, message in cases:
+            with self.assertRaises(ValueError) as caught:
+                fn()
+            self.assertEqual(str(caught.exception), message)
+        # A large array kept in a file beside the document stands for the array.
+        positions = {"$file": "P.assets/m/positions.f64", "mime": "application/octet-stream", "encoding": "f64le", "len": 9}
+        self.assertIn("makeHuman", THREED_FEATURES)
+        self.assertNotIn("makehuman", THREED_FEATURES)
+        read(pointCloud(id="pc", positions=positions))()
 
 
 if __name__ == "__main__":
