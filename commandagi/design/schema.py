@@ -77,7 +77,8 @@ def _kind_of(v: Any) -> str:
 
 def _type_matches(t: str, v: Any) -> bool:
     if t == "string":
-        return isinstance(v, str)
+        # Large data (an array, the bytes of a data URL) may be an ordinary file the document names (docs/formats.md).
+        return isinstance(v, str) or is_file_ref(v)
     if t == "number":
         return _is_number(v) and math.isfinite(v)
     if t == "integer":
@@ -85,7 +86,6 @@ def _type_matches(t: str, v: Any) -> bool:
     if t == "boolean":
         return isinstance(v, bool)
     if t == "array":
-        # A large array may be an ordinary file the document names (docs/formats.md § data that is not JSON).
         return isinstance(v, (list, tuple)) or is_file_ref(v)
     if t == "object":
         return isinstance(v, dict)
