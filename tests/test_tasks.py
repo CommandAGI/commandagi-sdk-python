@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.tasks import project, subtask, task, time_of, view
+from commandagi.design.tasks import asks, project, sketch, subtask, task, time_of, view
 
 OCT_20 = int(datetime(2026, 10, 20, tzinfo=timezone.utc).timestamp() * 1000)
 
@@ -27,6 +27,24 @@ class TaskTests(unittest.TestCase):
             declare_document(task(id="a", due_at="next week"))
         with self.assertRaisesRegex(TypeError, "dueAt is written due_at"):
             task(id="a", dueAt="2026-10-20")
+
+    def test_a_proposal(self):
+        d = declare_document(task(
+            sketch(ref="../worlds/shop-sim/runs/cut/run.json"),
+            asks(world="../worlds/shop/world.tsx", units=["cnc-1"], channels=["gcode"], verbs=["open", "arm", "run"], hours=4),
+            asks(folder="..", venues=["sim"], max_qty=2, max_notional=500, per_day=3, note="paper first"),
+            id="cut", title="Cut the bracket", status="proposed", assignees=["agent:claude"], expires="2026-10-20",
+            approved_by="person:ada", approved_at="2026-10-20T14:30:00Z", grants=["g-0123456789ab"]))
+        self.assertEqual(d["document"], {
+            "id": "cut", "title": "Cut the bracket", "status": "proposed", "assignees": ["agent:claude"], "expires": OCT_20,
+            "approvedBy": "person:ada", "approvedAt": OCT_20 + (14 * 60 + 30) * 60000, "grants": ["g-0123456789ab"],
+            "sketch": "../worlds/shop-sim/runs/cut/run.json",
+            "asks": [{"world": "../worlds/shop/world.tsx", "units": ["cnc-1"], "channels": ["gcode"], "verbs": ["open", "arm", "run"], "hours": 4},
+                     {"folder": "..", "venues": ["sim"], "maxQty": 2, "maxNotional": 500, "perDay": 3, "note": "paper first"}]})
+        with self.assertRaisesRegex(ValueError, "<task> has one <sketch>"):
+            declare_document(task(sketch(ref="a"), sketch(ref="b"), id="a"))
+        with self.assertRaisesRegex(ValueError, "reach is not read"):
+            declare_document(task(asks(world="w/world.tsx", reach=3), id="a"))
 
     def test_times(self):
         self.assertEqual(time_of("2026-10-20", "t"), OCT_20)
