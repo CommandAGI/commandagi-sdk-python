@@ -277,7 +277,7 @@ class _MeshBodyFeature8(__MeshBodyFeature8Required, __MeshBodyFeature8Optional):
     pass
 
 _MeshBodyFeatureRequired = TypedDict("_MeshBodyFeatureRequired", {"type": Literal["meshBody"], "positions": List[float], "indices": List[float], "id": str, "name": str})
-_MeshBodyFeatureOptional = TypedDict("_MeshBodyFeatureOptional", {"polygons": List[List[float]], "normals": List[float], "uv": List[float], "sourceUv": List[float], "sourceMaterials": List['SourceMaterial'], "materialGroups": List['SourceMaterialGroup'], "source": '_MeshBodyFeature8', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_MeshBodyFeatureOptional = TypedDict("_MeshBodyFeatureOptional", {"polygons": List[List[float]], "normals": List[float], "uv": List[float], "sourceUv": List[float], "sourceMaterials": List['SourceMaterial'], "materialGroups": List['SourceMaterialGroup'], "source": '_MeshBodyFeature8', "worldCollider": 'WorldCollider', "worldCenter": Tuple[float, float, float], "worldFriction": float, "worldRestitution": float, "worldMeta": Dict[str, Any], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class MeshBodyFeature(_MeshBodyFeatureRequired, _MeshBodyFeatureOptional):
     pass
 
@@ -689,6 +689,18 @@ _VolumeFeatureOptional = TypedDict("_VolumeFeatureOptional", {"render": Literal[
 class VolumeFeature(_VolumeFeatureRequired, _VolumeFeatureOptional):
     pass
 
+#: A regular grid of heights, read from the body's `positions`.
+_WorldHeightfieldColliderRequired = TypedDict("_WorldHeightfieldColliderRequired", {"type": Literal["heightfield"], "nx": int, "ny": int, "sizeX": float, "sizeY": float})
+_WorldHeightfieldColliderOptional = TypedDict("_WorldHeightfieldColliderOptional", {}, total=False)
+class WorldHeightfieldCollider(_WorldHeightfieldColliderRequired, _WorldHeightfieldColliderOptional):
+    pass
+
+#: The body's exact triangle mesh, as a fixed collider.
+_WorldTrimeshColliderRequired = TypedDict("_WorldTrimeshColliderRequired", {"type": Literal["trimesh"]})
+_WorldTrimeshColliderOptional = TypedDict("_WorldTrimeshColliderOptional", {}, total=False)
+class WorldTrimeshCollider(_WorldTrimeshColliderRequired, _WorldTrimeshColliderOptional):
+    pass
+
 _WrapTextFeatureRequired = TypedDict("_WrapTextFeatureRequired", {"type": Literal["wrapText"], "face": 'TopoRef', "sketch": 'Sketch', "depth": float, "mode": Literal["emboss", "engrave"], "id": str, "name": str})
 _WrapTextFeatureOptional = TypedDict("_WrapTextFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class WrapTextFeature(_WrapTextFeatureRequired, _WrapTextFeatureOptional):
@@ -947,7 +959,7 @@ class _MeshBodyProps37(__MeshBodyProps37Required, __MeshBodyProps37Optional):
 
 #: The keywords of meshBody(…): the MeshBodyFeature fields, in snake_case.
 _MeshBodyPropsRequired = TypedDict("_MeshBodyPropsRequired", {"positions": List[float], "indices": List[float], "id": str})
-_MeshBodyPropsOptional = TypedDict("_MeshBodyPropsOptional", {"polygons": List[List[float]], "normals": List[float], "uv": List[float], "source_uv": List[float], "source_materials": List['SourceMaterial'], "material_groups": List['SourceMaterialGroup'], "source": '_MeshBodyProps37', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_MeshBodyPropsOptional = TypedDict("_MeshBodyPropsOptional", {"polygons": List[List[float]], "normals": List[float], "uv": List[float], "source_uv": List[float], "source_materials": List['SourceMaterial'], "material_groups": List['SourceMaterialGroup'], "source": '_MeshBodyProps37', "world_collider": 'WorldCollider', "world_center": Tuple[float, float, float], "world_friction": float, "world_restitution": float, "world_meta": Dict[str, Any], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class MeshBodyProps(_MeshBodyPropsRequired, _MeshBodyPropsOptional):
     pass
 
@@ -1090,6 +1102,9 @@ Vec2 = Tuple[float, float]
 
 #: A point or vector in 3D.
 Vec3 = Tuple[float, float, float]
+
+#: The collider of a world body (MeshBodyFeature.worldCollider).
+WorldCollider = Union['WorldHeightfieldCollider', 'WorldTrimeshCollider']
 
 #: Every 3D feature element: its tag → the TypedDict of its keywords.
 THREED_ELEMENTS: Dict[str, type] = {

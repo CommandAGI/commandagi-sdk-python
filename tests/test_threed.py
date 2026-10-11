@@ -5,7 +5,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, circle, constraint, cylinder, declare_threed, extrude,
-                                      feature, fillet, line, parameter, part, plane, point, pointCloud, sketch, slot)
+                                      feature, fillet, line, meshBody, parameter, part, plane, point, pointCloud, sketch, slot)
 
 
 def plate():
@@ -132,6 +132,22 @@ class ThreeDTests(unittest.TestCase):
         self.assertIn("makeHuman", THREED_FEATURES)
         self.assertNotIn("makehuman", THREED_FEATURES)
         read(pointCloud(id="pc", positions=positions))()
+
+    def test_a_world_body_written_by_tsx_reads_with_its_declared_fields(self):
+        # The element an ingest writes in a .3d.tsx (sdk/typescript threed.test.ts reads the same one).
+        def world_body(collider, restitution=0.1):
+            return declare_threed(part(meshBody(
+                id="world/t", name="t", positions=[0, 0, 0, 1000, 0, 0, 0, 1000, 0, 1000, 1000, 0], indices=[0, 1, 2, 1, 3, 2],
+                world_collider=collider, world_center=[0, 0, 100], world_friction=0.8, world_restitution=restitution,
+                world_meta={"tile": "12/1/2", "res": 30}), name="W"))
+
+        g = world_body({"type": "heightfield", "nx": 2, "ny": 2, "sizeX": 1000, "sizeY": 1000})
+        self.assertEqual(g["nodes"]["world/t"]["inputs"]["worldMeta"], {"tile": "12/1/2", "res": 30})
+        world_body({"type": "trimesh"})
+        with self.assertRaises(ValueError) as caught:
+            world_body({"type": "heightfield", "nx": 1, "ny": 2, "sizeX": 1000, "sizeY": 1000}, 2)
+        self.assertEqual(str(caught.exception),
+                         '<meshBody id="world/t">: worldCollider/nx: must be at least 2 (got 1); worldRestitution: must be at most 1 (got 2)')
 
 
 if __name__ == "__main__":
