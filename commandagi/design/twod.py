@@ -26,12 +26,18 @@ and ``disabled`` set the node's own fields. The encodings are the TypeScript SDK
 each ``artboard(layer(…), name=…, width=…, height=…)`` after its layers is another; a top-level group of a drawing is a
 ``layer``; a path's ``d`` (absolute M L H V C Q Z); a drawn brush stroke's ``[x, y]`` points; a paint stroke's
 ``[x, y, pressure, t]`` points; a modifier (``blur``, ``transform``, ``fill`` …) wraps the one node it takes; ``clip``
-takes its content, then its mask; in a painting or a photo a ``mask`` child of a layer, a stroke or a filter holds the
+takes its content, then its mask; ``link(src="parts/Badge.draw.py", x=40, y=60)`` shows another drawing's first artboard
+as that file draws it now (``src``: a path from this file's folder, or an address; ``inputs={"size": 40}`` gives values
+to the parameters that drawing declares); a painting's filter (``gaussianBlur(radius=3)``, the photo's filters) chains
+among a layer's strokes and changes what is under it; in a painting or a photo a ``mask`` child of a layer, a stroke or a filter holds the
 one layer that masks it (``mask(enabled=False)`` is one turned off); a painting's ``textLayer`` is a type layer (its
 words, face, size and colour; the pixels are made at render); a painting layer's ``fx`` holds its styles
 (``dropShadow``, ``innerShadow``, ``outerGlow``, ``stroke``, ``colorOverlay``, ``gradientOverlay``). PIXELS ARE NOT CODE: a pixel layer names its image file by relative path (``src``). Each node
 carries its element's call in ``meta.source``; a ``mask`` is not a node, so a masked node carries the mask's call in
 ``meta.sources.mask``. A tag the vocabulary does not have is refused by name.
+
+A filter and a link are checked against their schema (``SCHEMA`` of ``twod_schema.py``, generated from the types the
+editors run); a wrong one is refused with every issue: ``<gaussianBlur>: radius: must be at most 250 (got 300)``.
 """
 from __future__ import annotations
 
@@ -41,6 +47,8 @@ from typing import Any, Dict, List, Optional
 
 from .element import Element, child_elements, declares, define
 from .ir import NodeRef, Scope, channels, slug, using
+from .schema import describe_issue, validate
+from .twod_schema import SCHEMA
 
 _C: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the 2D documents: what it holds (absent: a leaf). The TypeScript SDK's ``SIGNATURES.twod``.
@@ -49,7 +57,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "drawing": _C, "artboard": _C, "painting": _C, "photo": _C, "nest": _C,
     # drawing: groups, shapes, pixels, modifiers
     "layer": _C, "group": _C,
-    "rect": {}, "ellipse": {}, "polygon": {}, "path": {}, "text": {}, "brush-stroke": {}, "image": {}, "raster-layer": {},
+    "rect": {}, "ellipse": {}, "polygon": {}, "path": {}, "text": {}, "brush-stroke": {}, "image": {}, "raster-layer": {}, "link": {},
     "transform": _C, "offset": _C, "array": _C, "mirror": _C, "stroke": _C, "fill": _C, "blur": _C, "levels": _C,
     "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "boolean": _C, "clip": _C,
     # painting and photo: layers, masks, adjustments, filters
@@ -61,7 +69,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "sheet": {}, "stock": {}, "options": {}, "part": {},
 }
 
-__all__ = ["SIGNATURES", "TWOD_ROOTS", "PHOTO_ADJUSTMENTS", "PHOTO_FILTERS", "LAYER_STYLES", "subpaths_of", "from_twod",
+__all__ = ["SIGNATURES", "SCHEMA", "TWOD_ROOTS", "PHOTO_ADJUSTMENTS", "PHOTO_FILTERS", "LAYER_STYLES", "subpaths_of", "from_twod",
            *define(globals(), "twod", SIGNATURES)]
 
 #: The roots of a 2D document.
@@ -109,6 +117,15 @@ def _add(s: Scope, el: Element, type: str, inputs: Dict[str, Any]) -> NodeRef:
     return ref
 
 
+def _checked(el: Element, fields: Dict[str, Any]) -> Dict[str, Any]:
+    """``el`` with ``fields``, checked against its tag's schema: the element as the editors hold it."""
+    value = {"type": el.tag, **fields}
+    issues = validate({"$ref": f"#/$defs/{SCHEMA['roots'][el.tag]}"}, value, SCHEMA["$defs"])
+    if issues:
+        raise ValueError(f"{_where(el)}: {'; '.join(describe_issue(x) for x in issues)}")
+    return value
+
+
 # ── Drawing ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 _DRAW_SOURCES = {"rect", "ellipse", "polygon", "path", "text", "brush-stroke"}
@@ -116,7 +133,9 @@ _DRAW_SOURCES = {"rect", "ellipse", "polygon", "path", "text", "brush-stroke"}
 _DRAW_MODIFIERS = {"transform", "offset", "array", "mirror", "stroke", "fill", "blur", "levels", "threshold", "adjust", "crop", "bucket-fill"}
 #: Pixels a drawing places: each names its image file (``src``).
 _DRAW_PIXELS = {"image", "raster-layer"}
-_DRAW_LATER = {"sketch", "connector", "draw.instance"}
+_DRAW_LATER = {"sketch", "connector"}
+#: An address (``cloud://…``, ``https://…``, a path from the site's root); anything else is a path from the file's folder.
+_ADDRESS = re.compile(r"^[a-z][a-z0-9+.-]*://|^/", re.I)
 _NUMBER = re.compile(r"[MLHVCQZmlhvcqz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?")
 
 
@@ -218,6 +237,15 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
         if el.props.get("src") is None:
             raise ValueError(f'{_where(el)}: src names its image file by relative path ("photo.png")')
         return _add(s, el, t, {**_attrs(el, ("src",)), "__asset": _asset(el.props["src"], el)})
+    if t == "link":
+        if kids:
+            raise ValueError(f"{_where(el)} takes no children")
+        placed = _checked(el, _attrs(el))
+        del placed["type"]
+        src = placed.pop("src")
+        if not src.strip() or src.startswith("data:"):
+            raise ValueError(f'{_where(el)}: src names a drawing by its path from this file\'s folder ("parts/Badge.draw.py") or by an address')
+        return _add(s, el, "draw.instance", {"__instance": {"assetPath": src} if _ADDRESS.match(src) else {"path": src}, **placed})
     if t in _DRAW_MODIFIERS:
         if len(kids) != 1:
             raise ValueError(f"{_where(el)} wraps the one node it changes")
@@ -231,7 +259,7 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
         masked_by = _drawn(s, kids[1], False)
         return _add(s, el, t, {**_attrs(el), "content": content, "mask": masked_by})
     if t in _DRAW_LATER:
-        raise ValueError(f"<{t}> is not declared in code yet (a drawing in code holds shapes, images, groups and modifiers)")
+        raise ValueError(f"<{t}> is not declared in code yet (a drawing in code holds shapes, images, links, groups and modifiers)")
     raise ValueError(f"<{t}> is not read in a drawing (see commandagi.design.twod)")
 
 
@@ -330,7 +358,8 @@ def _adjustment_layer(el: Element, node_type: str) -> tuple:
     return node_type, {**common, "adjustment": adjustment}
 
 
-#: What a painting chains on a pixel layer besides its strokes: the Paint Bucket, the Gradient, the Move tool.
+#: What is painted on a painting's pixel layer: strokes, the Paint Bucket, the Gradient, the Move tool. A filter
+#: (``PHOTO_FILTERS``) chains among them.
 PAINT_CHAIN = ("stroke", "bucket", "gradientFill", "move")
 #: A painting's shape layers.
 PAINT_SHAPES = ("rect", "ellipse", "polygon", "line")
@@ -355,9 +384,18 @@ def _paint_layer(el: Element) -> Optional[tuple]:
     return None
 
 
-def _paint_chain(el: Element) -> Optional[Dict[str, Any]]:
-    if el.tag not in PAINT_CHAIN:
-        return None
+def _filter_member(el: Element) -> Dict[str, Any]:
+    """A filter element as a chain member's inputs: its fields are its node's ``filter``."""
+    a = _attrs(el)
+    for k in _COMMON:
+        if k in a:
+            raise ValueError(f"{_where(el)}: {k} is the layer's (write it on the layer it filters)")
+    return {"filter": _checked(el, a)}
+
+
+def _paint_chain(el: Element) -> Dict[str, Any]:
+    if el.tag in PHOTO_FILTERS:
+        return _filter_member(el)
     a = _attrs(el)
     for k in _COMMON:
         if k in a:
@@ -380,20 +418,11 @@ def _photo_layer(el: Element) -> Optional[tuple]:
     return None
 
 
-def _photo_chain(el: Element) -> Optional[Dict[str, Any]]:
-    if el.tag not in PHOTO_FILTERS:
-        return None
-    a = _attrs(el)
-    for k in _COMMON:
-        if k in a:
-            raise ValueError(f"{_where(el)}: {k} is the layer's (write it on the layer it filters)")
-    return {"filter": {"type": el.tag, **a}}
-
-
-#: Each stack: its root tag, a chain member's node type, and how a layer and a chain member read.
+#: Each stack: its root tag, a chain member's node type, how a layer reads, which tags are chain members, and how one reads.
 _STACKS = {
-    "paint": ("painting", lambda el: f"paint.{el.tag}", _paint_layer, _paint_chain),
-    "photo": ("photo", lambda el: "photo.filter", _photo_layer, _photo_chain),
+    "paint": ("painting", lambda el: "paint.filter" if el.tag in PHOTO_FILTERS else f"paint.{el.tag}", _paint_layer,
+              lambda el: el.tag in PHOTO_FILTERS or el.tag in PAINT_CHAIN, _paint_chain),
+    "photo": ("photo", lambda el: "photo.filter", _photo_layer, lambda el: el.tag in PHOTO_FILTERS, _filter_member),
 }
 
 
@@ -456,12 +485,12 @@ def _add_masked(s: Scope, prefix: str, el: Element, type: str, inputs: Dict[str,
 
 
 def _stack(s: Scope, prefix: str, children: List[Element]) -> List[NodeRef]:
-    root, chain_type, layer_of, chain_of = _STACKS[prefix]
+    root, chain_type, layer_of, chains, chain_of = _STACKS[prefix]
     slots = []
     for el in children:
         layer = layer_of(el)
         if layer is None:
-            if chain_of(el) is not None:
+            if chains(el):
                 raise ValueError(f"{_where(el)} is painted on a layer: write it inside one")
             raise ValueError(f"<{el.tag}> is not read in a {root} (see commandagi.design.twod)")
         kind, inputs = layer
@@ -469,7 +498,7 @@ def _stack(s: Scope, prefix: str, children: List[Element]) -> List[NodeRef]:
         chain: List[Element] = []
         for c in child_elements(el):
             if c.tag not in ("mask", "fx"):
-                (chain if chain_of(c) is not None else stack).append(c)
+                (chain if chains(c) else stack).append(c)
         if stack and kind != f"{prefix}.group":
             raise ValueError(f"{_where(el)}: only a <group> holds layers")
         inner = _stack(s, prefix, stack) if kind == f"{prefix}.group" else []

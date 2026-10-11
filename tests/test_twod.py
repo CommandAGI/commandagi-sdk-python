@@ -6,8 +6,8 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.twod import (artboard, blur, bucket, drawing, ellipse, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, group, image, layer, line, mask, move,
-                                    nest, options, painting, part, path, photo, raster, raster_layer, rect, sheet, stock, stroke,
+from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, blur, bucket, drawing, ellipse, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, group, image, layer, line, link, mask, move,
+                                    nest, noise, options, painting, part, path, photo, raster, raster_layer, rect, sheet, sharpen, stock, stroke,
                                     subpaths_of)
 
 
@@ -209,6 +209,68 @@ class RefusalTests(unittest.TestCase):
             rect(ellipse())
         with self.assertRaisesRegex(TypeError, "strokeWidth is written stroke_width"):
             path(strokeWidth=2)
+
+
+class LinkAndFilterTests(unittest.TestCase):
+    def test_a_link_is_a_draw_instance_node_that_names_another_drawing(self):
+        g = from_twod(drawing(layer(
+            link(label="Badge", src="parts/Badge.draw.py", x=40, y=60, inputs={"size": 48, "tone": "warm", "outlined": True}),
+            link(src="cloud://global/examples/2d/Badge.draw.tsx"),
+            name="Badge",
+        ), width=400, height=300))
+        first, second = (g["nodes"][g["nodes"]["group"]["inputs"][port]["wire"]["node"]] for port in ("children.1", "children.2"))
+        self.assertEqual({"type": first["type"], "label": first["label"], "inputs": first["inputs"]},
+                         {"type": "draw.instance", "label": "Badge", "inputs": {"__instance": {"path": "parts/Badge.draw.py"}, "x": 40, "y": 60, "inputs": {"size": 48, "tone": "warm", "outlined": True}}})
+        self.assertEqual(second["inputs"], {"__instance": {"assetPath": "cloud://global/examples/2d/Badge.draw.tsx"}})
+
+    def test_a_link_is_checked_against_its_schema(self):
+        def refused(pattern, **props):
+            with self.assertRaisesRegex(ValueError, pattern):
+                from_twod(drawing(layer(link(**props))))
+        refused(r"<link>: src: is required")
+        refused(r'<link>: x: must be number \(got "string"\)', src="a.draw.py", x="40")
+        refused(r"<link>: scale: is not one of its fields", src="a.draw.py", scale=2)
+        refused(r"<link>: inputs/size: does not match an allowed shape", src="a.draw.py", inputs={"size": [1]})
+        refused(r"src names a drawing by its path", src=" ")
+        with self.assertRaisesRegex(TypeError, "<link> holds nothing"):
+            link(rect(), src="a.draw.py")
+
+    def test_a_paintings_filter_chains_among_its_strokes(self):
+        g = from_twod(painting(
+            layer(
+                stroke(points=[[1, 2, 0.5, 0]], color=[0, 0, 0, 1]),
+                gaussianBlur(radius=3),
+                stroke(points=[[5, 6, 0.5, 0]], color=[1, 0, 0, 1]),
+                noise(mask(fill(color=[1, 1, 1, 1])), amount=0.1, monochrome=True, seed=7),
+                name="Paint", opacity=0.8,
+            ),
+            width=100, height=80,
+        ))
+        self.assertEqual(g["nodes"]["paint.filter"]["inputs"], {"name": "Paint", "visible": True, "opacity": 0.8, "blend": "normal", "filter": {"type": "gaussianBlur", "radius": 3}, "src": wire("paint.stroke")})
+        self.assertEqual(g["nodes"]["paint.stroke_2"]["inputs"]["src"], wire("paint.filter"))
+        self.assertEqual(g["nodes"]["paint.filter_2"]["inputs"]["filter"], {"type": "noise", "amount": 0.1, "monochrome": True, "seed": 7})
+        self.assertEqual(g["nodes"]["paint.filter_2"]["inputs"]["mask"], wire("paint.fill"))
+        self.assertEqual(g["nodes"]["doc"]["inputs"]["layers.1"], wire("paint.filter_2"))
+        with self.assertRaisesRegex(ValueError, "is painted on a layer: write it inside one"):
+            from_twod(painting(gaussianBlur(radius=3)))
+        with self.assertRaisesRegex(ValueError, "opacity is the layer's"):
+            from_twod(painting(layer(sharpen(amount=0.5, opacity=0.5))))
+
+    def test_a_filter_is_checked_against_its_schema_in_a_photo_and_in_a_painting(self):
+        in_photo = lambda f: photo(raster(f, src="a.png"))
+        in_painting = lambda f: painting(layer(f))
+        for holder in (in_photo, in_painting):
+            for pattern, f in (
+                (r"<gaussianBlur>: radius: must be at most 250 \(got 300\)", gaussianBlur(radius=300)),
+                (r"<gaussianBlur>: radius: is required", gaussianBlur()),
+                (r"<gaussianBlur>: strength: is not one of its fields", gaussianBlur(radius=3, strength=1)),
+                (r'<noise>: monochrome: must be boolean \(got "string"\)', noise(amount=0.1, monochrome="yes")),
+            ):
+                with self.assertRaisesRegex(ValueError, pattern):
+                    from_twod(holder(f))
+
+    def test_the_filter_tags_and_the_link_are_the_schemas_roots(self):
+        self.assertEqual(sorted([*PHOTO_FILTERS, "link"]), sorted(SCHEMA["roots"]))
 
 
 if __name__ == "__main__":
