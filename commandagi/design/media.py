@@ -1,5 +1,5 @@
 """A VIDEO OR A SONG IN PYTHON — the media editors' own documents, declared as the nodes the CommandAGI video editor
-(``.vid.py``: ``video.source``, ``video.clip``, ``video.track``, ``video.composite``) and music studio (``.mus.py``:
+(``.vid.py``: ``video.source``, ``video.instance``, ``video.clip``, ``video.track``, ``video.composite``) and music studio (``.mus.py``:
 ``midiClip``, ``instrument``, ``fx.*``, ``track``, ``master``) store and edit. The same elements, node for node, as the
 TypeScript SDK's ``media.ts`` (``.vid.tsx``, ``.mus.tsx``)::
 
@@ -7,6 +7,7 @@ TypeScript SDK's ``media.ts`` (``.vid.tsx``, ``.mus.tsx``)::
 
     result = video(
         track(clip(src="media/sky.png", start=0, duration=3), title(text="Hello", start=0, duration=2), name="V1"),
+        track(composition(src="Intro.vid.py", start=3, in_=0, out=2), artboard(src="Poster.draw.py", start=5, duration=2, fit="contain"), name="V2"),
         track(clip(src="media/tone.wav", start=0, in_=0.5, out=2.5, volume=0.8), name="A1", kind="audio"),
         name="Balcony", width=1280, height=720, fps=30,
     )
@@ -19,7 +20,10 @@ TypeScript SDK's ``media.ts`` (``.vid.tsx``, ``.mus.tsx``)::
     )
 
 One call per tag (``commandagi.design.element``): children positional, attributes as snake_case keywords (``font_size``
-is ``fontSize``; ``in_`` is ``in``). Media files are named by path relative to the file, never inlined. Times on a
+is ``fontSize``; ``in_`` is ``in``). Media files are named by path relative to the file, never inlined. So are a nested
+composition (``composition(src=...)``: another video's code, a ``video.instance`` node whose frames are its clip's source;
+``inputs`` are the values it gives that video's parameters) and an artboard (``artboard(src=...)``: a drawing's page, drawn
+live; ``view`` names the page, else the first). Times on a
 video's timeline are seconds; in a song, beats (an audio clip's ``in``, where it starts in its file, is seconds, as on a
 video). Each node carries the call that declared it in ``meta.source``; what a
 node holds that is not a node (a clip's effects, transition, intro, outro and keyframes; a midi clip's notes; a video's
@@ -40,7 +44,8 @@ MEDIA_ROOTS = ("video", "song")
 _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of a video and a song: what it holds (the TypeScript SDK's ``SIGNATURES``; absent: a leaf).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
-    "video": _HOLDS, "song": _HOLDS, "track": _HOLDS, "clip": _HOLDS, "title": _HOLDS, "shape": _HOLDS, "adjustment": _HOLDS,
+    "video": _HOLDS, "song": _HOLDS, "track": _HOLDS, "clip": _HOLDS, "composition": _HOLDS, "artboard": _HOLDS, "title": _HOLDS,
+    "shape": _HOLDS, "adjustment": _HOLDS,
     "midi": _HOLDS, "effect": _HOLDS,
     "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {},
     "synth": {}, "sampler": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {},
@@ -215,6 +220,56 @@ def shape_content(kind: str) -> str:
 #: A clip's crop: the fraction of its picture hidden at each edge.
 CLIP_CROP = {"cropTop": "top", "cropRight": "right", "cropBottom": "bottom", "cropLeft": "left"}
 _CLIP_PROPS = ["name", "start", "duration", "in", "out", "speed", "opacity", "volume", "blendMode", "fitMode", *CLIP_TRANSFORM, *CLIP_COLOR, *CLIP_CROP]
+
+#: The files a ``composition`` and an ``artboard`` name: another video's code, a drawing's code.
+COMPOSITION_FILE = re.compile(r"\.vid\.(tsx|jsx|py|rs)$", re.I)
+ARTBOARD_FILE = re.compile(r"\.draw\.(tsx|jsx|py|rs)$", re.I)
+#: How an artboard's page fills the clip's box, what the drawing is drawn as, and their values when not written.
+ARTBOARD_FITS = ("fill", "contain", "cover", "none")
+ARTBOARD_REPRESENTATIONS = ("auto", "vector", "raster")
+ARTBOARD = {"fit": "contain", "representation": "auto"}
+#: The ``video.instance`` port that holds a nested composition's ref.
+INSTANCE_REF = "__instance"
+
+
+def _document_src(el: Element, kind: "re.Pattern[str]", what: str) -> str:
+    """A ``composition``'s or an ``artboard``'s file: a path relative to this file, of the kind it names."""
+    src = _str(el, "src")
+    if not src:
+        raise ValueError(f"<{el.type}> names {what} (src, relative to this file)")
+    if re.match(r"^[a-z]+:|^/", src, re.I):
+        raise ValueError(f"{_where(el)}: src is a path relative to this file, not {src}")
+    if not kind.search(src):
+        raise ValueError(f"{_where(el)}: {src} is not {what}")
+    return src
+
+
+def _input_values(el: Element) -> Dict[str, Any]:
+    """A nested composition's input values: its parameters by name, each a number."""
+    v = el.props.get("inputs")
+    if v is None:
+        return {}
+    if not isinstance(v, dict) or any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in v.values()):
+        raise ValueError(f"{_where(el)}: inputs is {{ parameter: number }}, not {json.dumps(v)}")
+    if INSTANCE_REF in v:
+        raise ValueError(f"{_where(el)}: {INSTANCE_REF} is not a parameter")
+    return dict(v)
+
+
+def _clip_length(c: Element, in_point: float, speed: float, picture: bool) -> float:
+    """A clip's length: out - in at its speed, or its duration."""
+    out, duration = _num(c, "out", 0), _num(c, "duration", 0)
+    if out is not None and duration is not None:
+        raise ValueError(f"{_where(c)}: give out or duration, not both")
+    if out is not None:
+        if picture:
+            raise ValueError(f"{_where(c)}: a picture has no out (give its duration)")
+        if out <= in_point:
+            raise ValueError(f"{_where(c)}: out ({out}) is after in ({in_point})")
+        return (out - in_point) / speed
+    if duration is None:
+        raise ValueError(f"{_where(c)}: give its " + ("duration" if picture else "out (or duration)") + " in seconds")
+    return duration
 
 
 def _common(c: Element) -> Dict[str, Any]:
@@ -400,6 +455,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
         track_sources: Dict[str, Any] = {}
         track_fx_id = _ids()
         for c in child_elements(tr):
+            nested: Optional[Dict[str, Any]] = None
             if c.type in VIDEO_AUDIO_EFFECTS:
                 fx = _audio_effect(c, track_fx_id)
                 track_fx.append(fx)
@@ -427,20 +483,42 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 clip_name = _or(_str(c, "name"), file_name)
                 speed = _or(_num(c, "speed", 0.01), 1)
                 in_point = _or(_num(c, "in", 0), 0)
-                out, duration = _num(c, "out", 0), _num(c, "duration", 0)
-                if out is not None and duration is not None:
-                    raise ValueError(f"{_where(c)}: give out or duration, not both")
-                if out is not None:
-                    if mk == "image":
-                        raise ValueError(f"{_where(c)}: a picture has no out (give its duration)")
-                    if out <= in_point:
-                        raise ValueError(f"{_where(c)}: out ({out}) is after in ({in_point})")
-                    duration = (out - in_point) / speed
-                if duration is None:
-                    raise ValueError(f"{_where(c)}: give its " + ("duration" if mk == "image" else "out (or duration)") + " in seconds")
+                duration = _clip_length(c, in_point, speed, mk == "image")
                 inputs: Dict[str, Any] = {"kind": mk, "assetId": asset_id, "name": clip_name, "start": _or(_num(c, "start", 0), 0),
                                           "duration": duration, "inPoint": in_point, "speed": speed, **_common(c)}
                 source = _wire(source_id, "media")
+            elif c.type == "composition":
+                # Another video, drawn live from its own code: a ``video.instance`` node (made below, once the clip has its id).
+                _refuse_unknown(c, ["src", "inputs", *_CLIP_PROPS])
+                if kind != "video":
+                    raise ValueError(f"{_where(c)}: a composition goes on a video track")
+                src = _document_src(c, COMPOSITION_FILE, "another video's code (a .vid.tsx, .vid.py or .vid.rs)")
+                clip_name = _or(_str(c, "name"), src.split("/")[-1])
+                speed = _or(_num(c, "speed", 0.01), 1)
+                in_point = _or(_num(c, "in", 0), 0)
+                duration = _clip_length(c, in_point, speed, False)
+                inputs = {"kind": "video", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": in_point,
+                          "speed": speed, **_common(c)}
+                nested = {"src": src, "values": _input_values(c)}
+                source = None
+            elif c.type == "artboard":
+                # A drawing's page, drawn live: the clip keeps the reference, never the drawing.
+                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + ["src", "view", "fit", "representation"])
+                if kind != "video":
+                    raise ValueError(f"{_where(c)}: an artboard goes on a video track")
+                src = _document_src(c, ARTBOARD_FILE, "a drawing's code (a .draw.tsx, .draw.py or .draw.rs)")
+                clip_name = _or(_str(c, "name"), src.split("/")[-1])
+                duration = _num(c, "duration", 0)
+                if duration is None:
+                    raise ValueError(f"{_where(c)}: give its duration in seconds")
+                view = _str(c, "view")
+                ref: Dict[str, Any] = {"locator": src, "fileKind": "drawing",
+                                       "representation": _or(_str(c, "representation", ARTBOARD_REPRESENTATIONS), ARTBOARD["representation"])}
+                if view is not None:
+                    ref["view"] = view
+                inputs = {"kind": "renderable", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1,
+                          **_common(c), "volume": 1, "renderable": {"ref": ref, "fit": _or(_str(c, "fit", ARTBOARD_FITS), ARTBOARD["fit"])}}
+                source = None
             elif c.type == "title":
                 _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + list(TITLE_TEXT) + ["typewriter"])
                 if kind != "video":
@@ -494,10 +572,14 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 inputs = {"kind": "midi", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1, **_common(c)}
                 source = None
             else:
-                raise ValueError(f"<{c.type}> is not read on a <track> (it holds <clip>, <title>, <shape>, <adjustment>, <midi> and audio effects)")
+                raise ValueError(f"<{c.type}> is not read on a <track> (it holds <clip>, <composition>, <artboard>, <title>, <shape>, <adjustment>, <midi> and audio effects)")
             if kind == "midi" and c.type != "midi":
                 raise ValueError(f"{_where(c)}: a midi track holds <midi> clips")
             clip_id = new_id(f"clip_{clip_name}")
+            if nested:
+                comp_id = new_id(f"comp_{clip_name}")
+                nodes[comp_id] = _node(comp_id, "video.instance", {INSTANCE_REF: {"path": nested["src"], "name": clip_name}, **nested["values"]}, clip_name)
+                source = _wire(comp_id, "frames")
             sources: Dict[str, Any] = {}
             transition_in, anims, effects, audio, keyframes, notes = _clip_children(c, clip_id, sources)
             inputs["transitionIn"] = transition_in
