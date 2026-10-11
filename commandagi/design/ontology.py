@@ -21,8 +21,10 @@ A record is an element and its fields are the element's attributes; a list of re
     opgraph(name)                                     <name>.opgraph.py    node(id, type, x, y, …ports), wire(from_, to)
 
 Every attribute is a keyword (``commandagi.design.element``: snake_case of the field's name). A field whose own name
-has an underscore (a world's ``origin_mm``, ``size_mm``) has no keyword spelling: the keyword ``size_mm`` names the
-field ``sizeMm``. A node graph is the editor's op graph itself: ``node(id="blur", type="blur", x=300, y=80, radius=6)``
+has an underscore is listed on its tag (``SIGNATURES``' ``snake``: a world's ``origin_mm`` and ``size_mm``; a
+definition's ``model_number``, ``product_url``, ``price_usd``, ``record_hz``, ``spec_check`` and ``dimensions_mm``) and
+is written as it is. Another such field has no keyword spelling: the keyword ``lead_time`` names the field
+``leadTime``. A node graph is the editor's op graph itself: ``node(id="blur", type="blur", x=300, y=80, radius=6)``
 is the node ``{id: "blur", type: "blur", inputs: {radius: 6}, meta: {x: 300, y: 80}}``, and
 ``wire(from_="gradient:out", to="blur:in")`` the wire into its ``in`` port. ``output=True`` marks a terminal. A port
 whose name is not an attribute name (``layers.3``) is written in ``inputs={"layers.3": None}``.
@@ -45,7 +47,7 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the ontology's files: what it holds (the TypeScript SDK's ``SIGNATURES``; absent: a leaf).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "world": _HOLDS, "space": {"snake": ["origin_mm", "size_mm"]}, "unit": {"snake": ["size_mm"]}, "view": {}, "scene": _HOLDS, "body": {},
-    "device": _HOLDS, "channel": {},
+    "device": {**_HOLDS, "snake": ["model_number", "product_url", "price_usd", "record_hz", "spec_check", "dimensions_mm"]}, "channel": {},
     "dashboard": _HOLDS, "param": {}, "split": _HOLDS, "pane": {}, "region": {},
     "geoproject": _HOLDS, "dateRange": {}, "camera": {}, "reference": {},
     "opgraph": _HOLDS, "node": {}, "wire": {},

@@ -37,8 +37,11 @@ class OntologyTests(unittest.TestCase):
 
     def test_a_definition_a_dashboard_and_a_geo_project(self):
         d = declared(device(channel(id="joints", dir="duplex", medium="records", format="servo-bus", transport="serial", min_interval_ms=20),
-                            name="Arm"))["document"]
+                            name="Arm", model_number="A1", product_url="https://example.com/a1", price_usd=None))["document"]
         self.assertEqual(d["document"]["channels"][0]["minIntervalMs"], 20)
+        # A definition's fields that are snake_case in its file keep their names.
+        self.assertEqual([d["document"][k] for k in ("model_number", "product_url")], ["A1", "https://example.com/a1"])
+        self.assertNotIn("modelNumber", d["document"])
         b = declared(dashboard(split(pane(id="a", kind="world"), pane(id="b", kind="devices"), axis="x", ratio=0.5),
                                region(side="left", tab="nav"), name="cockpit"))["document"]
         self.assertEqual(b["document"], {
