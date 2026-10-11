@@ -12,7 +12,8 @@ as the elements their editors edit. The same elements as the TypeScript SDK's ``
 A record is an element and its fields are the element's attributes; a list of records is the parent's children
 (``units`` -> ``unit(...)``, ``channels`` -> ``channel(...)``, a scene's ``bodies`` -> ``body(...)``). The tags:
 
-    world(name, kind, description?, from_?, model?)   world.py             space, unit(uid …), view, scene (body children)
+    world(name, kind, description?, from_?, model?,   world.py             space, unit(uid …), view, scene (body children)
+          links?)
     device(name …)                                    definition.py        channel(id, dir, medium, format, transport …)
     dashboard(name …)                                 <name>.dashboard.py  param(id, type …), one layout: split(axis,
                                                                            ratio) of two split|pane(id, kind …), or one
@@ -56,7 +57,9 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 NODE_GRAPH_ID = "nodegraph"
 #: The fields of a unit in a world's file (packages/domain/world/worlds.js).
 UNIT_FIELDS = ["uid", "name", "device", "domain", "size_mm", "support", "channels", "manualUrl", "position", "rotation"]
-WORLD_FIELDS = ["name", "kind", "description", "from", "model"]
+#: ``links``: the parts of the world's model that a run moves (packages/domain/world/pose.js modelPose), a definition's
+#: link grammar with the unit named in each joint and emit; ``node`` is the id of the model's feature that makes the part.
+WORLD_FIELDS = ["name", "kind", "description", "from", "model", "links"]
 GEO_FIELDS = ["id", "name", "createdAt", "updatedAt", "description", "defaultWorkspace", "metadata"]
 #: A node's attributes that are not its ports.
 _NODE_ATTRS = ["id", "type", "label", "x", "y", "disabled", "output", "meta", "inputs"]

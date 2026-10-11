@@ -26,6 +26,10 @@ class OntologyTests(unittest.TestCase):
             "units": [{"uid": "arm", "name": "arm", "device": "../../devices/so-101/definition.tsx", "position": [100, 0, 0], "rotation": 90}],
             "scene": {"hz": 240, "bodies": [{"id": "cube", "shape": {"type": "box", "hx": 0.02}, "at": [0, 0, 1]}]},
         }})
+        # The world's model and the parts of it a run moves: attributes of world(), as the TypeScript SDK writes them.
+        links = [{"node": "ram", "joint": {"unit": "press-1", "channel": "axes", "name": "z", "type": "prismatic", "axis": "z", "origin_mm": [0, 0, 0], "home": 0}}]
+        posed = declared(world(name="Press", kind="physical", model="press.3d.tsx", links=links))["document"]["document"]
+        self.assertEqual(posed, {"name": "Press", "kind": "physical", "model": "press.3d.tsx", "links": links, "units": []})
         with self.assertRaisesRegex(ValueError, "said explicitly"):
             declared(world(name="W", kind="real"))
         with self.assertRaisesRegex(ValueError, 'two <unit> in <world> have uid "a"'):
