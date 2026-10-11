@@ -157,3 +157,38 @@ class VideoVocabularyTests(unittest.TestCase):
             declare_video(video(track(clip(effect(type="lut"), src="a.mp4", out=1))))
         with self.assertRaisesRegex(ValueError, "has no sound"):
             declare_video(video(track(clip(eq(), src="a.png", duration=1))))
+
+    def test_a_composition_is_another_video_by_path_and_an_artboard_a_drawings_page(self):
+        from commandagi.design.media import artboard, composition, intro
+        n = declare_video(video(track(
+            composition(intro(preset="fade"), src="parts/Intro.vid.tsx", start=1, in_=0.5, out=2.5, inputs={"hue": 30}),
+            artboard(src="Poster.draw.tsx", start=3, duration=2, view="page_2", fit="cover", opacity=0.5), name="V1")))["nodes"]
+        self.assertEqual(n["comp_Intro.vid.tsx"], {"id": "comp_Intro.vid.tsx", "type": "video.instance", "label": "Intro.vid.tsx",
+                                                   "inputs": {"__instance": {"path": "parts/Intro.vid.tsx", "name": "Intro.vid.tsx"}, "hue": 30}})
+        comp = n["clip_Intro.vid.tsx"]
+        self.assertEqual(comp["inputs"]["source"], wire("comp_Intro.vid.tsx", "frames"))
+        self.assertEqual(comp["inputs"]["kind"], "video")
+        self.assertEqual(comp["inputs"]["duration"], 2)
+        self.assertEqual(comp["inputs"]["inPoint"], 0.5)
+        self.assertNotIn("assetId", comp["inputs"], "a composition is no media file")
+        self.assertEqual(set(comp["meta"]["sources"]), {"intro"})
+        art = n["clip_Poster.draw.tsx"]["inputs"]
+        self.assertEqual(art["kind"], "renderable")
+        self.assertEqual(art["renderable"], {"ref": {"locator": "Poster.draw.tsx", "fileKind": "drawing", "representation": "auto", "view": "page_2"}, "fit": "cover"})
+        self.assertIsNone(art["source"])
+        self.assertEqual(art["opacity"], 0.5)
+        refused = [
+            (composition(src="Intro.mp4", out=1), "is not another video's code"),
+            (composition(src="/x/Intro.vid.tsx", out=1), "relative to this file"),
+            (composition(src="Intro.vid.tsx"), r"give its out \(or duration\)"),
+            (composition(src="Intro.vid.tsx", out=1, inputs={"hue": "red"}), r"inputs is \{ parameter: number \}"),
+            (composition(gain(), src="Intro.vid.tsx", out=1), "has no sound"),
+            (artboard(src="Poster.png", duration=1), "is not a drawing's code"),
+            (artboard(src="Poster.draw.tsx"), "give its duration"),
+            (artboard(src="Poster.draw.tsx", duration=1, fit="stretch"), "fit is one of fill, contain, cover, none"),
+        ]
+        for el, why in refused:
+            with self.assertRaisesRegex(ValueError, why):
+                declare_video(video(track(el)))
+        with self.assertRaisesRegex(ValueError, "an artboard goes on a video track"):
+            declare_video(video(track(artboard(src="P.draw.tsx", duration=1), kind="audio")))
