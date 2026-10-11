@@ -4,8 +4,9 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.office import (a, b, cell, column, deck, divider, h1, p, page, pre, read_deck, read_page, read_workbook, shape,
-                                      sheet, slide, text, todo, workbook)
+from commandagi.design.office import (a, b, cell, chart, column, criterion, deck, divider, h1, p, page, pivot, pre, read_deck, read_page,
+                                      read_workbook, shape, sheet, slide, text, todo, workbook)
+from commandagi.design.office import filter as sheet_filter
 
 
 def run(src, path):
@@ -27,6 +28,37 @@ class WorkbookTests(unittest.TestCase):
             read_workbook(workbook(sheet(cell(at="A1", formula="SUM(B1)"))))
         with self.assertRaisesRegex(TypeError, "<cell> holds nothing"):
             cell("Item", at="A1")
+
+    def test_a_sheets_chart_pivot_and_filter_are_checked_against_the_workbook_schema(self):
+        def book(*kids):
+            return read_workbook(workbook(sheet(cell(at="A1", value="Region"), *kids, name="Sales")))
+
+        doc = book(
+            chart(name="Sales", range="A1:C5", kind="bar", category="Region", series=["Q1", "Q2"], at="E2"),
+            pivot(name="By region", range="A1:C5", rows="Region", value="Q1", aggregate="sum"),
+            sheet_filter(criterion(column="b", test="greater", value=100), criterion(column="A", test="notBlank"), range="A1:C5"),
+        )
+        s = doc["document"]["sheets"][0]
+        self.assertEqual(s["charts"], [{"id": "chart-1", "name": "Sales", "range": "A1:C5", "kind": "bar", "category": "Region", "series": ["Q1", "Q2"], "at": "E2"}])
+        self.assertEqual(s["pivots"], [{"id": "pivot-1", "name": "By region", "range": "A1:C5", "rows": "Region", "value": "Q1", "aggregate": "sum"}])
+        self.assertEqual(s["filter"], {"range": "A1:C5", "criteria": [{"column": "B", "test": "greater", "value": 100}, {"column": "A", "test": "notBlank"}]})
+        self.assertEqual([k for k in doc["sources"] if not k.startswith(("workbook", "sheet", "cell"))],
+                         ["chart:sheet-1!chart-1", "pivot:sheet-1!pivot-1", "filter:sheet-1", "criterion:sheet-1!B", "criterion:sheet-1!A"])
+        # The same sentences as the TypeScript reader (office.test.ts).
+        with self.assertRaisesRegex(ValueError, r'<chart name="C">: kind: must be one of bar, line, area, scatter, pie \(got "donut"\)'):
+            book(chart(name="C", range="A1:C5", kind="donut", series=["Q1"]))
+        with self.assertRaisesRegex(ValueError, r"series: needs at least 1 items \(got 0\)"):
+            book(chart(name="C", range="A1:C5", kind="bar", series=[]))
+        with self.assertRaisesRegex(ValueError, r'range is an A1 range \("A1:C20"\), not "nowhere"'):
+            book(pivot(name="P", range="nowhere", rows="Region", value="Q1", aggregate="sum"))
+        with self.assertRaisesRegex(ValueError, "value: is required"):
+            book(pivot(name="P", range="A1:C5", rows="Region", aggregate="sum"))
+        with self.assertRaisesRegex(ValueError, "two charts are called c"):
+            book(chart(name="C", range="A1:B2", kind="bar", series=["Q1"]), chart(name="c", range="A1:B2", kind="bar", series=["Q1"]))
+        with self.assertRaisesRegex(ValueError, "Sales has two filters"):
+            book(sheet_filter(range="A1:C5"), sheet_filter(range="A1:C5"))
+        with self.assertRaisesRegex(ValueError, "two criteria for column B"):
+            book(sheet_filter(criterion(column="B", test="blank"), criterion(column="B", test="notBlank"), range="A1:C5"))
 
     def test_each_part_of_a_workbook_names_the_call_it_came_from(self):
         out = run("""\

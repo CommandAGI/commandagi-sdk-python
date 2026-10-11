@@ -33,6 +33,15 @@ The tags (keywords are snake_case of the TypeScript attribute: ``frozen_rows``, 
     sheet(*cells, name, rows, cols, frozen_rows, frozen_cols, color)
     cell(at, value | formula, num_fmt, bold, italic, align, bg, color, wrap)   one cell; a formula starts with "="
     column(at, width)  row(at, height)                        a column's width or a row's height, in pixels
+    chart(name, range, kind, category, series, title, at, width, height)
+                                                              a chart of a range of its sheet (the first row names the
+                                                              fields): kind "bar", "line", "area", "scatter", "pie"
+    pivot(name, range, rows, columns, value, aggregate)       a pivot table of a range: the editor computes it
+    filter(*criteria, range)  criterion(column, test, value)  the sheet's filter (one): the rows under the range's
+                                                              header stay shown while they pass every criterion; test
+                                                              "equals", "notEquals", "contains", "greater", "less",
+                                                              "blank", "notBlank" (their attributes:
+                                                              ``workbook_schema.py``, generated from the editor's types)
     page(*blocks, title, paper, font)                         the page; paper "letter" or "a4"; font "sans", "serif", "mono"
     h1 h2 h3 p quote (*text, align)                           a text block: its text and marks; align "left", "center" …
     bullet numbered (*text)  todo(*text, checked)             a list item, a checklist item
@@ -55,7 +64,8 @@ The tags (keywords are snake_case of the TypeScript attribute: ``frozen_rows``, 
 
 A workbook and a page are documents of their own: ``run_module`` hands them back beside an empty graph, with where
 each part was written in ``sources`` (``workbook``, ``sheet:<id>``, ``cell:<id>!A1``, ``column:<id>!B``,
-``row:<id>!3``, ``page``, ``block:<id>``). A deck is the deck's own op graph (``deck.doc``, ``deck.slide``,
+``row:<id>!3``, ``chart:<id>!chart-1``, ``pivot:<id>!pivot-1``, ``filter:<id>``, ``criterion:<id>!B``, ``page``,
+``block:<id>``). A deck is the deck's own op graph (``deck.doc``, ``deck.slide``,
 ``deck.text`` …), each node with ``meta.source``. Anything the editors' documents cannot hold is refused by name.
 """
 from __future__ import annotations
@@ -68,12 +78,14 @@ from typing import Any, Dict, List, Optional
 
 from .element import Element, child_elements, declares, define
 from .ir import channels
+from .schema import describe_issue, validate
+from .workbook_schema import SCHEMA as WORKBOOK_SCHEMA
 
 _C: Dict[str, Any] = {"holds": "children"}
 _T: Dict[str, Any] = {"holds": "text"}
 #: Every tag of the office documents: what it holds (absent: a leaf). The TypeScript SDK's ``SIGNATURES.office``.
 SIGNATURES: Dict[str, Dict[str, Any]] = {
-    "workbook": _C, "sheet": _C, "cell": {}, "column": {}, "row": {},
+    "workbook": _C, "sheet": _C, "cell": {}, "column": {}, "row": {}, "chart": {}, "pivot": {}, "filter": _C, "criterion": {},
     "page": _C, "h1": _T, "h2": _T, "h3": _T, "p": _T, "bullet": _T, "numbered": _T, "todo": _T, "quote": _T, "pre": _T,
     "divider": {}, "image": {},
     "b": _T, "i": _T, "u": _T, "s": _T, "code": _T, "a": _T, "br": {},
@@ -164,11 +176,27 @@ def _col_index(letters: str) -> int:
     return n - 1
 
 
+_RANGE = re.compile(r"^[A-Z]{1,3}[1-9]\d{0,6}(:[A-Z]{1,3}[1-9]\d{0,6})?$", re.I)
+
+
+def _workbook_element(el: Element) -> Dict[str, Any]:
+    """The attributes of a chart, a pivot, a filter or a criterion, checked against the element's schema
+    (``workbook_schema.py``, generated from the sheets editor's types) with the sentences an op panel shows."""
+    props = dict(el.props)
+    issues = validate({"$ref": f"#/$defs/{WORKBOOK_SCHEMA['roots'][el.tag]}"}, props, WORKBOOK_SCHEMA["$defs"])
+    if issues:
+        raise ValueError(f"{_where(el)}: {'; '.join(describe_issue(x) for x in issues)}")
+    if isinstance(props.get("range"), builtins.str) and not _RANGE.match(props["range"]):
+        raise ValueError(f"{_where(el)}: range is an A1 range (\"A1:C20\"), not {json.dumps(props['range'])}")
+    return props
+
+
 def read_workbook(root: Element) -> Dict[str, Any]:
     """A ``workbook(...)`` as the workbook JSON the sheets editor opens, with where each part was written."""
     _only(root, ["title"])
     sources: Dict[str, Any] = {"workbook": root.source}
     names = set()
+    named: Dict[str, set] = {"chart": set(), "pivot": set()}
     sheets = []
     for i, el in enumerate(child_elements(root)):
         if el.tag != "sheet":
@@ -188,7 +216,38 @@ def read_workbook(root: Element) -> Dict[str, Any]:
         rows = 200 if rows is None else rows
         cols = _num(el, "cols")
         cols = 26 if cols is None else cols
+        charts: List[Dict[str, Any]] = []
+        pivots: List[Dict[str, Any]] = []
+        flt: Optional[Dict[str, Any]] = None
         for c in child_elements(el):
+            if c.tag in ("chart", "pivot"):
+                props = _workbook_element(c)
+                key = builtins.str(props["name"]).lower()
+                if key in named[c.tag]:
+                    raise ValueError(f"two {'charts' if c.tag == 'chart' else 'pivot tables'} are called {props['name']}")
+                named[c.tag].add(key)
+                lst = charts if c.tag == "chart" else pivots
+                eid = f"{c.tag}-{len(lst) + 1}"
+                lst.append({"id": eid, **props})
+                sources[f"{c.tag}:{sid}!{eid}"] = c.source
+                continue
+            if c.tag == "filter":
+                if flt is not None:
+                    raise ValueError(f"{name} has two filters (a sheet has one)")
+                flt = {"range": _workbook_element(c)["range"], "criteria": []}
+                sources[f"filter:{sid}"] = c.source
+                for k in child_elements(c):
+                    if k.tag != "criterion":
+                        raise ValueError(f"<{k.tag}> is not read in a <filter> (it holds <criterion>s)")
+                    props = _workbook_element(k)
+                    column = builtins.str(props["column"]).upper()
+                    if not re.match(r"^[A-Z]{1,3}$", column):
+                        raise ValueError(f"<criterion>: column is a column's letters (\"B\"), not {json.dumps(props['column'])}")
+                    if any(x["column"] == column for x in flt["criteria"]):
+                        raise ValueError(f"the filter of {name} has two criteria for column {column}")
+                    flt["criteria"].append({**props, "column": column})
+                    sources[f"criterion:{sid}!{column}"] = k.source
+                continue
             if c.tag in ("column", "row"):
                 size_prop = "width" if c.tag == "column" else "height"
                 _only(c, ["at", size_prop])
@@ -210,7 +269,7 @@ def read_workbook(root: Element) -> Dict[str, Any]:
                 sources[f"{c.tag}:{sid}!{key}"] = c.source
                 continue
             if c.tag != "cell":
-                raise ValueError(f"<{c.tag}> is not read in a <sheet> (it holds <cell>, <column> and <row>)")
+                raise ValueError(f"<{c.tag}> is not read in a <sheet> (it holds <cell>, <column>, <row>, <chart>, <pivot> and <filter>)")
             _only(c, ["at", "value", "formula", "numFmt", "bold", "italic", "align", "bg", "color", "wrap"])
             at = _str(c, "at")
             at = at.upper() if at is not None else None
@@ -238,6 +297,7 @@ def read_workbook(root: Element) -> Dict[str, Any]:
             "id": sid, "name": name, "color": _str(el, "color"), "kind": "grid", "rows": rows, "cols": cols, "cells": cells,
             "colWidths": col_widths or None, "rowHeights": row_heights or None,
             "frozen": {"rows": fr or 0, "cols": fc or 0} if fr is not None or fc is not None else None,
+            "charts": charts or None, "pivots": pivots or None, "filter": flt,
         }))
     if not sheets:
         raise ValueError("a <workbook> holds at least one <sheet>")
