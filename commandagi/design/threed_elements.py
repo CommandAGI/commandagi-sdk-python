@@ -2,7 +2,7 @@
 
 The keywords of each 3D element as a TypedDict (``extrude(**props)`` takes ``ExtrudeProps``), and the definitions their
 values are made of (camelCase keys, as stored). The reader checks the same fields against ``SCHEMA`` (threed_schema.py)
-and refuses a wrong one with the sentence an op panel shows."""
+and refuses a wrong one with the sentence an op panel shows. A field with a default may be left out: the reader fills it."""
 from typing import Any, Dict, List, Tuple, Union
 
 try:
@@ -30,13 +30,13 @@ __AxisRef4Optional = TypedDict("__AxisRef4Optional", {}, total=False)
 class _AxisRef4(__AxisRef4Required, __AxisRef4Optional):
     pass
 
-_BoxFeatureRequired = TypedDict("_BoxFeatureRequired", {"type": Literal["box"], "center": 'Vec3', "size": 'Vec3', "operation": 'BooleanMode', "id": str, "name": str})
-_BoxFeatureOptional = TypedDict("_BoxFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_BoxFeatureRequired = TypedDict("_BoxFeatureRequired", {"type": Literal["box"], "id": str, "name": str})
+_BoxFeatureOptional = TypedDict("_BoxFeatureOptional", {"center": 'Vec3', "size": 'Vec3', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class BoxFeature(_BoxFeatureRequired, _BoxFeatureOptional):
     pass
 
-_ChamferFeatureRequired = TypedDict("_ChamferFeatureRequired", {"type": Literal["chamfer"], "edges": List['TopoRef'], "distance": float, "id": str, "name": str})
-_ChamferFeatureOptional = TypedDict("_ChamferFeatureOptional", {"distance2": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ChamferFeatureRequired = TypedDict("_ChamferFeatureRequired", {"type": Literal["chamfer"], "edges": List['TopoRef'], "id": str, "name": str})
+_ChamferFeatureOptional = TypedDict("_ChamferFeatureOptional", {"distance": float, "distance2": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ChamferFeature(_ChamferFeatureRequired, _ChamferFeatureOptional):
     pass
 
@@ -58,8 +58,8 @@ _ChartPlacementOptional = TypedDict("_ChartPlacementOptional", {"mirror": bool},
 class ChartPlacement(_ChartPlacementRequired, _ChartPlacementOptional):
     pass
 
-_CircularPatternFeatureRequired = TypedDict("_CircularPatternFeatureRequired", {"type": Literal["circularPattern"], "seedFeature": str, "axis": 'AxisRef', "count": int, "id": str, "name": str})
-_CircularPatternFeatureOptional = TypedDict("_CircularPatternFeatureOptional", {"angle": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_CircularPatternFeatureRequired = TypedDict("_CircularPatternFeatureRequired", {"type": Literal["circularPattern"], "seedFeature": str, "axis": 'AxisRef', "id": str, "name": str})
+_CircularPatternFeatureOptional = TypedDict("_CircularPatternFeatureOptional", {"count": int, "angle": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CircularPatternFeature(_CircularPatternFeatureRequired, _CircularPatternFeatureOptional):
     pass
 
@@ -69,13 +69,13 @@ _CodeFeatureOptional = TypedDict("_CodeFeatureOptional", {"inputs": Dict[str, An
 class CodeFeature(_CodeFeatureRequired, _CodeFeatureOptional):
     pass
 
-_CoilFeatureRequired = TypedDict("_CoilFeatureRequired", {"type": Literal["coil"], "profile": 'ProfileRef', "axis": 'AxisRef', "pitch": float, "turns": float, "operation": 'BooleanMode', "id": str, "name": str})
-_CoilFeatureOptional = TypedDict("_CoilFeatureOptional", {"rightHanded": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_CoilFeatureRequired = TypedDict("_CoilFeatureRequired", {"type": Literal["coil"], "profile": 'ProfileRef', "axis": 'AxisRef', "id": str, "name": str})
+_CoilFeatureOptional = TypedDict("_CoilFeatureOptional", {"pitch": float, "turns": float, "rightHanded": bool, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CoilFeature(_CoilFeatureRequired, _CoilFeatureOptional):
     pass
 
-_CombineFeatureRequired = TypedDict("_CombineFeatureRequired", {"type": Literal["combine"], "operation": Literal["intersect", "union", "subtract"], "id": str, "name": str})
-_CombineFeatureOptional = TypedDict("_CombineFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_CombineFeatureRequired = TypedDict("_CombineFeatureRequired", {"type": Literal["combine"], "id": str, "name": str})
+_CombineFeatureOptional = TypedDict("_CombineFeatureOptional", {"operation": Literal["intersect", "union", "subtract"], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CombineFeature(_CombineFeatureRequired, _CombineFeatureOptional):
     pass
 
@@ -97,8 +97,8 @@ _ConductorPathRefOptional = TypedDict("_ConductorPathRefOptional", {"breakAfter"
 class ConductorPathRef(_ConductorPathRefRequired, _ConductorPathRefOptional):
     pass
 
-_ConeFeatureRequired = TypedDict("_ConeFeatureRequired", {"type": Literal["cone"], "center": 'Vec3', "axis": 'Vec3', "radius1": float, "radius2": float, "height": float, "operation": 'BooleanMode', "id": str, "name": str})
-_ConeFeatureOptional = TypedDict("_ConeFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ConeFeatureRequired = TypedDict("_ConeFeatureRequired", {"type": Literal["cone"], "id": str, "name": str})
+_ConeFeatureOptional = TypedDict("_ConeFeatureOptional", {"center": 'Vec3', "axis": 'Vec3', "radius1": float, "radius2": float, "height": float, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ConeFeature(_ConeFeatureRequired, _ConeFeatureOptional):
     pass
 
@@ -115,8 +115,8 @@ class CopperLayerRef(_CopperLayerRefRequired, _CopperLayerRefOptional):
     pass
 
 #: A COPPER POUR — A REGION SWEPT ON A PLANE, and the second special case that disappears.
-_CopperPourFeatureRequired = TypedDict("_CopperPourFeatureRequired", {"type": Literal["copperPour"], "path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "conductor": 'ConductorElectrical', "operation": 'BooleanMode', "id": str, "name": str})
-_CopperPourFeatureOptional = TypedDict("_CopperPourFeatureOptional", {"bias": 'RouteBias', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_CopperPourFeatureRequired = TypedDict("_CopperPourFeatureRequired", {"type": Literal["copperPour"], "path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "conductor": 'ConductorElectrical', "id": str, "name": str})
+_CopperPourFeatureOptional = TypedDict("_CopperPourFeatureOptional", {"bias": 'RouteBias', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CopperPourFeature(_CopperPourFeatureRequired, _CopperPourFeatureOptional):
     pass
 
@@ -125,8 +125,8 @@ _CopyBodyFeatureOptional = TypedDict("_CopyBodyFeatureOptional", {"translate": '
 class CopyBodyFeature(_CopyBodyFeatureRequired, _CopyBodyFeatureOptional):
     pass
 
-_CylinderFeatureRequired = TypedDict("_CylinderFeatureRequired", {"type": Literal["cylinder"], "center": 'Vec3', "axis": 'Vec3', "radius": float, "height": float, "operation": 'BooleanMode', "id": str, "name": str})
-_CylinderFeatureOptional = TypedDict("_CylinderFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_CylinderFeatureRequired = TypedDict("_CylinderFeatureRequired", {"type": Literal["cylinder"], "id": str, "name": str})
+_CylinderFeatureOptional = TypedDict("_CylinderFeatureOptional", {"center": 'Vec3', "axis": 'Vec3', "radius": float, "height": float, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CylinderFeature(_CylinderFeatureRequired, _CylinderFeatureOptional):
     pass
 
@@ -136,8 +136,8 @@ _CylindricalSurfaceOptional = TypedDict("_CylindricalSurfaceOptional", {}, total
 class CylindricalSurface(_CylindricalSurfaceRequired, _CylindricalSurfaceOptional):
     pass
 
-_DatumPlaneFeatureRequired = TypedDict("_DatumPlaneFeatureRequired", {"type": Literal["datumPlane"], "base": str, "offset": float, "id": str, "name": str})
-_DatumPlaneFeatureOptional = TypedDict("_DatumPlaneFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_DatumPlaneFeatureRequired = TypedDict("_DatumPlaneFeatureRequired", {"type": Literal["datumPlane"], "base": str, "id": str, "name": str})
+_DatumPlaneFeatureOptional = TypedDict("_DatumPlaneFeatureOptional", {"offset": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class DatumPlaneFeature(_DatumPlaneFeatureRequired, _DatumPlaneFeatureOptional):
     pass
 
@@ -152,29 +152,29 @@ _DevelopabilityVerdictOptional = TypedDict("_DevelopabilityVerdictOptional", {"b
 class DevelopabilityVerdict(_DevelopabilityVerdictRequired, _DevelopabilityVerdictOptional):
     pass
 
-_DomeFeatureRequired = TypedDict("_DomeFeatureRequired", {"type": Literal["dome"], "face": 'TopoRef', "height": float, "id": str, "name": str})
-_DomeFeatureOptional = TypedDict("_DomeFeatureOptional", {"rings": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_DomeFeatureRequired = TypedDict("_DomeFeatureRequired", {"type": Literal["dome"], "face": 'TopoRef', "id": str, "name": str})
+_DomeFeatureOptional = TypedDict("_DomeFeatureOptional", {"height": float, "rings": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class DomeFeature(_DomeFeatureRequired, _DomeFeatureOptional):
     pass
 
-_DraftFeatureRequired = TypedDict("_DraftFeatureRequired", {"type": Literal["draft"], "faces": List['TopoRef'], "angle": float, "pullDirection": 'Vec3', "id": str, "name": str})
-_DraftFeatureOptional = TypedDict("_DraftFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_DraftFeatureRequired = TypedDict("_DraftFeatureRequired", {"type": Literal["draft"], "faces": List['TopoRef'], "id": str, "name": str})
+_DraftFeatureOptional = TypedDict("_DraftFeatureOptional", {"angle": float, "pullDirection": 'Vec3', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class DraftFeature(_DraftFeatureRequired, _DraftFeatureOptional):
     pass
 
 #: A LINKED (not embedded) part reference. Unlike ImportFeature — which copies the foreign STEP/IGES bytes into the document — an `ExternalPartRef` only records *where* to find another Drive file (by id or name) and reloads it on open. This keeps a part reusable across assemblies and lets a part edit propagate to every place it's used. The reference system (`cad/references.ts`) turns these into `FileRef`s (`role:"part"`); the editor resolves + meshes them. Foreign solids carry an `importer` ("step"/"iges") so the resolver knows to run the import path rather than run a `.3d.tsx`.
-_ExternalPartRefRequired = TypedDict("_ExternalPartRefRequired", {"type": Literal["externalPart"], "placement": 'Placement', "operation": 'BooleanMode', "id": str, "name": str})
-_ExternalPartRefOptional = TypedDict("_ExternalPartRefOptional", {"fileId": str, "path": str, "fileName": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx"], "unitScaleMm": float, "component": str, "localPlacement": 'Placement', "footprint": 'ComponentFootprint', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ExternalPartRefRequired = TypedDict("_ExternalPartRefRequired", {"type": Literal["externalPart"], "id": str, "name": str})
+_ExternalPartRefOptional = TypedDict("_ExternalPartRefOptional", {"fileId": str, "path": str, "fileName": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx"], "unitScaleMm": float, "placement": 'Placement', "component": str, "localPlacement": 'Placement', "footprint": 'ComponentFootprint', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ExternalPartRef(_ExternalPartRefRequired, _ExternalPartRefOptional):
     pass
 
-_ExtrudeFeatureRequired = TypedDict("_ExtrudeFeatureRequired", {"type": Literal["extrude"], "profile": 'ProfileRef', "distance": float, "operation": 'BooleanMode', "id": str, "name": str})
-_ExtrudeFeatureOptional = TypedDict("_ExtrudeFeatureOptional", {"symmetric": bool, "reverse": bool, "distance2": float, "draftAngle": float, "through": bool, "upToFace": 'TopoRef', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ExtrudeFeatureRequired = TypedDict("_ExtrudeFeatureRequired", {"type": Literal["extrude"], "profile": 'ProfileRef', "id": str, "name": str})
+_ExtrudeFeatureOptional = TypedDict("_ExtrudeFeatureOptional", {"distance": float, "symmetric": bool, "reverse": bool, "distance2": float, "draftAngle": float, "through": bool, "upToFace": 'TopoRef', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ExtrudeFeature(_ExtrudeFeatureRequired, _ExtrudeFeatureOptional):
     pass
 
-_FilletFeatureRequired = TypedDict("_FilletFeatureRequired", {"type": Literal["fillet"], "edges": List['TopoRef'], "radius": float, "id": str, "name": str})
-_FilletFeatureOptional = TypedDict("_FilletFeatureOptional", {"radius2": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_FilletFeatureRequired = TypedDict("_FilletFeatureRequired", {"type": Literal["fillet"], "edges": List['TopoRef'], "id": str, "name": str})
+_FilletFeatureOptional = TypedDict("_FilletFeatureOptional", {"radius": float, "radius2": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class FilletFeature(_FilletFeatureRequired, _FilletFeatureOptional):
     pass
 
@@ -224,8 +224,8 @@ class GenerateFeature(_GenerateFeatureRequired, _GenerateFeatureOptional):
     pass
 
 #: A VIA — sketch points into an op, exactly like a trace, and that sameness is the evidence the decomposition is a real structure rather than a convenient one.
-_GenerateViaFeatureRequired = TypedDict("_GenerateViaFeatureRequired", {"type": Literal["generateVia"], "at": 'ConductorPathRef', "layers": List['CopperLayerRef'], "drillMm": float, "padDiameterMm": float, "conductor": 'ConductorElectrical', "operation": 'BooleanMode', "id": str, "name": str})
-_GenerateViaFeatureOptional = TypedDict("_GenerateViaFeatureOptional", {"material": 'MaterialDef', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_GenerateViaFeatureRequired = TypedDict("_GenerateViaFeatureRequired", {"type": Literal["generateVia"], "at": 'ConductorPathRef', "layers": List['CopperLayerRef'], "drillMm": float, "padDiameterMm": float, "conductor": 'ConductorElectrical', "id": str, "name": str})
+_GenerateViaFeatureOptional = TypedDict("_GenerateViaFeatureOptional", {"material": 'MaterialDef', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class GenerateViaFeature(_GenerateViaFeatureRequired, _GenerateViaFeatureOptional):
     pass
 
@@ -240,29 +240,29 @@ _GraphFeatureOptional = TypedDict("_GraphFeatureOptional", {"nodeSizes": List[fl
 class GraphFeature(_GraphFeatureRequired, _GraphFeatureOptional):
     pass
 
-_HoleFeatureRequired = TypedDict("_HoleFeatureRequired", {"type": Literal["hole"], "face": 'TopoRef', "diameter": float, "depth": float, "style": 'HoleStyle', "id": str, "name": str})
-_HoleFeatureOptional = TypedDict("_HoleFeatureOptional", {"through": bool, "headDiameter": float, "headDepth": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_HoleFeatureRequired = TypedDict("_HoleFeatureRequired", {"type": Literal["hole"], "face": 'TopoRef', "id": str, "name": str})
+_HoleFeatureOptional = TypedDict("_HoleFeatureOptional", {"diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "headDiameter": float, "headDepth": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class HoleFeature(_HoleFeatureRequired, _HoleFeatureOptional):
     pass
 
-_ImportFeatureRequired = TypedDict("_ImportFeatureRequired", {"type": Literal["import"], "format": Literal["step", "iges", "brep"], "data": str, "operation": 'BooleanMode', "id": str, "name": str})
-_ImportFeatureOptional = TypedDict("_ImportFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ImportFeatureRequired = TypedDict("_ImportFeatureRequired", {"type": Literal["import"], "format": Literal["step", "iges", "brep"], "data": str, "id": str, "name": str})
+_ImportFeatureOptional = TypedDict("_ImportFeatureOptional", {"operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ImportFeature(_ImportFeatureRequired, _ImportFeatureOptional):
     pass
 
-_LinearPatternFeatureRequired = TypedDict("_LinearPatternFeatureRequired", {"type": Literal["linearPattern"], "seedFeature": str, "direction": 'Vec3', "spacing": float, "count": int, "id": str, "name": str})
-_LinearPatternFeatureOptional = TypedDict("_LinearPatternFeatureOptional", {"direction2": 'Vec3', "spacing2": float, "count2": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_LinearPatternFeatureRequired = TypedDict("_LinearPatternFeatureRequired", {"type": Literal["linearPattern"], "seedFeature": str, "id": str, "name": str})
+_LinearPatternFeatureOptional = TypedDict("_LinearPatternFeatureOptional", {"direction": 'Vec3', "spacing": float, "count": int, "direction2": 'Vec3', "spacing2": float, "count2": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class LinearPatternFeature(_LinearPatternFeatureRequired, _LinearPatternFeatureOptional):
     pass
 
-_LoftFeatureRequired = TypedDict("_LoftFeatureRequired", {"type": Literal["loft"], "profiles": List['ProfileRef'], "operation": 'BooleanMode', "id": str, "name": str})
-_LoftFeatureOptional = TypedDict("_LoftFeatureOptional", {"ruled": bool, "closed": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_LoftFeatureRequired = TypedDict("_LoftFeatureRequired", {"type": Literal["loft"], "profiles": List['ProfileRef'], "id": str, "name": str})
+_LoftFeatureOptional = TypedDict("_LoftFeatureOptional", {"ruled": bool, "closed": bool, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class LoftFeature(_LoftFeatureRequired, _LoftFeatureOptional):
     pass
 
 #: A REAL human body: MakeHuman's hm08 basemesh morphed by its macro targets.
-_MakeHumanFeatureRequired = TypedDict("_MakeHumanFeatureRequired", {"type": Literal["makeHuman"], "id": str, "name": str, "gender": float, "age": float, "muscle": float, "weight": float, "height": float, "proportions": float, "cupsize": float, "firmness": float, "african": float, "asian": float, "caucasian": float})
-_MakeHumanFeatureOptional = TypedDict("_MakeHumanFeatureOptional", {"subdivision": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_MakeHumanFeatureRequired = TypedDict("_MakeHumanFeatureRequired", {"type": Literal["makeHuman"], "id": str, "name": str})
+_MakeHumanFeatureOptional = TypedDict("_MakeHumanFeatureOptional", {"subdivision": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature', "gender": float, "age": float, "muscle": float, "weight": float, "height": float, "proportions": float, "cupsize": float, "firmness": float, "african": float, "asian": float, "caucasian": float}, total=False)
 class MakeHumanFeature(_MakeHumanFeatureRequired, _MakeHumanFeatureOptional):
     pass
 
@@ -340,8 +340,8 @@ _NurbsSpecOptional = TypedDict("_NurbsSpecOptional", {"weights": List[float], "k
 class NurbsSpec(_NurbsSpecRequired, _NurbsSpecOptional):
     pass
 
-_OffsetFacesFeatureRequired = TypedDict("_OffsetFacesFeatureRequired", {"type": Literal["offsetFaces"], "faces": List['TopoRef'], "distance": float, "id": str, "name": str})
-_OffsetFacesFeatureOptional = TypedDict("_OffsetFacesFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_OffsetFacesFeatureRequired = TypedDict("_OffsetFacesFeatureRequired", {"type": Literal["offsetFaces"], "faces": List['TopoRef'], "id": str, "name": str})
+_OffsetFacesFeatureOptional = TypedDict("_OffsetFacesFeatureOptional", {"distance": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class OffsetFacesFeature(_OffsetFacesFeatureRequired, _OffsetFacesFeatureOptional):
     pass
 
@@ -351,20 +351,20 @@ _ParamRectOptional = TypedDict("_ParamRectOptional", {}, total=False)
 class ParamRect(_ParamRectRequired, _ParamRectOptional):
     pass
 
-_PathPatternFeatureRequired = TypedDict("_PathPatternFeatureRequired", {"type": Literal["pathPattern"], "seedFeature": str, "path": 'ProfileRef', "count": int, "id": str, "name": str})
-_PathPatternFeatureOptional = TypedDict("_PathPatternFeatureOptional", {"alignToPath": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_PathPatternFeatureRequired = TypedDict("_PathPatternFeatureRequired", {"type": Literal["pathPattern"], "seedFeature": str, "path": 'ProfileRef', "id": str, "name": str})
+_PathPatternFeatureOptional = TypedDict("_PathPatternFeatureOptional", {"count": int, "alignToPath": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class PathPatternFeature(_PathPatternFeatureRequired, _PathPatternFeatureOptional):
     pass
 
 #: A PCB TRACE — the 2D→3D rung. Points → route → centreline → offset → region → extrude.
-_PcbTraceFeatureRequired = TypedDict("_PcbTraceFeatureRequired", {"type": Literal["pcbTrace"], "path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "width": float, "conductor": 'ConductorElectrical', "operation": 'BooleanMode', "id": str, "name": str})
-_PcbTraceFeatureOptional = TypedDict("_PcbTraceFeatureOptional", {"centreline": Literal["arc-through-three-points"], "bias": 'RouteBias', "join": 'OffsetJoin', "cap": 'OffsetCap', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_PcbTraceFeatureRequired = TypedDict("_PcbTraceFeatureRequired", {"type": Literal["pcbTrace"], "path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "width": float, "conductor": 'ConductorElectrical', "id": str, "name": str})
+_PcbTraceFeatureOptional = TypedDict("_PcbTraceFeatureOptional", {"centreline": Literal["arc-through-three-points"], "bias": 'RouteBias', "join": 'OffsetJoin', "cap": 'OffsetCap', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class PcbTraceFeature(_PcbTraceFeatureRequired, _PcbTraceFeatureOptional):
     pass
 
 #: A rigid placement of a part in assembly space: a position, an orientation quaternion, and a uniform scale. Mirrors import but is self-contained (no pivot — the part is placed about its own origin) so the pure model has no kernel dependency.
-_PlacementRequired = TypedDict("_PlacementRequired", {"position": 'Vec3', "quaternion": Tuple[float, float, float, float], "scale": float})
-_PlacementOptional = TypedDict("_PlacementOptional", {"scaleXYZ": 'Vec3'}, total=False)
+_PlacementRequired = TypedDict("_PlacementRequired", {})
+_PlacementOptional = TypedDict("_PlacementOptional", {"position": 'Vec3', "quaternion": Tuple[float, float, float, float], "scale": float, "scaleXYZ": 'Vec3'}, total=False)
 class Placement(_PlacementRequired, _PlacementOptional):
     pass
 
@@ -390,8 +390,8 @@ class _PlaneRef17(__PlaneRef17Required, __PlaneRef17Optional):
     pass
 
 #: A PLATED through-hole — a terminal producer, and a DIFFERENT NODE from the mechanical `hole` it is routinely confused with.
-_PlatedHoleFeatureRequired = TypedDict("_PlatedHoleFeatureRequired", {"type": Literal["platedHole"], "at": 'ConductorPathRef', "layers": List['CopperLayerRef'], "drillMm": float, "padDiameterMm": float, "conductor": 'ConductorElectrical', "operation": 'BooleanMode', "id": str, "name": str})
-_PlatedHoleFeatureOptional = TypedDict("_PlatedHoleFeatureOptional", {"material": 'MaterialDef', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_PlatedHoleFeatureRequired = TypedDict("_PlatedHoleFeatureRequired", {"type": Literal["platedHole"], "at": 'ConductorPathRef', "layers": List['CopperLayerRef'], "drillMm": float, "padDiameterMm": float, "conductor": 'ConductorElectrical', "id": str, "name": str})
+_PlatedHoleFeatureOptional = TypedDict("_PlatedHoleFeatureOptional", {"material": 'MaterialDef', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class PlatedHoleFeature(_PlatedHoleFeatureRequired, _PlatedHoleFeatureOptional):
     pass
 
@@ -412,28 +412,28 @@ _ProfileRefOptional = TypedDict("_ProfileRefOptional", {"regions": List[float]},
 class ProfileRef(_ProfileRefRequired, _ProfileRefOptional):
     pass
 
-_RevolveFeatureRequired = TypedDict("_RevolveFeatureRequired", {"type": Literal["revolve"], "profile": 'ProfileRef', "axis": 'AxisRef', "angle": float, "operation": 'BooleanMode', "id": str, "name": str})
-_RevolveFeatureOptional = TypedDict("_RevolveFeatureOptional", {"reverse": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_RevolveFeatureRequired = TypedDict("_RevolveFeatureRequired", {"type": Literal["revolve"], "profile": 'ProfileRef', "axis": 'AxisRef', "id": str, "name": str})
+_RevolveFeatureOptional = TypedDict("_RevolveFeatureOptional", {"angle": float, "reverse": bool, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class RevolveFeature(_RevolveFeatureRequired, _RevolveFeatureOptional):
     pass
 
-_RibFeatureRequired = TypedDict("_RibFeatureRequired", {"type": Literal["rib"], "sketch": str, "thickness": float, "depth": float, "operation": 'BooleanMode', "id": str, "name": str})
-_RibFeatureOptional = TypedDict("_RibFeatureOptional", {"bothSides": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_RibFeatureRequired = TypedDict("_RibFeatureRequired", {"type": Literal["rib"], "sketch": str, "id": str, "name": str})
+_RibFeatureOptional = TypedDict("_RibFeatureOptional", {"thickness": float, "depth": float, "bothSides": bool, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class RibFeature(_RibFeatureRequired, _RibFeatureOptional):
     pass
 
-_ScaleFeatureRequired = TypedDict("_ScaleFeatureRequired", {"type": Literal["scale"], "factor": float, "id": str, "name": str})
-_ScaleFeatureOptional = TypedDict("_ScaleFeatureOptional", {"center": 'Vec3', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ScaleFeatureRequired = TypedDict("_ScaleFeatureRequired", {"type": Literal["scale"], "id": str, "name": str})
+_ScaleFeatureOptional = TypedDict("_ScaleFeatureOptional", {"factor": float, "center": 'Vec3', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ScaleFeature(_ScaleFeatureRequired, _ScaleFeatureOptional):
     pass
 
-_SheetFlangeFeatureRequired = TypedDict("_SheetFlangeFeatureRequired", {"type": Literal["sheetFlange"], "edge": 'TopoRef', "length": float, "angle": float, "id": str, "name": str})
-_SheetFlangeFeatureOptional = TypedDict("_SheetFlangeFeatureOptional", {"thickness": float, "bendRadius": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_SheetFlangeFeatureRequired = TypedDict("_SheetFlangeFeatureRequired", {"type": Literal["sheetFlange"], "edge": 'TopoRef', "id": str, "name": str})
+_SheetFlangeFeatureOptional = TypedDict("_SheetFlangeFeatureOptional", {"length": float, "angle": float, "thickness": float, "bendRadius": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SheetFlangeFeature(_SheetFlangeFeatureRequired, _SheetFlangeFeatureOptional):
     pass
 
-_ShellFeatureRequired = TypedDict("_ShellFeatureRequired", {"type": Literal["shell"], "faces": List['TopoRef'], "thickness": float, "id": str, "name": str})
-_ShellFeatureOptional = TypedDict("_ShellFeatureOptional", {"outward": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ShellFeatureRequired = TypedDict("_ShellFeatureRequired", {"type": Literal["shell"], "faces": List['TopoRef'], "id": str, "name": str})
+_ShellFeatureOptional = TypedDict("_ShellFeatureOptional", {"thickness": float, "outward": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ShellFeature(_ShellFeatureRequired, _ShellFeatureOptional):
     pass
 
@@ -573,13 +573,14 @@ _SourceMaterialGroupOptional = TypedDict("_SourceMaterialGroupOptional", {}, tot
 class SourceMaterialGroup(_SourceMaterialGroupRequired, _SourceMaterialGroupOptional):
     pass
 
-_SourceTextureTransformRequired = TypedDict("_SourceTextureTransformRequired", {"offset": Tuple[float, float], "repeat": Tuple[float, float], "center": Tuple[float, float], "rotation": float, "matrixAutoUpdate": bool})
-_SourceTextureTransformOptional = TypedDict("_SourceTextureTransformOptional", {}, total=False)
+#: A texture's UV transform, as three.js holds it; a field left out is three.js's own default.
+_SourceTextureTransformRequired = TypedDict("_SourceTextureTransformRequired", {})
+_SourceTextureTransformOptional = TypedDict("_SourceTextureTransformOptional", {"offset": Tuple[float, float], "repeat": Tuple[float, float], "center": Tuple[float, float], "rotation": float, "matrixAutoUpdate": bool}, total=False)
 class SourceTextureTransform(_SourceTextureTransformRequired, _SourceTextureTransformOptional):
     pass
 
-_SphereFeatureRequired = TypedDict("_SphereFeatureRequired", {"type": Literal["sphere"], "center": 'Vec3', "radius": float, "operation": 'BooleanMode', "id": str, "name": str})
-_SphereFeatureOptional = TypedDict("_SphereFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_SphereFeatureRequired = TypedDict("_SphereFeatureRequired", {"type": Literal["sphere"], "id": str, "name": str})
+_SphereFeatureOptional = TypedDict("_SphereFeatureOptional", {"center": 'Vec3', "radius": float, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SphereFeature(_SphereFeatureRequired, _SphereFeatureOptional):
     pass
 
@@ -600,8 +601,8 @@ _SubdivBodyFeatureOptional = TypedDict("_SubdivBodyFeatureOptional", {"operation
 class SubdivBodyFeature(_SubdivBodyFeatureRequired, _SubdivBodyFeatureOptional):
     pass
 
-_SweepFeatureRequired = TypedDict("_SweepFeatureRequired", {"type": Literal["sweep"], "profile": 'ProfileRef', "path": 'ProfileRef', "operation": 'BooleanMode', "id": str, "name": str})
-_SweepFeatureOptional = TypedDict("_SweepFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_SweepFeatureRequired = TypedDict("_SweepFeatureRequired", {"type": Literal["sweep"], "profile": 'ProfileRef', "path": 'ProfileRef', "id": str, "name": str})
+_SweepFeatureOptional = TypedDict("_SweepFeatureOptional", {"operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SweepFeature(_SweepFeatureRequired, _SweepFeatureOptional):
     pass
 
@@ -611,13 +612,13 @@ _TerminalBindingOptional = TypedDict("_TerminalBindingOptional", {}, total=False
 class TerminalBinding(_TerminalBindingRequired, _TerminalBindingOptional):
     pass
 
-_ThickenFeatureRequired = TypedDict("_ThickenFeatureRequired", {"type": Literal["thicken"], "distance": float, "id": str, "name": str})
-_ThickenFeatureOptional = TypedDict("_ThickenFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ThickenFeatureRequired = TypedDict("_ThickenFeatureRequired", {"type": Literal["thicken"], "id": str, "name": str})
+_ThickenFeatureOptional = TypedDict("_ThickenFeatureOptional", {"distance": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ThickenFeature(_ThickenFeatureRequired, _ThickenFeatureOptional):
     pass
 
-_ThreadFeatureRequired = TypedDict("_ThreadFeatureRequired", {"type": Literal["thread"], "face": 'TopoRef', "pitch": float, "length": float, "depth": float, "id": str, "name": str})
-_ThreadFeatureOptional = TypedDict("_ThreadFeatureOptional", {"internal": bool, "rightHanded": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ThreadFeatureRequired = TypedDict("_ThreadFeatureRequired", {"type": Literal["thread"], "face": 'TopoRef', "id": str, "name": str})
+_ThreadFeatureOptional = TypedDict("_ThreadFeatureOptional", {"pitch": float, "length": float, "depth": float, "internal": bool, "rightHanded": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ThreadFeature(_ThreadFeatureRequired, _ThreadFeatureOptional):
     pass
 
@@ -684,8 +685,8 @@ class _VolumeFeature36(__VolumeFeature36Required, __VolumeFeature36Optional):
     pass
 
 #: A **scalar/label voxel volume** — CT/MRI/microscopy/segmentation grids (NIfTI/NRRD/DICOM). The field is normalized 0..1 and downsampled to a display-friendly grid on import (large clinical volumes don't fit a JSON doc verbatim). Rendered as three orthogonal MPR slice planes or a marching-cubes isosurface.
-_VolumeFeatureRequired = TypedDict("_VolumeFeatureRequired", {"type": Literal["volume"], "dims": Tuple[float, float, float], "spacing": Tuple[float, float, float], "origin": 'Vec3', "data": List[float], "id": str, "name": str})
-_VolumeFeatureOptional = TypedDict("_VolumeFeatureOptional", {"render": Literal["slices", "iso"], "iso": float, "colormap": str, "source": '_VolumeFeature36', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_VolumeFeatureRequired = TypedDict("_VolumeFeatureRequired", {"type": Literal["volume"], "dims": Tuple[float, float, float], "spacing": Tuple[float, float, float], "data": List[float], "id": str, "name": str})
+_VolumeFeatureOptional = TypedDict("_VolumeFeatureOptional", {"origin": 'Vec3', "render": Literal["slices", "iso"], "iso": float, "colormap": str, "source": '_VolumeFeature36', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class VolumeFeature(_VolumeFeatureRequired, _VolumeFeatureOptional):
     pass
 
@@ -701,8 +702,8 @@ _WorldTrimeshColliderOptional = TypedDict("_WorldTrimeshColliderOptional", {}, t
 class WorldTrimeshCollider(_WorldTrimeshColliderRequired, _WorldTrimeshColliderOptional):
     pass
 
-_WrapTextFeatureRequired = TypedDict("_WrapTextFeatureRequired", {"type": Literal["wrapText"], "face": 'TopoRef', "sketch": 'Sketch', "depth": float, "mode": Literal["emboss", "engrave"], "id": str, "name": str})
-_WrapTextFeatureOptional = TypedDict("_WrapTextFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_WrapTextFeatureRequired = TypedDict("_WrapTextFeatureRequired", {"type": Literal["wrapText"], "face": 'TopoRef', "sketch": 'Sketch', "id": str, "name": str})
+_WrapTextFeatureOptional = TypedDict("_WrapTextFeatureOptional", {"depth": float, "mode": Literal["emboss", "engrave"], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class WrapTextFeature(_WrapTextFeatureRequired, _WrapTextFeatureOptional):
     pass
 
@@ -719,104 +720,104 @@ class SketchProps(_SketchPropsRequired, _SketchPropsOptional):
     pass
 
 #: The keywords of extrude(…): the ExtrudeFeature fields, in snake_case.
-_ExtrudePropsRequired = TypedDict("_ExtrudePropsRequired", {"profile": 'ProfileRef', "distance": float, "operation": 'BooleanMode', "id": str})
-_ExtrudePropsOptional = TypedDict("_ExtrudePropsOptional", {"symmetric": bool, "reverse": bool, "distance2": float, "draft_angle": float, "through": bool, "up_to_face": 'TopoRef', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ExtrudePropsRequired = TypedDict("_ExtrudePropsRequired", {"profile": 'ProfileRef', "id": str})
+_ExtrudePropsOptional = TypedDict("_ExtrudePropsOptional", {"distance": float, "symmetric": bool, "reverse": bool, "distance2": float, "draft_angle": float, "through": bool, "up_to_face": 'TopoRef', "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ExtrudeProps(_ExtrudePropsRequired, _ExtrudePropsOptional):
     pass
 
 #: The keywords of revolve(…): the RevolveFeature fields, in snake_case.
-_RevolvePropsRequired = TypedDict("_RevolvePropsRequired", {"profile": 'ProfileRef', "axis": 'AxisRef', "angle": float, "operation": 'BooleanMode', "id": str})
-_RevolvePropsOptional = TypedDict("_RevolvePropsOptional", {"reverse": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_RevolvePropsRequired = TypedDict("_RevolvePropsRequired", {"profile": 'ProfileRef', "axis": 'AxisRef', "id": str})
+_RevolvePropsOptional = TypedDict("_RevolvePropsOptional", {"angle": float, "reverse": bool, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class RevolveProps(_RevolvePropsRequired, _RevolvePropsOptional):
     pass
 
 #: The keywords of sweep(…): the SweepFeature fields, in snake_case.
-_SweepPropsRequired = TypedDict("_SweepPropsRequired", {"profile": 'ProfileRef', "path": 'ProfileRef', "operation": 'BooleanMode', "id": str})
-_SweepPropsOptional = TypedDict("_SweepPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_SweepPropsRequired = TypedDict("_SweepPropsRequired", {"profile": 'ProfileRef', "path": 'ProfileRef', "id": str})
+_SweepPropsOptional = TypedDict("_SweepPropsOptional", {"operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class SweepProps(_SweepPropsRequired, _SweepPropsOptional):
     pass
 
 #: The keywords of loft(…): the LoftFeature fields, in snake_case.
-_LoftPropsRequired = TypedDict("_LoftPropsRequired", {"profiles": List['ProfileRef'], "operation": 'BooleanMode', "id": str})
-_LoftPropsOptional = TypedDict("_LoftPropsOptional", {"ruled": bool, "closed": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_LoftPropsRequired = TypedDict("_LoftPropsRequired", {"profiles": List['ProfileRef'], "id": str})
+_LoftPropsOptional = TypedDict("_LoftPropsOptional", {"ruled": bool, "closed": bool, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class LoftProps(_LoftPropsRequired, _LoftPropsOptional):
     pass
 
 #: The keywords of fillet(…): the FilletFeature fields, in snake_case.
-_FilletPropsRequired = TypedDict("_FilletPropsRequired", {"edges": List['TopoRef'], "radius": float, "id": str})
-_FilletPropsOptional = TypedDict("_FilletPropsOptional", {"radius2": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_FilletPropsRequired = TypedDict("_FilletPropsRequired", {"edges": List['TopoRef'], "id": str})
+_FilletPropsOptional = TypedDict("_FilletPropsOptional", {"radius": float, "radius2": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class FilletProps(_FilletPropsRequired, _FilletPropsOptional):
     pass
 
 #: The keywords of chamfer(…): the ChamferFeature fields, in snake_case.
-_ChamferPropsRequired = TypedDict("_ChamferPropsRequired", {"edges": List['TopoRef'], "distance": float, "id": str})
-_ChamferPropsOptional = TypedDict("_ChamferPropsOptional", {"distance2": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ChamferPropsRequired = TypedDict("_ChamferPropsRequired", {"edges": List['TopoRef'], "id": str})
+_ChamferPropsOptional = TypedDict("_ChamferPropsOptional", {"distance": float, "distance2": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ChamferProps(_ChamferPropsRequired, _ChamferPropsOptional):
     pass
 
 #: The keywords of shell(…): the ShellFeature fields, in snake_case.
-_ShellPropsRequired = TypedDict("_ShellPropsRequired", {"faces": List['TopoRef'], "thickness": float, "id": str})
-_ShellPropsOptional = TypedDict("_ShellPropsOptional", {"outward": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ShellPropsRequired = TypedDict("_ShellPropsRequired", {"faces": List['TopoRef'], "id": str})
+_ShellPropsOptional = TypedDict("_ShellPropsOptional", {"thickness": float, "outward": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ShellProps(_ShellPropsRequired, _ShellPropsOptional):
     pass
 
 #: The keywords of box(…): the BoxFeature fields, in snake_case.
-_BoxPropsRequired = TypedDict("_BoxPropsRequired", {"center": 'Vec3', "size": 'Vec3', "operation": 'BooleanMode', "id": str})
-_BoxPropsOptional = TypedDict("_BoxPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_BoxPropsRequired = TypedDict("_BoxPropsRequired", {"id": str})
+_BoxPropsOptional = TypedDict("_BoxPropsOptional", {"center": 'Vec3', "size": 'Vec3', "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class BoxProps(_BoxPropsRequired, _BoxPropsOptional):
     pass
 
 #: The keywords of import(…): the ImportFeature fields, in snake_case.
-_ImportPropsRequired = TypedDict("_ImportPropsRequired", {"format": Literal["step", "iges", "brep"], "data": str, "operation": 'BooleanMode', "id": str})
-_ImportPropsOptional = TypedDict("_ImportPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ImportPropsRequired = TypedDict("_ImportPropsRequired", {"format": Literal["step", "iges", "brep"], "data": str, "id": str})
+_ImportPropsOptional = TypedDict("_ImportPropsOptional", {"operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ImportProps(_ImportPropsRequired, _ImportPropsOptional):
     pass
 
 #: The keywords of externalPart(…): the ExternalPartRef fields, in snake_case.
-_ExternalPartPropsRequired = TypedDict("_ExternalPartPropsRequired", {"placement": 'Placement', "operation": 'BooleanMode', "id": str})
-_ExternalPartPropsOptional = TypedDict("_ExternalPartPropsOptional", {"file_id": str, "path": str, "file_name": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx"], "unit_scale_mm": float, "component": str, "local_placement": 'Placement', "footprint": 'ComponentFootprint', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ExternalPartPropsRequired = TypedDict("_ExternalPartPropsRequired", {"id": str})
+_ExternalPartPropsOptional = TypedDict("_ExternalPartPropsOptional", {"file_id": str, "path": str, "file_name": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx"], "unit_scale_mm": float, "placement": 'Placement', "component": str, "local_placement": 'Placement', "footprint": 'ComponentFootprint', "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ExternalPartProps(_ExternalPartPropsRequired, _ExternalPartPropsOptional):
     pass
 
 #: The keywords of cylinder(…): the CylinderFeature fields, in snake_case.
-_CylinderPropsRequired = TypedDict("_CylinderPropsRequired", {"center": 'Vec3', "axis": 'Vec3', "radius": float, "height": float, "operation": 'BooleanMode', "id": str})
-_CylinderPropsOptional = TypedDict("_CylinderPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_CylinderPropsRequired = TypedDict("_CylinderPropsRequired", {"id": str})
+_CylinderPropsOptional = TypedDict("_CylinderPropsOptional", {"center": 'Vec3', "axis": 'Vec3', "radius": float, "height": float, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class CylinderProps(_CylinderPropsRequired, _CylinderPropsOptional):
     pass
 
 #: The keywords of sphere(…): the SphereFeature fields, in snake_case.
-_SpherePropsRequired = TypedDict("_SpherePropsRequired", {"center": 'Vec3', "radius": float, "operation": 'BooleanMode', "id": str})
-_SpherePropsOptional = TypedDict("_SpherePropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_SpherePropsRequired = TypedDict("_SpherePropsRequired", {"id": str})
+_SpherePropsOptional = TypedDict("_SpherePropsOptional", {"center": 'Vec3', "radius": float, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class SphereProps(_SpherePropsRequired, _SpherePropsOptional):
     pass
 
 #: The keywords of cone(…): the ConeFeature fields, in snake_case.
-_ConePropsRequired = TypedDict("_ConePropsRequired", {"center": 'Vec3', "axis": 'Vec3', "radius1": float, "radius2": float, "height": float, "operation": 'BooleanMode', "id": str})
-_ConePropsOptional = TypedDict("_ConePropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ConePropsRequired = TypedDict("_ConePropsRequired", {"id": str})
+_ConePropsOptional = TypedDict("_ConePropsOptional", {"center": 'Vec3', "axis": 'Vec3', "radius1": float, "radius2": float, "height": float, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ConeProps(_ConePropsRequired, _ConePropsOptional):
     pass
 
 #: The keywords of makeHuman(…): the MakeHumanFeature fields, in snake_case.
-_MakeHumanPropsRequired = TypedDict("_MakeHumanPropsRequired", {"id": str, "gender": float, "age": float, "muscle": float, "weight": float, "height": float, "proportions": float, "cupsize": float, "firmness": float, "african": float, "asian": float, "caucasian": float})
-_MakeHumanPropsOptional = TypedDict("_MakeHumanPropsOptional", {"subdivision": int, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_MakeHumanPropsRequired = TypedDict("_MakeHumanPropsRequired", {"id": str})
+_MakeHumanPropsOptional = TypedDict("_MakeHumanPropsOptional", {"subdivision": int, "suppressed": bool, "consumes": List[str], "gender": float, "age": float, "muscle": float, "weight": float, "height": float, "proportions": float, "cupsize": float, "firmness": float, "african": float, "asian": float, "caucasian": float, "name": str}, total=False)
 class MakeHumanProps(_MakeHumanPropsRequired, _MakeHumanPropsOptional):
     pass
 
 #: The keywords of linearPattern(…): the LinearPatternFeature fields, in snake_case.
-_LinearPatternPropsRequired = TypedDict("_LinearPatternPropsRequired", {"seed_feature": str, "direction": 'Vec3', "spacing": float, "count": int, "id": str})
-_LinearPatternPropsOptional = TypedDict("_LinearPatternPropsOptional", {"direction2": 'Vec3', "spacing2": float, "count2": int, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_LinearPatternPropsRequired = TypedDict("_LinearPatternPropsRequired", {"seed_feature": str, "id": str})
+_LinearPatternPropsOptional = TypedDict("_LinearPatternPropsOptional", {"direction": 'Vec3', "spacing": float, "count": int, "direction2": 'Vec3', "spacing2": float, "count2": int, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class LinearPatternProps(_LinearPatternPropsRequired, _LinearPatternPropsOptional):
     pass
 
 #: The keywords of circularPattern(…): the CircularPatternFeature fields, in snake_case.
-_CircularPatternPropsRequired = TypedDict("_CircularPatternPropsRequired", {"seed_feature": str, "axis": 'AxisRef', "count": int, "id": str})
-_CircularPatternPropsOptional = TypedDict("_CircularPatternPropsOptional", {"angle": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_CircularPatternPropsRequired = TypedDict("_CircularPatternPropsRequired", {"seed_feature": str, "axis": 'AxisRef', "id": str})
+_CircularPatternPropsOptional = TypedDict("_CircularPatternPropsOptional", {"count": int, "angle": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class CircularPatternProps(_CircularPatternPropsRequired, _CircularPatternPropsOptional):
     pass
 
 #: The keywords of pathPattern(…): the PathPatternFeature fields, in snake_case.
-_PathPatternPropsRequired = TypedDict("_PathPatternPropsRequired", {"seed_feature": str, "path": 'ProfileRef', "count": int, "id": str})
-_PathPatternPropsOptional = TypedDict("_PathPatternPropsOptional", {"align_to_path": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_PathPatternPropsRequired = TypedDict("_PathPatternPropsRequired", {"seed_feature": str, "path": 'ProfileRef', "id": str})
+_PathPatternPropsOptional = TypedDict("_PathPatternPropsOptional", {"count": int, "align_to_path": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class PathPatternProps(_PathPatternPropsRequired, _PathPatternPropsOptional):
     pass
 
@@ -827,20 +828,20 @@ class MirrorProps(_MirrorPropsRequired, _MirrorPropsOptional):
     pass
 
 #: The keywords of datumPlane(…): the DatumPlaneFeature fields, in snake_case.
-_DatumPlanePropsRequired = TypedDict("_DatumPlanePropsRequired", {"base": str, "offset": float, "id": str})
-_DatumPlanePropsOptional = TypedDict("_DatumPlanePropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_DatumPlanePropsRequired = TypedDict("_DatumPlanePropsRequired", {"base": str, "id": str})
+_DatumPlanePropsOptional = TypedDict("_DatumPlanePropsOptional", {"offset": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class DatumPlaneProps(_DatumPlanePropsRequired, _DatumPlanePropsOptional):
     pass
 
 #: The keywords of draft(…): the DraftFeature fields, in snake_case.
-_DraftPropsRequired = TypedDict("_DraftPropsRequired", {"faces": List['TopoRef'], "angle": float, "pull_direction": 'Vec3', "id": str})
-_DraftPropsOptional = TypedDict("_DraftPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_DraftPropsRequired = TypedDict("_DraftPropsRequired", {"faces": List['TopoRef'], "id": str})
+_DraftPropsOptional = TypedDict("_DraftPropsOptional", {"angle": float, "pull_direction": 'Vec3', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class DraftProps(_DraftPropsRequired, _DraftPropsOptional):
     pass
 
 #: The keywords of hole(…): the HoleFeature fields, in snake_case.
-_HolePropsRequired = TypedDict("_HolePropsRequired", {"face": 'TopoRef', "diameter": float, "depth": float, "style": 'HoleStyle', "id": str})
-_HolePropsOptional = TypedDict("_HolePropsOptional", {"through": bool, "head_diameter": float, "head_depth": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_HolePropsRequired = TypedDict("_HolePropsRequired", {"face": 'TopoRef', "id": str})
+_HolePropsOptional = TypedDict("_HolePropsOptional", {"diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "head_diameter": float, "head_depth": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class HoleProps(_HolePropsRequired, _HolePropsOptional):
     pass
 
@@ -851,8 +852,8 @@ class TransformProps(_TransformPropsRequired, _TransformPropsOptional):
     pass
 
 #: The keywords of sheetFlange(…): the SheetFlangeFeature fields, in snake_case.
-_SheetFlangePropsRequired = TypedDict("_SheetFlangePropsRequired", {"edge": 'TopoRef', "length": float, "angle": float, "id": str})
-_SheetFlangePropsOptional = TypedDict("_SheetFlangePropsOptional", {"thickness": float, "bend_radius": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_SheetFlangePropsRequired = TypedDict("_SheetFlangePropsRequired", {"edge": 'TopoRef', "id": str})
+_SheetFlangePropsOptional = TypedDict("_SheetFlangePropsOptional", {"length": float, "angle": float, "thickness": float, "bend_radius": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class SheetFlangeProps(_SheetFlangePropsRequired, _SheetFlangePropsOptional):
     pass
 
@@ -863,8 +864,8 @@ class UnfoldProps(_UnfoldPropsRequired, _UnfoldPropsOptional):
     pass
 
 #: The keywords of wrapText(…): the WrapTextFeature fields, in snake_case.
-_WrapTextPropsRequired = TypedDict("_WrapTextPropsRequired", {"face": 'TopoRef', "sketch": 'Sketch', "depth": float, "mode": Literal["emboss", "engrave"], "id": str})
-_WrapTextPropsOptional = TypedDict("_WrapTextPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_WrapTextPropsRequired = TypedDict("_WrapTextPropsRequired", {"face": 'TopoRef', "sketch": 'Sketch', "id": str})
+_WrapTextPropsOptional = TypedDict("_WrapTextPropsOptional", {"depth": float, "mode": Literal["emboss", "engrave"], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class WrapTextProps(_WrapTextPropsRequired, _WrapTextPropsOptional):
     pass
 
@@ -881,8 +882,8 @@ class FullRoundProps(_FullRoundPropsRequired, _FullRoundPropsOptional):
     pass
 
 #: The keywords of dome(…): the DomeFeature fields, in snake_case.
-_DomePropsRequired = TypedDict("_DomePropsRequired", {"face": 'TopoRef', "height": float, "id": str})
-_DomePropsOptional = TypedDict("_DomePropsOptional", {"rings": int, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_DomePropsRequired = TypedDict("_DomePropsRequired", {"face": 'TopoRef', "id": str})
+_DomePropsOptional = TypedDict("_DomePropsOptional", {"height": float, "rings": int, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class DomeProps(_DomePropsRequired, _DomePropsOptional):
     pass
 
@@ -893,32 +894,32 @@ class CopyBodyProps(_CopyBodyPropsRequired, _CopyBodyPropsOptional):
     pass
 
 #: The keywords of thread(…): the ThreadFeature fields, in snake_case.
-_ThreadPropsRequired = TypedDict("_ThreadPropsRequired", {"face": 'TopoRef', "pitch": float, "length": float, "depth": float, "id": str})
-_ThreadPropsOptional = TypedDict("_ThreadPropsOptional", {"internal": bool, "right_handed": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ThreadPropsRequired = TypedDict("_ThreadPropsRequired", {"face": 'TopoRef', "id": str})
+_ThreadPropsOptional = TypedDict("_ThreadPropsOptional", {"pitch": float, "length": float, "depth": float, "internal": bool, "right_handed": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ThreadProps(_ThreadPropsRequired, _ThreadPropsOptional):
     pass
 
 #: The keywords of coil(…): the CoilFeature fields, in snake_case.
-_CoilPropsRequired = TypedDict("_CoilPropsRequired", {"profile": 'ProfileRef', "axis": 'AxisRef', "pitch": float, "turns": float, "operation": 'BooleanMode', "id": str})
-_CoilPropsOptional = TypedDict("_CoilPropsOptional", {"right_handed": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_CoilPropsRequired = TypedDict("_CoilPropsRequired", {"profile": 'ProfileRef', "axis": 'AxisRef', "id": str})
+_CoilPropsOptional = TypedDict("_CoilPropsOptional", {"pitch": float, "turns": float, "right_handed": bool, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class CoilProps(_CoilPropsRequired, _CoilPropsOptional):
     pass
 
 #: The keywords of combine(…): the CombineFeature fields, in snake_case.
-_CombinePropsRequired = TypedDict("_CombinePropsRequired", {"operation": Literal["intersect", "union", "subtract"], "id": str})
-_CombinePropsOptional = TypedDict("_CombinePropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_CombinePropsRequired = TypedDict("_CombinePropsRequired", {"id": str})
+_CombinePropsOptional = TypedDict("_CombinePropsOptional", {"operation": Literal["intersect", "union", "subtract"], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class CombineProps(_CombinePropsRequired, _CombinePropsOptional):
     pass
 
 #: The keywords of offsetFaces(…): the OffsetFacesFeature fields, in snake_case.
-_OffsetFacesPropsRequired = TypedDict("_OffsetFacesPropsRequired", {"faces": List['TopoRef'], "distance": float, "id": str})
-_OffsetFacesPropsOptional = TypedDict("_OffsetFacesPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_OffsetFacesPropsRequired = TypedDict("_OffsetFacesPropsRequired", {"faces": List['TopoRef'], "id": str})
+_OffsetFacesPropsOptional = TypedDict("_OffsetFacesPropsOptional", {"distance": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class OffsetFacesProps(_OffsetFacesPropsRequired, _OffsetFacesPropsOptional):
     pass
 
 #: The keywords of thicken(…): the ThickenFeature fields, in snake_case.
-_ThickenPropsRequired = TypedDict("_ThickenPropsRequired", {"distance": float, "id": str})
-_ThickenPropsOptional = TypedDict("_ThickenPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ThickenPropsRequired = TypedDict("_ThickenPropsRequired", {"id": str})
+_ThickenPropsOptional = TypedDict("_ThickenPropsOptional", {"distance": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ThickenProps(_ThickenPropsRequired, _ThickenPropsOptional):
     pass
 
@@ -929,14 +930,14 @@ class SplitProps(_SplitPropsRequired, _SplitPropsOptional):
     pass
 
 #: The keywords of scale(…): the ScaleFeature fields, in snake_case.
-_ScalePropsRequired = TypedDict("_ScalePropsRequired", {"factor": float, "id": str})
-_ScalePropsOptional = TypedDict("_ScalePropsOptional", {"center": 'Vec3', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ScalePropsRequired = TypedDict("_ScalePropsRequired", {"id": str})
+_ScalePropsOptional = TypedDict("_ScalePropsOptional", {"factor": float, "center": 'Vec3', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ScaleProps(_ScalePropsRequired, _ScalePropsOptional):
     pass
 
 #: The keywords of rib(…): the RibFeature fields, in snake_case.
-_RibPropsRequired = TypedDict("_RibPropsRequired", {"sketch": str, "thickness": float, "depth": float, "operation": 'BooleanMode', "id": str})
-_RibPropsOptional = TypedDict("_RibPropsOptional", {"both_sides": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_RibPropsRequired = TypedDict("_RibPropsRequired", {"sketch": str, "id": str})
+_RibPropsOptional = TypedDict("_RibPropsOptional", {"thickness": float, "depth": float, "both_sides": bool, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class RibProps(_RibPropsRequired, _RibPropsOptional):
     pass
 
@@ -1019,8 +1020,8 @@ class _VolumeProps42(__VolumeProps42Required, __VolumeProps42Optional):
     pass
 
 #: The keywords of volume(…): the VolumeFeature fields, in snake_case.
-_VolumePropsRequired = TypedDict("_VolumePropsRequired", {"dims": Tuple[float, float, float], "spacing": Tuple[float, float, float], "origin": 'Vec3', "data": List[float], "id": str})
-_VolumePropsOptional = TypedDict("_VolumePropsOptional", {"render": Literal["slices", "iso"], "iso": float, "colormap": str, "source": '_VolumeProps42', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_VolumePropsRequired = TypedDict("_VolumePropsRequired", {"dims": Tuple[float, float, float], "spacing": Tuple[float, float, float], "data": List[float], "id": str})
+_VolumePropsOptional = TypedDict("_VolumePropsOptional", {"origin": 'Vec3', "render": Literal["slices", "iso"], "iso": float, "colormap": str, "source": '_VolumeProps42', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class VolumeProps(_VolumePropsRequired, _VolumePropsOptional):
     pass
 
@@ -1036,26 +1037,26 @@ class GraphProps(_GraphPropsRequired, _GraphPropsOptional):
     pass
 
 #: The keywords of pcbTrace(…): the PcbTraceFeature fields, in snake_case.
-_PcbTracePropsRequired = TypedDict("_PcbTracePropsRequired", {"path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "width": float, "conductor": 'ConductorElectrical', "operation": 'BooleanMode', "id": str})
-_PcbTracePropsOptional = TypedDict("_PcbTracePropsOptional", {"centreline": Literal["arc-through-three-points"], "bias": 'RouteBias', "join": 'OffsetJoin', "cap": 'OffsetCap', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_PcbTracePropsRequired = TypedDict("_PcbTracePropsRequired", {"path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "width": float, "conductor": 'ConductorElectrical', "id": str})
+_PcbTracePropsOptional = TypedDict("_PcbTracePropsOptional", {"centreline": Literal["arc-through-three-points"], "bias": 'RouteBias', "join": 'OffsetJoin', "cap": 'OffsetCap', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class PcbTraceProps(_PcbTracePropsRequired, _PcbTracePropsOptional):
     pass
 
 #: The keywords of generateVia(…): the GenerateViaFeature fields, in snake_case.
-_GenerateViaPropsRequired = TypedDict("_GenerateViaPropsRequired", {"at": 'ConductorPathRef', "layers": List['CopperLayerRef'], "drill_mm": float, "pad_diameter_mm": float, "conductor": 'ConductorElectrical', "operation": 'BooleanMode', "id": str})
-_GenerateViaPropsOptional = TypedDict("_GenerateViaPropsOptional", {"material": 'MaterialDef', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_GenerateViaPropsRequired = TypedDict("_GenerateViaPropsRequired", {"at": 'ConductorPathRef', "layers": List['CopperLayerRef'], "drill_mm": float, "pad_diameter_mm": float, "conductor": 'ConductorElectrical', "id": str})
+_GenerateViaPropsOptional = TypedDict("_GenerateViaPropsOptional", {"material": 'MaterialDef', "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class GenerateViaProps(_GenerateViaPropsRequired, _GenerateViaPropsOptional):
     pass
 
 #: The keywords of platedHole(…): the PlatedHoleFeature fields, in snake_case.
-_PlatedHolePropsRequired = TypedDict("_PlatedHolePropsRequired", {"at": 'ConductorPathRef', "layers": List['CopperLayerRef'], "drill_mm": float, "pad_diameter_mm": float, "conductor": 'ConductorElectrical', "operation": 'BooleanMode', "id": str})
-_PlatedHolePropsOptional = TypedDict("_PlatedHolePropsOptional", {"material": 'MaterialDef', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_PlatedHolePropsRequired = TypedDict("_PlatedHolePropsRequired", {"at": 'ConductorPathRef', "layers": List['CopperLayerRef'], "drill_mm": float, "pad_diameter_mm": float, "conductor": 'ConductorElectrical', "id": str})
+_PlatedHolePropsOptional = TypedDict("_PlatedHolePropsOptional", {"material": 'MaterialDef', "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class PlatedHoleProps(_PlatedHolePropsRequired, _PlatedHolePropsOptional):
     pass
 
 #: The keywords of copperPour(…): the CopperPourFeature fields, in snake_case.
-_CopperPourPropsRequired = TypedDict("_CopperPourPropsRequired", {"path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "conductor": 'ConductorElectrical', "operation": 'BooleanMode', "id": str})
-_CopperPourPropsOptional = TypedDict("_CopperPourPropsOptional", {"bias": 'RouteBias', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_CopperPourPropsRequired = TypedDict("_CopperPourPropsRequired", {"path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "conductor": 'ConductorElectrical', "id": str})
+_CopperPourPropsOptional = TypedDict("_CopperPourPropsOptional", {"bias": 'RouteBias', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class CopperPourProps(_CopperPourPropsRequired, _CopperPourPropsOptional):
     pass
 

@@ -262,12 +262,14 @@ class LinkAndFilterTests(unittest.TestCase):
         for holder in (in_photo, in_painting):
             for pattern, f in (
                 (r"<gaussianBlur>: radius: must be at most 250 \(got 300\)", gaussianBlur(radius=300)),
-                (r"<gaussianBlur>: radius: is required", gaussianBlur()),
                 (r"<gaussianBlur>: strength: is not one of its fields", gaussianBlur(radius=3, strength=1)),
                 (r'<noise>: monochrome: must be boolean \(got "string"\)', noise(amount=0.1, monochrome="yes")),
             ):
                 with self.assertRaisesRegex(ValueError, pattern):
                     from_twod(holder(f))
+            # A required field with a declared default may be left out: a blur with no radius is the editor's 4 px blur.
+            nodes = from_twod(holder(gaussianBlur()))["nodes"].values()
+            self.assertIn({"type": "gaussianBlur", "radius": 4}, [n["inputs"].get("filter") for n in nodes])
 
     def test_the_filter_tags_and_the_link_are_the_schemas_roots(self):
         self.assertEqual(sorted([*PHOTO_FILTERS, "link"]), sorted(SCHEMA["roots"]))

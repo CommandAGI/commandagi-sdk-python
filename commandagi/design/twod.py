@@ -47,7 +47,7 @@ from typing import Any, Dict, List, Optional
 
 from .element import Element, child_elements, declares, define
 from .ir import NodeRef, Scope, channels, slug, using
-from .schema import describe_issue, validate
+from .schema import describe_issue, validate, with_defaults
 from .twod_schema import SCHEMA
 
 _C: Dict[str, Any] = {"holds": "children"}
@@ -118,9 +118,11 @@ def _add(s: Scope, el: Element, type: str, inputs: Dict[str, Any]) -> NodeRef:
 
 
 def _checked(el: Element, fields: Dict[str, Any]) -> Dict[str, Any]:
-    """``el`` with ``fields``, checked against its tag's schema: the element as the editors hold it."""
-    value = {"type": el.tag, **fields}
-    issues = validate({"$ref": f"#/$defs/{SCHEMA['roots'][el.tag]}"}, value, SCHEMA["$defs"])
+    """``el`` with ``fields``, checked against its tag's schema: the element as the editors hold it, with each required
+    field it leaves out at its declared default (``with_defaults``)."""
+    root = {"$ref": f"#/$defs/{SCHEMA['roots'][el.tag]}"}
+    value = with_defaults(root, {"type": el.tag, **fields}, SCHEMA["$defs"])
+    issues = validate(root, value, SCHEMA["$defs"])
     if issues:
         raise ValueError(f"{_where(el)}: {'; '.join(describe_issue(x) for x in issues)}")
     return value

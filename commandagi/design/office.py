@@ -78,7 +78,7 @@ from typing import Any, Dict, List, Optional
 
 from .element import Element, child_elements, declares, define
 from .ir import channels
-from .schema import describe_issue, validate
+from .schema import describe_issue, validate, with_defaults
 from .workbook_schema import SCHEMA as WORKBOOK_SCHEMA
 
 _C: Dict[str, Any] = {"holds": "children"}
@@ -181,9 +181,11 @@ _RANGE = re.compile(r"^[A-Z]{1,3}[1-9]\d{0,6}(:[A-Z]{1,3}[1-9]\d{0,6})?$", re.I)
 
 def _workbook_element(el: Element) -> Dict[str, Any]:
     """The attributes of a chart, a pivot, a filter or a criterion, checked against the element's schema
-    (``workbook_schema.py``, generated from the sheets editor's types) with the sentences an op panel shows."""
-    props = dict(el.props)
-    issues = validate({"$ref": f"#/$defs/{WORKBOOK_SCHEMA['roots'][el.tag]}"}, props, WORKBOOK_SCHEMA["$defs"])
+    (``workbook_schema.py``, generated from the sheets editor's types) with the sentences an op panel shows; a required
+    attribute left out is at its declared default (``with_defaults``)."""
+    root = {"$ref": f"#/$defs/{WORKBOOK_SCHEMA['roots'][el.tag]}"}
+    props = with_defaults(root, dict(el.props), WORKBOOK_SCHEMA["$defs"])
+    issues = validate(root, props, WORKBOOK_SCHEMA["$defs"])
     if issues:
         raise ValueError(f"{_where(el)}: {'; '.join(describe_issue(x) for x in issues)}")
     if isinstance(props.get("range"), builtins.str) and not _RANGE.match(props["range"]):

@@ -4,8 +4,9 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, circle, constraint, cylinder, declare_threed, extrude,
-                                      feature, fillet, line, meshBody, parameter, part, plane, point, pointCloud, sketch, slot)
+from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, circle, constraint, cylinder, declare_threed, externalPart,
+                                      extrude, feature, fillet, import_, line, meshBody, parameter, part, plane, point, pointCloud,
+                                      sketch, slot)
 
 
 def plate():
@@ -132,6 +133,29 @@ class ThreeDTests(unittest.TestCase):
         self.assertIn("makeHuman", THREED_FEATURES)
         self.assertNotIn("makehuman", THREED_FEATURES)
         read(pointCloud(id="pc", positions=positions))()
+
+    def test_a_required_field_with_a_declared_default_may_be_left_out(self):
+        # The TypeScript and Rust SDKs read the same assembly to the same inputs.
+        def read(*children):
+            return declare_threed(assembly(*children, name="A"))
+
+        identity = {"position": [0, 0, 0], "quaternion": [0, 0, 0, 1], "scale": 1}
+        g = read(externalPart(id="bare", path="bracket.3d.tsx"),
+                 externalPart(id="moved", path="bracket.3d.tsx", placement={"position": [10, 0, 5]}, operation="add"))
+        self.assertEqual(g["nodes"]["bare"]["inputs"], {"path": "bracket.3d.tsx", "placement": identity, "operation": "new"})
+        # A placement that says only where: its orientation and scale are the identity's. The author's values stay.
+        self.assertEqual(g["nodes"]["moved"]["inputs"],
+                         {"path": "bracket.3d.tsx", "placement": {"position": [10, 0, 5], "quaternion": [0, 0, 0, 1], "scale": 1}, "operation": "add"})
+        # An optional field stays absent: its absence is a value the kernel reads.
+        self.assertNotIn("importer", g["nodes"]["bare"]["inputs"])
+        # A defaulted field the author wrote wrong is still refused, and a field with no default is still required.
+        for child, message in (
+            (externalPart(id="p", path="b.3d.tsx", placement={"scale": "big"}), '<externalPart id="p">: placement/scale: must be number (got "string")'),
+            (import_(id="i", format="step"), '<import id="i">: data: is required'),
+        ):
+            with self.assertRaises(ValueError) as caught:
+                read(child)
+            self.assertEqual(str(caught.exception), message)
 
     def test_a_world_body_written_by_tsx_reads_with_its_declared_fields(self):
         # The element an ingest writes in a .3d.tsx (sdk/typescript threed.test.ts reads the same one).

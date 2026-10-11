@@ -43,7 +43,8 @@ A feature element is checked against its type's schema (``SCHEMA``; its keywords
 ``ExtrudeProps`` …): the feature ``{type: <tag>, name: <its id when absent>, …its fields}``, a sketch with the ``sketch``
 its children make. A wrong field is refused with the sentence an op panel shows for it, the same as the TypeScript
 SDK: ``<extrude id="e1">: distance: must be greater than 0 (got -1)``. A ``feature(type_=…)`` of an unknown type is not
-checked.
+checked. A required field that declares a default may be left out: it reads as that default (an ``external_part``
+without ``placement`` sits at the identity placement), and the node's inputs hold it.
 """
 from __future__ import annotations
 
@@ -54,7 +55,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from .element import Element, child_elements, declares, define
 from .ir import slug
-from .schema import describe_issue, validate
+from .schema import describe_issue, validate, with_defaults
 from .threed_schema import SCHEMA
 
 #: The feature types a 3D document holds, by tag: the roots of ``SCHEMA`` (``threed_schema.py``), generated from the
@@ -204,14 +205,18 @@ def _is_number(v: Any) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
 
 
-def _check_feature(el: Element, feature: Dict[str, Any]) -> None:
-    """Refuses a feature whose fields do not fit its type's schema, with every issue."""
+def _check_feature(el: Element, feature: Dict[str, Any]) -> Dict[str, Any]:
+    """The feature with each required field it leaves out filled with its declared default (``with_defaults``), checked
+    against its type's schema; refused with every issue when it does not fit."""
     d = SCHEMA["roots"].get(feature["type"])
     if d is None:
-        return
-    issues = validate({"$ref": f"#/$defs/{d}"}, feature, SCHEMA["$defs"])
+        return feature
+    root = {"$ref": f"#/$defs/{d}"}
+    filled = with_defaults(root, feature, SCHEMA["$defs"])
+    issues = validate(root, filled, SCHEMA["$defs"])
     if issues:
         raise ValueError(f"{_where(el)}: {'; '.join(describe_issue(x) for x in issues)}")
+    return filled
 
 
 def _builtin_planes_of(root: Element) -> List[str]:
@@ -330,8 +335,9 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             sk, sources = _sketch_of(el)
             inputs = {**rest, "sketch": sk}
         if not generic:
-            _check_feature(el, {"type": ftype, "id": i, "name": label if label is not None else i,
-                                **({"suppressed": suppressed} if suppressed is not None else {}), **inputs})
+            filled = _check_feature(el, {"type": ftype, "id": i, "name": label if label is not None else i,
+                                         **({"suppressed": suppressed} if suppressed is not None else {}), **inputs})
+            inputs = {k: v for k, v in filled.items() if k not in ("type", "id", "name", "suppressed")}
         if el.tag != "sketch":
             _no_children(el)
             if el.tag == "code":

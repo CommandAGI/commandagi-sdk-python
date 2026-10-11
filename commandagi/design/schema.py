@@ -8,6 +8,8 @@ the agent tools: ``distance: must be greater than 0 (got -1)``.
 The subset: type, enum, const, pattern, properties, required, additionalProperties, items, prefixItems, minItems,
 maxItems, minimum, maximum, exclusiveMinimum, exclusiveMaximum, anyOf, oneOf, ``$ref`` (to ``#/$defs/<name>``),
 ``$defs``; the other keywords (default, description, the editors' ``x-*``) are not checked.
+
+A required field with a ``default`` may be left out of a file: the reader fills it (``with_defaults``) before the check.
 """
 from __future__ import annotations
 
@@ -17,7 +19,7 @@ import re
 from decimal import Decimal
 from typing import Any, Dict, List, Mapping, Optional
 
-__all__ = ["resolve", "ref_name", "validate", "describe_issue", "issue_field", "is_file_ref"]
+__all__ = ["resolve", "ref_name", "validate", "with_defaults", "describe_issue", "issue_field", "is_file_ref"]
 
 _REF = "#/$defs/"
 
@@ -175,6 +177,65 @@ def validate(schema: Mapping[str, Any], value: Any, defs: Optional[Mapping[str, 
                 out.append(_issue(_join(path, k), "additional"))
             elif isinstance(extra, dict):
                 out.extend(validate(extra, v, defs, _join(path, k)))
+    return out
+
+
+def _kind_fits(s: Mapping[str, Any], value: Any) -> bool:
+    """Whether a value can be what ``s`` (resolved) describes, by its JSON kind alone."""
+    t = s.get("type")
+    types = [] if t is None else list(t) if isinstance(t, (list, tuple)) else [t]
+    return not types or any(_type_matches(x, value) for x in types)
+
+
+def with_defaults(schema: Mapping[str, Any], value: Any, defs: Optional[Mapping[str, Any]] = None) -> Any:
+    """``value`` with every absent required field that declares a ``default`` filled with that default, at every depth
+    (the TypeScript SDK's ``withDefaults``). A reader calls it before ``validate``, so a file that leaves out a
+    defaulted field reads as if it had written the default. A field with no default, and an optional field, stay
+    absent. ``value`` is not changed; a value that is not the shape the schema describes comes back as it was."""
+    defs = schema.get("$defs", {}) if defs is None else defs
+    s = resolve(schema, defs)
+    options = s.get("anyOf") if s.get("anyOf") is not None else s.get("oneOf")
+    if options is not None:
+        named = None
+        for o in options:
+            r = resolve(o, defs)
+            if isinstance(value, dict) and any("const" in p and k in value and _same(value[k], p["const"]) for k, p in (r.get("properties") or {}).items()):
+                named = o
+                break
+        candidates = [named] if named is not None else [o for o in options if _kind_fits(resolve(o, defs), value)]
+        if len(candidates) == 1:
+            return with_defaults(candidates[0], value, defs)
+        for o in candidates:
+            filled = with_defaults(o, value, defs)
+            if not validate(o, filled, defs):
+                return filled
+        return value
+    if isinstance(value, (list, tuple)):
+        prefix = s.get("prefixItems") or []
+        items = s.get("items")
+        if not prefix and items is None:
+            return value
+        out_list = []
+        for i, item in enumerate(value):
+            item_schema = prefix[i] if i < len(prefix) else items
+            out_list.append(with_defaults(item_schema, item, defs) if item_schema is not None else item)
+        return out_list
+    if not isinstance(value, dict) or is_file_ref(value) or not _kind_fits(s, value):
+        return value
+    props = s.get("properties")
+    extra = s.get("additionalProperties") if isinstance(s.get("additionalProperties"), dict) else None
+    if props is None and extra is None:
+        return value
+    out: Dict[str, Any] = {}
+    for k, v in value.items():
+        p = (props or {}).get(k, extra)
+        out[k] = with_defaults(p, v, defs) if p is not None else v
+    for k in s.get("required") or []:
+        p = (props or {}).get(k)
+        if k not in value and p is not None:
+            d = resolve(p, defs)
+            if "default" in d:
+                out[k] = json.loads(json.dumps(d["default"]))
     return out
 
 
