@@ -245,7 +245,7 @@ _HoleFeatureOptional = TypedDict("_HoleFeatureOptional", {"through": bool, "head
 class HoleFeature(_HoleFeatureRequired, _HoleFeatureOptional):
     pass
 
-_ImportFeatureRequired = TypedDict("_ImportFeatureRequired", {"type": Literal["import"], "format": Literal["step", "iges"], "data": str, "operation": 'BooleanMode', "id": str, "name": str})
+_ImportFeatureRequired = TypedDict("_ImportFeatureRequired", {"type": Literal["import"], "format": Literal["step", "iges", "brep"], "data": str, "operation": 'BooleanMode', "id": str, "name": str})
 _ImportFeatureOptional = TypedDict("_ImportFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ImportFeature(_ImportFeatureRequired, _ImportFeatureOptional):
     pass
@@ -755,7 +755,7 @@ class BoxProps(_BoxPropsRequired, _BoxPropsOptional):
     pass
 
 #: The keywords of import(…): the ImportFeature fields, in snake_case.
-_ImportPropsRequired = TypedDict("_ImportPropsRequired", {"format": Literal["step", "iges"], "data": str, "operation": 'BooleanMode', "id": str})
+_ImportPropsRequired = TypedDict("_ImportPropsRequired", {"format": Literal["step", "iges", "brep"], "data": str, "operation": 'BooleanMode', "id": str})
 _ImportPropsOptional = TypedDict("_ImportPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ImportProps(_ImportPropsRequired, _ImportPropsOptional):
     pass
