@@ -14,7 +14,9 @@ account's Drive, never written in the file::
 
 A monitor's ``class`` is written ``class_`` (a Python keyword). A follow names the followed monitor's folder, relative
 to this monitor's folder. Nothing adds a default: what the file does not say, the document does not have. A monitor's
-``sources``, ``follows`` and ``wakes`` are always lists.
+``sources``, ``follows``, ``derives`` and ``wakes`` are always lists. A ``derive`` names an operator and, per port, the
+folder of the monitor whose records go in: ``derive(id="vwap", op="vwap", inputs={"trades": "../trades"},
+params={"window": "1m"})``.
 """
 from __future__ import annotations
 
@@ -28,6 +30,7 @@ MONITOR_FIELDS = ["title", "class", "about", "readme"]
 SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit"]
 FOLLOW_FIELDS = ["monitor", "match"]
 WAKE_FIELDS = ["match", "prompt"]
+DERIVE_FIELDS = ["id", "op", "inputs", "params", "since"]
 VIAS = ["worker", "host", "vpn"]
 EVERY_BOUNDS = {"min": "30s", "max": "7d"}
 
@@ -36,10 +39,11 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "monitor": {"holds": "children"},
     "source": {},
     "follows": {},
+    "derive": {},
     "wake": {},
 }
 
-__all__ = ["MONITOR_FIELDS", "SOURCE_FIELDS", "FOLLOW_FIELDS", "WAKE_FIELDS", "VIAS",
+__all__ = ["MONITOR_FIELDS", "SOURCE_FIELDS", "FOLLOW_FIELDS", "DERIVE_FIELDS", "WAKE_FIELDS", "VIAS",
            "SIGNATURES", "duration_seconds", "MONITOR_VOCABULARY", *define(globals(), "monitors", SIGNATURES)]
 
 _DURATION = re.compile(r"^([1-9]\d*)(s|m|h|d)$")
@@ -90,6 +94,35 @@ def _source(t: DocTree) -> Dict[str, Any]:
     return _said(t["attrs"], SOURCE_FIELDS)
 
 
+_WORD = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+_DAY = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
+
+
+def _derive(t: DocTree) -> Dict[str, Any]:
+    """A derived stream (docs/records.md § 6): an operator over other monitors' records, each port named to a folder."""
+    for k in ("id", "op", "since"):
+        _text(t, k)
+    if not _WORD.match(t["attrs"].get("id") or ""):
+        raise ValueError(f"{_where(t)} id is a word (letters, digits, _ and -)")
+    inputs = t["attrs"].get("inputs")
+    if not isinstance(inputs, dict) or not inputs:
+        raise ValueError(f"{_where(t)} inputs maps each port to a monitor's folder ({{'quotes': '../quotes'}}), not {inputs!r}")
+    for port, ref in inputs.items():
+        if not isinstance(port, str) or not _WORD.match(port):
+            raise ValueError(f"{_where(t)} a port is a word, not {port!r}")
+        if not isinstance(ref, str) or not ref:
+            raise ValueError(f"{_where(t)} inputs.{port} is a monitor's folder, not {ref!r}")
+        if re.match(r"^\./?$", ref):
+            raise ValueError(f"{_where(t)} inputs.{port} names this monitor; a derive takes other monitors' records")
+    p = t["attrs"].get("params")
+    if p is not None and not isinstance(p, dict):
+        raise ValueError(f"{_where(t)} params is an object ({{'window': '1m'}}), not {p!r}")
+    since = t["attrs"].get("since")
+    if since is not None and not _DAY.match(since):
+        raise ValueError(f'{_where(t)} since is a day ("2024-01-01"), not {since!r}')
+    return _said(t["attrs"], DERIVE_FIELDS)
+
+
 def _monitor(t: DocTree) -> Dict[str, Any]:
     for k in MONITOR_FIELDS:
         _text(t, k)
@@ -106,7 +139,9 @@ def _monitor(t: DocTree) -> Dict[str, Any]:
         _text(c, "match", "match")
         _text(c, "prompt", "match")
         wakes.append(_said(c["attrs"], WAKE_FIELDS))
-    return {**_said(t["attrs"], MONITOR_FIELDS), "sources": [_source(c) for c in parts("source")], "follows": follows, "wakes": wakes}
+    derives = [_derive(c) for c in parts("derive")]
+    return {**_said(t["attrs"], MONITOR_FIELDS), "sources": [_source(c) for c in parts("source")], "follows": follows,
+            "derives": derives, "wakes": wakes}
 
 
 def _never(_: Any) -> DocTree:
@@ -117,6 +152,7 @@ MONITOR_VOCABULARY = Vocabulary("monitor", "a monitor", "monitor", {
     "monitor": {"parents": [], "attrs": MONITOR_FIELDS},
     "source": {"parents": ["monitor"], "key": "id", "required": ["id", "adapter", "every"], "attrs": SOURCE_FIELDS},
     "follows": {"parents": ["monitor"], "key": "monitor", "required": ["monitor"], "attrs": FOLLOW_FIELDS},
+    "derive": {"parents": ["monitor"], "key": "id", "required": ["id", "op", "inputs"], "attrs": DERIVE_FIELDS},
     "wake": {"parents": ["monitor"], "required": ["prompt"], "attrs": WAKE_FIELDS},
 }, _monitor, _never)
 
