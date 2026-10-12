@@ -92,6 +92,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.ontology` | a world, a device definition, a dashboard, a geo project, a node graph |
 | `commandagi.design.business` | a company, an RFC, a case |
 | `commandagi.design.tasks` | a task, a project |
+| `commandagi.design.monitors` | a monitor blueprint (`<name>.monitors.py`) |
 | `commandagi.design.records` | a contract, a product instance |
 | `commandagi.design.postal` | a letter, a postcard |
 | `commandagi.design.pdf` | a PDF assembled from pages, comments, stamps, signatures, redactions, fields and bookmarks |
