@@ -1,23 +1,20 @@
-"""Monitor blueprints, declared in Python: the same document and the same elements as the TypeScript SDK's JSX
-(``commandagi/design`` ``monitors.ts``; docs/monitors.md in the CommandAGI repository), each element a call::
+"""A monitor, declared in Python: the same document and the same elements as the TypeScript SDK's JSX
+(``commandagi/design`` ``monitors.ts``; docs/monitors.md in the CommandAGI repository), each element a call. One
+``monitor.py`` declares one monitor, in the folder of the thing it follows; its id is that folder's path in the
+account's Drive, never written in the file::
 
-    from commandagi.design.monitors import follows, monitor, monitors, source, wake
+    from commandagi.design.monitors import follows, monitor, source, wake
 
-    def series(id, title, code, every="6h"):  # a class of things is a function; its instances are data
-        return monitor(source(id="fred", adapter="fred", params={"series": code}, every=every),
-                       id=f"economy/{id}", title=title, class_="economic-series", about=f"fred:{code}")
+    def corporation(cik, ticker, name):  # a class of things is a function; an instance is one call
+        return monitor(source(id="filings", adapter="sec-filings", params={"cik": cik}, every="15m"),
+                       follows(monitor="../../central-banks/fed", match="fomc.*"),
+                       title=f"{name} ({ticker})", class_="corporation", about=f"cik:{cik}")
 
-    result = monitors(
-        [series(*row) for row in [("cpi", "CPI, all items", "CPIAUCSL"), ("unrate", "Unemployment rate", "UNRATE")]],
-        monitor(source(id="dgs10", adapter="fred", params={"series": "DGS10"}, every="6h"),
-                follows(monitor="economy/cpi", match="fred.*"),
-                id="economy/treasury-yields", title="Treasury yields", class_="interest-rate"),
-        id="economy", title="Economy and monetary policy",
-    )
+    result = corporation("0001045810", "NVDA", "NVIDIA")
 
-A monitor's ``class`` is written ``class_`` (a Python keyword). Nothing adds a default: what the file does not say,
-the document does not have. A monitor's ``sources``, ``follows`` and ``wakes`` and the blueprint's ``monitors`` are
-always lists.
+A monitor's ``class`` is written ``class_`` (a Python keyword). A follow names the followed monitor's folder, relative
+to this monitor's folder. Nothing adds a default: what the file does not say, the document does not have. A monitor's
+``sources``, ``follows`` and ``wakes`` are always lists.
 """
 from __future__ import annotations
 
@@ -27,26 +24,23 @@ from typing import Any, Dict, List
 from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
 
-BLUEPRINT_FIELDS = ["id", "title"]
-MONITOR_FIELDS = ["id", "title", "class", "about", "visibility", "readme"]
+MONITOR_FIELDS = ["title", "class", "about", "readme"]
 SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit"]
 FOLLOW_FIELDS = ["monitor", "match"]
 WAKE_FIELDS = ["match", "prompt"]
-VISIBILITIES = ["public", "unlisted", "private"]
 VIAS = ["worker", "host", "vpn"]
 EVERY_BOUNDS = {"min": "30s", "max": "7d"}
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
-    "monitors": {"holds": "children"},
     "monitor": {"holds": "children"},
     "source": {},
     "follows": {},
     "wake": {},
 }
 
-__all__ = ["BLUEPRINT_FIELDS", "MONITOR_FIELDS", "SOURCE_FIELDS", "FOLLOW_FIELDS", "WAKE_FIELDS", "VISIBILITIES", "VIAS",
-           "SIGNATURES", "duration_seconds", "MONITORS_VOCABULARY", *define(globals(), "monitors", SIGNATURES)]
+__all__ = ["MONITOR_FIELDS", "SOURCE_FIELDS", "FOLLOW_FIELDS", "WAKE_FIELDS", "VIAS",
+           "SIGNATURES", "duration_seconds", "MONITOR_VOCABULARY", *define(globals(), "monitors", SIGNATURES)]
 
 _DURATION = re.compile(r"^([1-9]\d*)(s|m|h|d)$")
 _UNIT = {"s": 1, "m": 60, "h": 3600, "d": 86400}
@@ -98,16 +92,14 @@ def _source(t: DocTree) -> Dict[str, Any]:
 
 def _monitor(t: DocTree) -> Dict[str, Any]:
     for k in MONITOR_FIELDS:
-        if k != "visibility":
-            _text(t, k)
-    _one_of(t, "visibility", VISIBILITIES)
+        _text(t, k)
     parts = lambda tag: [c for c in t["children"] if c["tag"] == tag]  # noqa: E731
     follows = []
     for c in parts("follows"):
         _text(c, "monitor", "monitor")
         _text(c, "match", "monitor")
-        if c["attrs"].get("monitor") == t["attrs"].get("id"):
-            raise ValueError(f"{_where(t)} follows itself; a follow names another monitor")
+        if re.match(r"^\./?$", c["attrs"].get("monitor") or ""):
+            raise ValueError(f'<follows monitor="{c["attrs"]["monitor"]}"> names this monitor; a follow names another monitor\'s folder')
         follows.append(_said(c["attrs"], FOLLOW_FIELDS))
     wakes = []
     for c in parts("wake"):
@@ -117,22 +109,15 @@ def _monitor(t: DocTree) -> Dict[str, Any]:
     return {**_said(t["attrs"], MONITOR_FIELDS), "sources": [_source(c) for c in parts("source")], "follows": follows, "wakes": wakes}
 
 
-def _monitors(t: DocTree) -> Dict[str, Any]:
-    _text(t, "id")
-    _text(t, "title")
-    return {**_said(t["attrs"], BLUEPRINT_FIELDS), "monitors": [_monitor(c) for c in t["children"]]}
-
-
 def _never(_: Any) -> DocTree:
     raise NotImplementedError("the editor makes the tree from a document (the TypeScript SDK's toTree)")
 
 
-MONITORS_VOCABULARY = Vocabulary("monitors", "a monitor blueprint", "monitors", {
-    "monitors": {"parents": [], "required": ["id"], "attrs": BLUEPRINT_FIELDS},
-    "monitor": {"parents": ["monitors"], "key": "id", "required": ["id"], "attrs": MONITOR_FIELDS},
-    "source": {"parents": ["monitor"], "key": "id", "scoped": True, "required": ["id", "adapter", "every"], "attrs": SOURCE_FIELDS},
-    "follows": {"parents": ["monitor"], "key": "monitor", "scoped": True, "required": ["monitor"], "attrs": FOLLOW_FIELDS},
+MONITOR_VOCABULARY = Vocabulary("monitor", "a monitor", "monitor", {
+    "monitor": {"parents": [], "attrs": MONITOR_FIELDS},
+    "source": {"parents": ["monitor"], "key": "id", "required": ["id", "adapter", "every"], "attrs": SOURCE_FIELDS},
+    "follows": {"parents": ["monitor"], "key": "monitor", "required": ["monitor"], "attrs": FOLLOW_FIELDS},
     "wake": {"parents": ["monitor"], "required": ["prompt"], "attrs": WAKE_FIELDS},
-}, _monitors, _never)
+}, _monitor, _never)
 
-register_vocabulary(MONITORS_VOCABULARY, "monitors")
+register_vocabulary(MONITOR_VOCABULARY, "monitors")
