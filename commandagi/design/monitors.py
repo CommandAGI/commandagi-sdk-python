@@ -25,11 +25,21 @@ from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
 
 MONITOR_FIELDS = ["title", "class", "about", "readme"]
-SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit"]
+SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit", "host", "mode", "retain", "since",
+                 "session", "snapshot", "profile", "keep", "maxCostPerDay", "unit"]
 FOLLOW_FIELDS = ["monitor", "match"]
 WAKE_FIELDS = ["match", "prompt"]
-VIAS = ["worker", "host", "vpn"]
+#: The paths a source's reads take (docs/sources.md § fetch paths).
+VIAS = ["worker", "host", "vpn", "browser", "vm", "android-vm", "phone"]
+#: The paths that launch a machine from a snapshot (a logged-in state), and so cost money per read.
+VM_VIAS = ["vm", "android-vm"]
+#: ``poll`` reads at each ``every``; ``stream`` holds a connection open on a host.
+MODES = ["poll", "stream"]
 EVERY_BOUNDS = {"min": "30s", "max": "7d"}
+_RETAIN = re.compile(r"^(all|derived|sample:[1-9]\d*(s|m|h|d))$")
+_SINCE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
+#: A phone unit: ``<world.tsx ref>#<uid>``.
+UNIT_REF = re.compile(r"^[^#\s]+/world\.tsx#[a-z0-9][a-z0-9-]{0,47}$")
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
@@ -39,8 +49,8 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "wake": {},
 }
 
-__all__ = ["MONITOR_FIELDS", "SOURCE_FIELDS", "FOLLOW_FIELDS", "WAKE_FIELDS", "VIAS",
-           "SIGNATURES", "duration_seconds", "MONITOR_VOCABULARY", *define(globals(), "monitors", SIGNATURES)]
+__all__ = ["MONITOR_FIELDS", "SOURCE_FIELDS", "FOLLOW_FIELDS", "WAKE_FIELDS", "VIAS", "VM_VIAS", "MODES", "UNIT_REF",
+           "SIGNATURES", "duration_seconds", "monitor_with_defaults", "MONITOR_VOCABULARY", *define(globals(), "monitors", SIGNATURES)]
 
 _DURATION = re.compile(r"^([1-9]\d*)(s|m|h|d)$")
 _UNIT = {"s": 1, "m": 60, "h": 3600, "d": 86400}
@@ -74,20 +84,70 @@ def _said(attrs: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
 
 
 def _source(t: DocTree) -> Dict[str, Any]:
-    for k in ("id", "adapter", "exit"):
+    a = t["attrs"]
+    w = _where(t)
+    for k in ("id", "adapter", "exit", "host", "retain", "since", "session", "snapshot", "profile", "keep", "unit"):
         _text(t, k)
-    p = t["attrs"].get("params")
+    p = a.get("params")
     if p is not None and not isinstance(p, dict):
-        raise ValueError(f'{_where(t)} params is an object ({{"series": "CPIAUCSL"}}), not {p!r}')
-    s = duration_seconds(t["attrs"].get("every"))
+        raise ValueError(f'{w} params is an object ({{"series": "CPIAUCSL"}}), not {p!r}')
+    s = duration_seconds(a.get("every"))
     if s is None:
-        raise ValueError(f'{_where(t)} every is a duration ("30s", "15m", "6h", "7d"), not {t["attrs"].get("every")!r}')
-    if s < duration_seconds(EVERY_BOUNDS["min"]) or s > duration_seconds(EVERY_BOUNDS["max"]):
-        raise ValueError(f'{_where(t)} every is from {EVERY_BOUNDS["min"]} to {EVERY_BOUNDS["max"]}, not {t["attrs"]["every"]!r}')
+        raise ValueError(f'{w} every is a duration ("30s", "15m", "6h", "7d"), not {a.get("every")!r}')
+    lo, hi = duration_seconds(EVERY_BOUNDS["min"]), duration_seconds(EVERY_BOUNDS["max"])
+    if s < lo or s > hi:
+        raise ValueError(f'{w} every is from {EVERY_BOUNDS["min"]} to {EVERY_BOUNDS["max"]}, not {a["every"]!r}')
     _one_of(t, "via", VIAS)
-    if t["attrs"].get("exit") is not None and t["attrs"].get("via") != "vpn":
-        raise ValueError(f'{_where(t)} exit names a country for via="vpn" only')
-    return _said(t["attrs"], SOURCE_FIELDS)
+    if a.get("exit") is not None and a.get("via") != "vpn":
+        raise ValueError(f'{w} exit names an exit country ("DE") or an exit ("fsn-1"), for via="vpn" only')
+    _one_of(t, "mode", MODES)
+    via = a.get("via")
+    on_vm = via in VM_VIAS
+    has = lambda k: a.get(k) is not None  # noqa: E731
+    if has("host") and via not in ("host", "browser", "phone") and not on_vm:
+        raise ValueError(f'{w} host names the host that reads it, for via="host", "browser", "phone", "vm" or "android-vm" only')
+    if has("profile") and via != "browser":
+        raise ValueError(f'{w} profile names a browser profile of the host, for via="browser" only')
+    if has("session") and via != "browser" and not on_vm:
+        raise ValueError(f'{w} session names a logged-in state, for via="browser", "vm" or "android-vm" only')
+    if has("session") and has("profile"):
+        raise ValueError(f"{w} names its state once: a session or a profile")
+    if has("snapshot") and not on_vm:
+        raise ValueError(f'{w} snapshot is what a via="vm" or "android-vm" read launches from')
+    if has("session") and has("snapshot"):
+        raise ValueError(f"{w} names its state once: a session or a snapshot")
+    if on_vm and not has("session") and not has("snapshot"):
+        raise ValueError(f'{w} via="{via}" launches from a snapshot: it names a session or a snapshot')
+    cost = a.get("maxCostPerDay")
+    if cost is not None and not on_vm:
+        raise ValueError(f'{w} maxCostPerDay bounds what a via="vm" or "android-vm" source spends')
+    if on_vm and cost is None:
+        raise ValueError(f'{w} via="{via}" costs money: it says maxCostPerDay (USD a day)')
+    if cost is not None and (isinstance(cost, bool) or not isinstance(cost, (int, float)) or not 0 < cost < float("inf")):
+        raise ValueError(f"{w} maxCostPerDay is a price in USD (2.5), not {cost!r}")
+    if has("keep") and not on_vm:
+        raise ValueError(f'{w} keep is how long a via="vm" or "android-vm" machine stays up')
+    if has("keep"):
+        k = duration_seconds(a["keep"])
+        if k is None or k < lo or k > hi:
+            raise ValueError(f'{w} keep is a duration from {EVERY_BOUNDS["min"]} to {EVERY_BOUNDS["max"]}, not {a["keep"]!r}')
+    if has("unit") and via != "phone":
+        raise ValueError(f'{w} unit names the phone a via="phone" read runs on')
+    if via == "phone" and not has("unit"):
+        raise ValueError(f'{w} via="phone" names its phone: unit="<world.tsx>#<uid>"')
+    if has("unit") and not UNIT_REF.match(a["unit"]):
+        raise ValueError(f'{w} unit is "<world.tsx ref>#<uid>" ("../../worlds/fleet/world.tsx#android-01"), not {a["unit"]!r}')
+    if a.get("mode") == "stream" and via != "host":
+        raise ValueError(f'{w} mode="stream" holds a connection open, which runs on a host (via="host")')
+    if has("retain") and a.get("mode") != "stream":
+        raise ValueError(f'{w} retain is for mode="stream" only')
+    if has("retain") and not _RETAIN.match(a["retain"]):
+        raise ValueError(f'{w} retain is "all", "derived" or "sample:<duration>", not {a["retain"]!r}')
+    if has("since") and not _SINCE.match(a["since"]):
+        raise ValueError(f'{w} since is a day ("2024-01-01"), not {a["since"]!r}')
+    if has("since") and a.get("mode") == "stream":
+        raise ValueError(f"{w} since is for a polled source; a stream starts when it connects")
+    return _said(a, SOURCE_FIELDS)
 
 
 def _monitor(t: DocTree) -> Dict[str, Any]:
@@ -121,3 +181,19 @@ MONITOR_VOCABULARY = Vocabulary("monitor", "a monitor", "monitor", {
 }, _monitor, _never)
 
 register_vocabulary(MONITOR_VOCABULARY, "monitors")
+
+
+def monitor_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
+    """A monitor as the platform reads it: what the file does not say, filled (``via: "worker"``, ``mode: "poll"``, the
+    others None; a stream's ``retain`` "derived"). The TypeScript SDK's ``monitorWithDefaults``."""
+    def src(s: Dict[str, Any]) -> Dict[str, Any]:
+        stream = s.get("mode") == "stream"
+        return {"id": s["id"], "adapter": s["adapter"], "params": s.get("params", {}), "every": s["every"],
+                "via": s.get("via", "worker"), "exit": s.get("exit"), "host": s.get("host"), "mode": s.get("mode", "poll"),
+                "retain": s.get("retain", "derived") if stream else None, "since": s.get("since"),
+                "session": s.get("session"), "snapshot": s.get("snapshot"), "profile": s.get("profile"),
+                "keep": s.get("keep"), "maxCostPerDay": s.get("maxCostPerDay"), "unit": s.get("unit")}
+    return {"title": m.get("title"), "class": m.get("class"), "about": m.get("about"), "readme": m.get("readme"),
+            "sources": [src(s) for s in m.get("sources", [])],
+            "follows": [{"monitor": f["monitor"], "match": f.get("match")} for f in m.get("follows", [])],
+            "wakes": [{"match": w.get("match"), "prompt": w["prompt"]} for w in m.get("wakes", [])]}
