@@ -34,11 +34,12 @@ class RunningService(unittest.TestCase):
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers["content-length"])))
                 seen.append((self.path, self.headers["authorization"], body))
-                ok = self.path == "/export"
-                self.send_response(200 if ok else 422)
+                answers = {"/export": {"content": "ISO-10303-21;"}, "/sheet": {"sheet": "sheet1", "format": "pdf", "contentBase64": "JVBERg=="},
+                           "/bom": {"lines": [], "csv": "item\n"}, "/observe": {"observation": {"bodies": [], "errors": {}}, "meshes": [], "meshTris": 0}}
+                self.send_response(200 if self.path in answers else 422)
                 self.send_header("content-type", "application/json")
                 self.end_headers()
-                self.wfile.write(json.dumps({"content": "ISO-10303-21;"} if ok else {"error": "no such body"}).encode())
+                self.wfile.write(json.dumps(answers.get(self.path, {"error": "no such body"})).encode())
 
             def log_message(self, *a):
                 pass
@@ -53,9 +54,18 @@ class RunningService(unittest.TestCase):
                 self.assertEqual(kernel.export(plate, "step", bodies=["body_0"]), "ISO-10303-21;")
                 with self.assertRaises(KernelError) as refused:
                     kernel.measure("{}", "radius", {"body": "body_9", "kind": "edge", "index": 0})
+                # A drawing sheet, a bill of materials with an assembly's linked part, and an observation with the
+                # caller's own materials table (the density a body's mass uses).
+                mine = [{"id": "6061-T6", "densityGCm3": 2.71, "source": "mill certificate 4711"}]
+                self.assertEqual(kernel.sheet("{}", sheet="sheet1", format="pdf")["contentBase64"], "JVBERg==")
+                self.assertEqual(kernel.bom("{}", parts={"plate.3d.py": plate}, materials=mine)["csv"], "item\n")
+                kernel.observe("{}", materials=mine)
             self.assertEqual(refused.exception.status, 422)
             self.assertIn("no such body", str(refused.exception))
-            (path, auth, body), (path2, auth2, body2) = seen
+            self.assertEqual(seen[2], ("/sheet", "Bearer service-bearer", {"docText": "{}", "sheet": "sheet1", "format": "pdf"}))
+            self.assertEqual((seen[3][0], seen[3][2]["materials"], json.loads(seen[3][2]["parts"]["plate.3d.py"])["nodes"]["plate"]["type"]), ("/bom", mine, "box"))
+            self.assertEqual(seen[4], ("/observe", "Bearer service-bearer", {"docText": "{}", "digest": "", "materials": mine}))
+            (path, auth, body), (path2, auth2, body2) = seen[:2]
             self.assertEqual((path, auth, body["format"], body["bodies"]), ("/export", "Bearer service-bearer", "step", ["body_0"]))
             # What a file declares goes as its graph: the plate is a node of it.
             self.assertEqual(json.loads(body["docText"])["nodes"]["plate"]["type"], "box")

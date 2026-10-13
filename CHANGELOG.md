@@ -4,6 +4,26 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- A 3D document's engineering vocabulary (`commandagi.design.threed`, checked against the one schema, as in the
+  TypeScript SDK): `body(engineering={…})` (material grade, process, finish, vendor, cost, part number, mass),
+  `joint(…)` (`fixed`, `revolute`, `prismatic`, `cylindrical`, `planar`, `screw`, `spherical`, `universal`),
+  `mate(…)`, `sheet(…)` (an engineering drawing sheet), and `hole(size="M4 close fit")` (a hole by its standard name).
+- `commandagi.design.standards`: `material`, `mass_grams`, `hole_size`, `sized_hole`, `standard_row`, `MATERIALS`,
+  `HOLE_SIZES`, `STANDARD_TABLES`, `STANDARD_SOURCES`: the same tables as the TypeScript SDK, each with where its
+  rows were read.
+- `hole(body, at=…, size="M4 close fit", depth=…)` in the code-part primitives (`commandagi.design.cad`).
+- `Kernel.sheet`, `Kernel.bom`, and `Kernel.observe(doc, materials=…)`: a body's `mass["grams"]`.
+
+Changed
+
+- A joint's kinds: `hinge` is `revolute`, `slider` is `prismatic`, `ball` is `spherical`. Joints and mates are
+  `joint(…)` and `mate(…)` elements: the reader refuses them inside `slot(name="dynamics")` and
+  `slot(name="assembly")`.
+
 ## 0.5.0 (2026-10-13)
 
 The first release that contains `commandagi.design`. PyPI 0.4.0 was built on 2026-09-23, before the design layer was

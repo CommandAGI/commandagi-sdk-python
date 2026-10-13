@@ -208,19 +208,39 @@ class Kernel:
         return self._post("/" + op, body)
 
     # ── what the kernel answers ──────────────────────────────────────────────────────────────────────────────────
-    def observe(self, doc: Any, *, doc_id: Optional[str] = None) -> Dict[str, Any]:
+    def observe(self, doc: Any, *, doc_id: Optional[str] = None, materials: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """Build the document. ``observation``: each body's bounds, volume, area, faces, edges and vertices, and each
         failed feature's error by its id (``observation["errors"]``: read it, a body is built from what did not fail).
-        ``meshes``: the triangles."""
+        ``meshes``: the triangles.
+
+        A body whose ``engineering.material`` names a grade has its mass: ``mass["grams"]`` is its volume × that grade's
+        density, and ``mass["massFrom"]`` says the row and its source. ``materials`` are the rows of your own tables,
+        nearest first (``commandagi.design.standards.material``); the shipped table is read after them. A body with no
+        grade has ``mass["noMass"]``."""
         text = _doc_text(doc)
+        own = {"materials": materials} if materials else {}
         if self.where != "platform":
-            return self._post("/observe", {"docText": text, "digest": ""})
+            return self._post("/observe", {"docText": text, "digest": "", **own})
         if doc_id is None:
             try:
                 doc_id = str(json.loads(text).get("id") or "sdk")
             except ValueError:
                 doc_id = "sdk"
-        return self._post("/threed/observe", {"docId": doc_id, "docText": text, "digest": ""})
+        return self._post("/threed/observe", {"docId": doc_id, "docText": text, "digest": "", **own})
+
+    def sheet(self, doc: Any, *, sheet: Optional[str] = None, format: str = "svg", materials: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """An engineering drawing sheet the document declares (``sheet(…)``), as a file: ``content`` is its text (SVG,
+        DXF), ``contentBase64`` its bytes (PDF). The views are projected from this build with hidden edges dashed, the
+        dimensions are measured on it (``dimensions``: each one's value and text) and the title block is the document's
+        engineering data. A document with a failed feature draws no sheet."""
+        return self._op("sheet", doc, {"sheet": sheet, "format": format, "materials": materials})
+
+    def bom(self, doc: Any, *, parts: Optional[Dict[str, Any]] = None, materials: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """The bill of materials: ``lines`` (a line per part with its engineering data and its mass from this build) and
+        the same table as ``csv``. ``parts`` are an assembly's linked parts, each by the path the assembly names it
+        with: its document (graph or text). A linked part that is not given is a line with its name."""
+        texts = {path: _doc_text(part) for path, part in parts.items()} if parts else None
+        return self._op("bom", doc, {"parts": texts, "materials": materials})
 
     def export(self, doc: Any, format: str = "step", *, bodies: Optional[List[str]] = None) -> str:
         """The document as a STEP (``step``) or IGES (``iges``) file's text; ``bodies`` keeps only those body ids."""
