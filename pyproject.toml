@@ -28,6 +28,8 @@ lerobot = ["pyarrow>=14.0", "numpy>=1.23", "pillow>=9.0"]
 [project.urls]
 Homepage = "https://commandagi.com"
 Documentation = "https://github.com/CommandAGI/commandagi-sdk-python/blob/main/README.md"
+Repository = "https://github.com/CommandAGI/commandagi-sdk-python"
+Changelog = "https://github.com/CommandAGI/commandagi-sdk-python/blob/main/CHANGELOG.md"
 
 [tool.hatch.version]
 path = "commandagi/__init__.py"

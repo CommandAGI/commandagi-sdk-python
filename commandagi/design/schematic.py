@@ -33,6 +33,10 @@ The calls (the first arguments are positional attributes; everything else is a k
     code(name, source=…, inputs={…})                                         a code part: the parts another file
                                                                              declares (its path relative to this one)
     attachment(name, role=…, file=…, mime=…)                                 a KiCad file the circuit carries
+    … no_connect=["3", "4"]                                                  on any part: the pins it leaves open on
+                                                                             purpose, by pin number (KiCad's no-connect
+                                                                             marker); the electrical rule check does
+                                                                             not report them as pins on nothing
     … spice=[{"id", "model", "terminals"}]                                   on any part: its SPICE package bindings
 
 ``sch_x`` and ``sch_y`` are the sheet's own coordinates: millimetres, Y DOWN. ``sch_rotation`` is 0, 90, 180 or 270
@@ -179,6 +183,16 @@ def _spice(el: Element) -> Dict[str, Any]:
     return {"spice": _plain(v, f"{_where(el)} spice")}
 
 
+def _no_connect(el: Element) -> Dict[str, Any]:
+    """The pins a part leaves open on purpose (``no_connect=["3", "4"]``), by pin number, as written."""
+    v = el.props.get("noConnect")
+    if v is None:
+        return {}
+    if not isinstance(v, (list, tuple)) or not v or not all(isinstance(n, str) and n for n in v) or len(set(v)) != len(v):
+        raise ValueError(f'{_where(el)}: noConnect is a list of pin numbers (["3", "4"]), each once')
+    return {"noConnect": list(v)}
+
+
 def _pin_number(written: str) -> str:
     m = re.match(r"^pin(.+)$", written, re.IGNORECASE)
     return m.group(1) if m else written
@@ -236,6 +250,7 @@ def _netlist_part(s: Scope, el: Element, ref: str) -> Dict[str, Any]:
         inputs["symbol"] = symbol
     inputs["pins"] = pins
     inputs.update(_spice(el))
+    inputs.update(_no_connect(el))
     node = s.add(part_type_for(pins), inputs, id=ref, label=ref, meta=_meta(el))
     return {"ref": ref, "id": node.id, "units": {}, "ideal": None, "pins": pins}
 
@@ -250,7 +265,7 @@ def declare_sheet(children: List[Element]) -> None:
     for el in children:
         ideal = SHEET_PARTS.get(el.tag)
         if ideal:
-            _refuse_unknown(el, ["name", "spice", *_PLACE, *([ideal["value"]] if ideal["value"] else []),
+            _refuse_unknown(el, ["name", "spice", "noConnect", *_PLACE, *([ideal["value"]] if ideal["value"] else []),
                                  *(["excitation"] if ideal.get("excitation") else [])])
             ref = el.props.get("name")
             if not isinstance(ref, str) or not ref:
@@ -274,13 +289,14 @@ def declare_sheet(children: List[Element]) -> None:
             if el.props.get("excitation") is not None:
                 inputs["excitation"] = _plain(el.props["excitation"], f"{_where(el)} excitation")
             inputs.update(_spice(el))
+            inputs.update(_no_connect(el))
             node = s.add(part_type_for(pins), inputs, id=ref, label=ref, meta=_meta(el))
             placed = {"ref": ref, "id": node.id, "units": {}, "ideal": ideal}
             _place(s, placed, 1, el, [p["id"] for p in pins])
             parts[ref] = placed
             continue
         if el.tag == "part":
-            _refuse_unknown(el, ["name", "symbol", "library", "value", "pins", "spice", *_PLACE])
+            _refuse_unknown(el, ["name", "symbol", "library", "value", "pins", "spice", "noConnect", *_PLACE])
             ref = _str(el, "name", "the part's reference (U1)")
             if ref in parts:
                 raise ValueError(f"two parts are called {ref}")
@@ -302,6 +318,7 @@ def declare_sheet(children: List[Element]) -> None:
             # The pins are the library's: the editor reads them (and the part's type) from the library file.
             inputs.update(symbol=symbol, library=library, pins=[])
             inputs.update(_spice(el))
+            inputs.update(_no_connect(el))
             node = s.add(part_type_for([]), inputs, id=ref, label=ref, meta=_meta(el))
             placed = {"ref": ref, "id": node.id, "units": {}, "ideal": None}
             _place(s, placed, 1, el, [])

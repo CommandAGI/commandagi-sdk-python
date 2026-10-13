@@ -29,6 +29,8 @@ from ._generated import (
 # The client (and its HTTP and WebSocket dependencies) loads on first use, so `commandagi.design` — which
 # declares structure and never touches the network — imports anywhere, Pyodide included.
 _CLIENT_NAMES = ("CommandAGI", "CommandAGIError", "Session")
+# The 3D kernel's client (observe, export, measure) uses the standard library only; it loads on first use too.
+_KERNEL_NAMES = ("Kernel", "KernelError")
 
 
 def __getattr__(name):
@@ -36,6 +38,10 @@ def __getattr__(name):
         from . import client
 
         return getattr(client, name)
+    if name in _KERNEL_NAMES:
+        from . import kernel
+
+        return getattr(kernel, name)
     raise AttributeError(f"module 'commandagi' has no attribute {name!r}")
 
 
@@ -43,6 +49,8 @@ __all__ = [
     "CommandAGI",
     "CommandAGIError",
     "Session",
+    "Kernel",
+    "KernelError",
     "DesktopControls",
     "RobotControls",
     "SimControls",
@@ -52,4 +60,4 @@ __all__ = [
     "ENV_THREAD_ID",
     "DEFAULT_BASE_URL",
 ]
-__version__ = "0.4.0"
+__version__ = "0.5.0"
