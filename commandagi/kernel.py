@@ -7,8 +7,14 @@ of three places, chosen by one setting::
     from commandagi.kernel import Kernel
 
     kernel = Kernel()                      # reads COMMANDAGI_THREED: "platform" (the default) | "local"
-    seen = kernel.observe(graph)           # bodies, faces, edges, volume, area, meshes, each feature's error
+    seen = kernel.observe(graph)           # bodies, faces, edges, volume, area, meshes; status and failures
     step = kernel.export(graph, "step")    # an ISO 10303-21 file, as text
+    report = kernel.interference(graph, clearance=0.5)   # which bodies clash, engage in a thread, or are too near
+
+A BUILD IN WHICH A FEATURE FAILED IS NOT WHOLE. ``observe`` answers it, with ``status == "failed"`` and ``failures``
+(each failed feature, with why), so that it can be looked at and repaired. ``export``, ``measure``, ``interference``,
+``drawing`` and ``tessellate`` refuse it: :class:`KernelError` with ``status`` 422 and the same ``failures``. A STEP
+file cannot say that two features are missing from it.
 
 =================  =====================================================================================================
 ``platform``       the hosted service, with your ``COMMANDAGI_API_KEY``. Needs the network and an account.
@@ -41,15 +47,18 @@ ENV_THREED = "COMMANDAGI_THREED"
 ENV_THREED_URL = "COMMANDAGI_THREED_URL"
 ENV_THREED_TOKEN = "COMMANDAGI_THREED_TOKEN"
 
-__all__ = ["Kernel", "KernelError", "ENV_THREED", "ENV_THREED_URL", "ENV_THREED_TOKEN"]
+__all__ = ["Kernel", "KernelError", "linked_parts", "ENV_THREED", "ENV_THREED_URL", "ENV_THREED_TOKEN"]
 
 
 class KernelError(Exception):
-    """The service refused or could not be reached: ``status`` is its HTTP status (0 when there was no answer)."""
+    """The service refused or could not be reached: ``status`` is its HTTP status (0 when there was no answer).
+    ``failures``: for a build that is not whole, each feature that failed (``{"feature", "name"?, "type"?, "message"}``,
+    in the order they were built); otherwise empty."""
 
-    def __init__(self, message: str, status: int = 0) -> None:
+    def __init__(self, message: str, status: int = 0, failures: Optional[List[Dict[str, Any]]] = None) -> None:
         super().__init__(message)
         self.status = status
+        self.failures = list(failures or [])
 
 
 def _doc_text(doc: Any) -> str:
@@ -187,17 +196,20 @@ class Kernel:
                     return json.loads(answer.read().decode())
             except urllib.error.HTTPError as e:
                 text = e.read().decode(errors="replace")
+                failures = None
                 try:
                     said = json.loads(text)
                     why = said.get("error") or said.get("reason") or text
                     if said.get("reason") and said.get("error"):
                         why = f"{said['error']}: {said['reason']}"
+                    if isinstance(said.get("failures"), list):
+                        failures = said["failures"]
                 except ValueError:
                     why = text[:300]
                 if e.code == 503 and self.where == "platform" and time.monotonic() + 3 < deadline:
                     time.sleep(3)
                     continue
-                raise KernelError(f"{route}: {why} (HTTP {e.code})", e.code) from None
+                raise KernelError(f"{route}: {why} (HTTP {e.code})", e.code, failures) from None
             except (urllib.error.URLError, OSError) as e:
                 raise KernelError(f"{route}: no answer from {base} ({getattr(e, 'reason', e)})") from None
 
@@ -209,9 +221,9 @@ class Kernel:
 
     # ── what the kernel answers ──────────────────────────────────────────────────────────────────────────────────
     def observe(self, doc: Any, *, doc_id: Optional[str] = None) -> Dict[str, Any]:
-        """Build the document. ``observation``: each body's bounds, volume, area, faces, edges and vertices, and each
-        failed feature's error by its id (``observation["errors"]``: read it, a body is built from what did not fail).
-        ``meshes``: the triangles."""
+        """Build the document. ``observation``: each body's bounds, volume, area, faces, edges and vertices;
+        ``observation["status"]`` (``"built"``, or ``"failed"``: a body is then built from what did not fail) and
+        ``observation["failures"]`` (each failed feature, with why). ``meshes``: the triangles."""
         text = _doc_text(doc)
         if self.where != "platform":
             return self._post("/observe", {"docText": text, "digest": ""})
@@ -222,24 +234,56 @@ class Kernel:
                 doc_id = "sdk"
         return self._post("/threed/observe", {"docId": doc_id, "docText": text, "digest": ""})
 
-    def export(self, doc: Any, format: str = "step", *, bodies: Optional[List[str]] = None) -> str:
-        """The document as a STEP (``step``) or IGES (``iges``) file's text; ``bodies`` keeps only those body ids."""
-        return self._op("export", doc, {"format": format, "bodies": bodies})["content"]
+    # ``parts``, on every call below: the files an assembly places (``externalPart(file_name="bolt.3d.py")``), which
+    # the service cannot read. ``linked_parts`` makes it from documents: {"bolt.3d.py": bolt, "bracket.step": text}.
 
-    def measure(self, doc: Any, op: str, a: Dict[str, Any], b: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """``distance`` | ``angle`` | ``closest`` between two entities, or the ``radius`` of one. An entity is
-        ``{"body": "body_0", "kind": "body" | "face" | "edge" | "vertex", "index": n}``, the index as observe lists it."""
-        if self.where == "platform":
-            # The platform's route reads `op` as the operation ("measure") and hands the same field to the service,
-            # which reads it as the measurement: it cannot say which one.
-            raise KernelError(f"the platform's 3D service cannot be asked which measurement yet; measure with {ENV_THREED}=local")
-        return self._post("/measure", {"docText": _doc_text(doc), "op": op, "a": a, **({"b": b} if b is not None else {})})
+    def export(self, doc: Any, format: str = "step", *, bodies: Optional[List[str]] = None, parts: Optional[Dict[str, Any]] = None) -> str:
+        """The document as a STEP (``step``) or IGES (``iges``) file's text; ``bodies`` keeps only those body ids. A
+        STEP file names each body as a product of its part's name, and an assembly as the product they are components of."""
+        return self._op("export", doc, {"format": format, "bodies": bodies, "parts": parts})["content"]
+
+    def measure(self, doc: Any, quantity: str, a: Dict[str, Any], b: Optional[Dict[str, Any]] = None, *, parts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """``distance`` | ``angle`` | ``closest`` between two entities, or the ``radius`` of one: ``{"value"}``, or
+        ``{"points": {"a", "b"}}`` for ``closest``. An entity is ``{"body": "body_0", "kind": "body" | "face" | "edge" |
+        "vertex", "index": n}``, the index as observe lists it."""
+        return self.measure_all(doc, [{"quantity": quantity, "a": a, **({"b": b} if b is not None else {})}], parts=parts)[0]
+
+    def measure_all(self, doc: Any, measures: List[Dict[str, Any]], *, parts: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Many measurements on ONE build: each ``{"quantity", "a", "b"?}``, answered in the same order."""
+        return self._op("measure", doc, {"measures": measures, "parts": parts})["results"]
+
+    def interference(self, doc: Any, *, clearance: Optional[float] = None, bodies: Optional[List[str]] = None, parts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Every pair of bodies, compared on one build. ``clashes``: pairs that occupy the same space (``volume``, mm³).
+        ``engagements``: pairs whose shared volume all lies in a declared thread (a screw in a tapped hole: a ``thread``
+        feature on the hole or on the screw says so; without it the same overlap is a clash). ``close``: with
+        ``clearance`` (mm), pairs that share no volume and are nearer than it, with the ``distance`` and the nearest
+        ``points``. ``bodies`` lists each body's id, part name and volume."""
+        return self._op("interference", doc, {"clearance": clearance, "bodies": bodies, "parts": parts})
 
     def drawing(self, doc: Any, *, direction: Optional[List[float]] = None, up: Optional[List[float]] = None,
-                bodies: Optional[List[str]] = None, section: Optional[Dict[str, Any]] = None) -> Any:
+                bodies: Optional[List[str]] = None, section: Optional[Dict[str, Any]] = None, parts: Optional[Dict[str, Any]] = None) -> Any:
         """A drawing view with hidden lines removed: the visible and hidden edges projected along ``direction``."""
-        return self._op("drawing", doc, {"direction": direction, "up": up, "bodies": bodies, "section": section})["projection"]
+        return self._op("drawing", doc, {"direction": direction, "up": up, "bodies": bodies, "section": section, "parts": parts})["projection"]
 
-    def tessellate(self, doc: Any, deflection: float) -> List[Dict[str, Any]]:
-        """Each body's triangle count at this chord deflection (mm)."""
-        return self._op("tessellate", doc, {"deflection": deflection})["bodies"]
+    def tessellate(self, doc: Any, deflection: float, *, bodies: Optional[List[str]] = None, parts: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Each body's triangles at this chord deflection (mm): ``{"id", "name", "triangles", "mesh"}``."""
+        return self._op("tessellate", doc, {"deflection": deflection, "bodies": bodies, "parts": parts})["bodies"]
+
+
+def linked_parts(files: Dict[str, Any]) -> Dict[str, Any]:
+    """The ``parts`` of a call, from the files an assembly places, by the name each placement gives (``file_name`` or
+    ``path``): a 3D document (what its file declares, its graph, or the graph's text) or, for a ``.step`` / ``.stp`` /
+    ``.iges`` / ``.igs`` name, the file's text. A document placed inside a placed document is listed here too."""
+    out: Dict[str, Any] = {}
+    for name, value in files.items():
+        lower = name.lower()
+        fmt = "step" if lower.endswith((".step", ".stp")) else "iges" if lower.endswith((".iges", ".igs")) else None
+        if fmt:
+            if not isinstance(value, str):
+                raise ValueError(f"{name}: a {fmt.upper()} file is given as its text")
+            out[f"{fmt}:name:{name}"] = {"format": fmt, "data": value}
+        elif any(lower.endswith(f".3d.{ext}") for ext in ("tsx", "jsx", "py", "rs")):
+            out[f"3d:name:{name}"] = {"docText": _doc_text(value)}
+        else:
+            raise ValueError(f"{name}: a placed file the kernel builds is a 3D document (.3d.tsx, .3d.py, .3d.rs), a STEP file or an IGES file")
+    return out

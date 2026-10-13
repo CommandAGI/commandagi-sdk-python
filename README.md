@@ -173,14 +173,17 @@ from commandagi.kernel import Kernel
 
 plate = part(
     box(id="plate", center=[0, 0, 4], size=[60, 40, 8], operation="new"),
-    cylinder(id="hole", center=[0, 0, -1], axis=[0, 0, 1], radius=3, height=10, operation="cut", consumes=["plate"]),
+    cylinder(id="hole", center=[0, 0, -1], axis=[0, 0, 1], radius=3, height=10, operation="cut"),
     name="Plate",
 )
 kernel = Kernel()                                  # reads COMMANDAGI_THREED
-seen = kernel.observe(plate)["observation"]        # bodies, faces, edges, mass properties, each feature's error
-assert not seen["errors"], seen["errors"]          # a body is built from the features that did not fail: read this
-open("plate.step", "w").write(kernel.export(plate, "step"))
+seen = kernel.observe(plate)["observation"]        # bodies, faces, edges, mass properties; status and failures
+assert seen["status"] == "built", seen["failures"] # "failed": the bodies are built from the features that did not fail
+open("plate.step", "w").write(kernel.export(plate, "step"))   # refused (KernelError.failures) when a feature failed
 ```
+
+A part is built in the order of its elements: the cut above follows the plate because it is written after it.
+`consumes=[…]` names the features a feature follows instead.
 
 One setting chooses the service:
 
@@ -191,10 +194,20 @@ One setting chooses the service:
 | a URL (or `COMMANDAGI_THREED_URL`) | one that runs already: `commandagi threed serve --port 8091` | `COMMANDAGI_THREED_TOKEN`, the bearer you started it with |
 
 `observe(doc)`, `export(doc, "step" | "iges", bodies=)`, `measure(doc, "distance" | "angle" | "radius" | "closest", a,
-b)`, `drawing(doc, direction=, up=, section=)`, `tessellate(doc, deflection)`. `doc` is what a file declares, its
+b)`, `measure_all(doc, [{"quantity", "a", "b"}, …])` (many on one build), `interference(doc, clearance=, bodies=)`,
+`drawing(doc, direction=, up=, section=)`, `tessellate(doc, deflection)`. `doc` is what a file declares, its
 graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"body": "body_0", "kind": "face" | "edge" |
-"vertex" | "body", "index": n}`, with the index as `observe` lists it. One service keeps the last documents it built,
-so `observe` then `export` then `measure` of one document is one build. `measure` works with a local service only.
+"vertex" | "body", "index": n}`, with the index as `observe` lists it.
+
+- **A build in which a feature failed is not whole.** `observe` answers it with `status: "failed"` and `failures`.
+  Every other call refuses it: `KernelError` with `status` 422 and `failures` (each failed feature, with why).
+- **`interference`** compares every pair of bodies: `clashes` (shared volume), `engagements` (shared volume that all
+  lies in a declared `thread`: a screw in a tapped hole) and, with `clearance`, `close` (nearer than it). Each body
+  has its part's name.
+- **An assembly's files** go with the call: `parts=linked_parts({"bolt.3d.py": bolt, "bracket.step": text})`, each
+  under the name its `externalPart` gives.
+- **A STEP file names its parts**: each body is a product of its part's name, an assembly the product they are
+  components of.
 
 ## Reinforcement learning
 

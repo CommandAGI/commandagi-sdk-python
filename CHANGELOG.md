@@ -4,6 +4,26 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- 3D documents: a hole's `positions` and `sketch`; faces and edges chosen by a query, `{"kind", "select": {…}}`,
+  beside the pick; a part is built in the order of its elements (a feature that names no `consumes` follows every
+  body-making feature written before it).
+- `Kernel.interference`, `Kernel.measure_all`, `linked_parts`; `parts=` on every call (an assembly's files);
+  `KernelError.failures`.
+
+Changed
+
+- `Kernel.measure(doc, quantity, a, b)` works with the platform too (the service takes `measures`).
+- `Kernel.export`, `measure`, `drawing` and `tessellate` refuse a build in which a feature failed. `tessellate`
+  answers each body's triangles, not only their count.
+- The call form (`part`, `subtract`, `hole`, `fillet` …) wires a feature to the heads of its body and to its last
+  feature: about two wires a feature, where a plate of 129 holes was 566 kB. `Body.state` is gone; `Body.heads` and
+  `Body.acts_on()` are what it has.
+- A union's refusal names the field at fault (`edges/0/select/vertical: is not one of its fields`).
+
 ## 0.5.0 (2026-10-13)
 
 The first release that contains `commandagi.design`. PyPI 0.4.0 was built on 2026-09-23, before the design layer was
