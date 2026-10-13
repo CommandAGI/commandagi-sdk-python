@@ -225,7 +225,16 @@ def intersect(target: Body, *tools: Body) -> Body:
     return _boolean("intersect()", "intersect", target, tools)
 
 
-def hole(target: Body, at: Vec3, diameter: float, depth: float, axis: Vec3 = (0, 0, 1), name: Optional[str] = None) -> Body:
+def hole(target: Body, at: Vec3, diameter: Optional[float] = None, depth: float = 0, axis: Vec3 = (0, 0, 1), name: Optional[str] = None,
+         size: Optional[str] = None) -> Body:
+    """A round hole cut from ``target`` at ``at``. Its diameter is ``diameter``, or the standard hole ``size`` names
+    ("M4 close fit", "M4 tap": ``standards.py``)."""
+    if (diameter is None) == (size is None):
+        raise ValueError("hole() takes a diameter or a size, one of them")
+    if size is not None:
+        from .standards import hole_size
+        diameter = hole_size(size)["diameter"]
+        name = name or f"Hole {size}"
     ln = math.sqrt(sum(a * a for a in axis)) or 1.0
     d = [a / ln for a in axis]
     base = [at[i] - d[i] * depth for i in range(3)]
