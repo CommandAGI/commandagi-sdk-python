@@ -1,9 +1,10 @@
 """commandagi.design declares the op graph and nothing else — the same graphs as the TypeScript SDK.
 Run: python -m unittest discover -s tests"""
+import json
 import unittest
 
-from commandagi.design import (board, box, channels, circuit, component, connect, cylinder, extrude, footprints, graph, input_,
-                               linear_pattern, net, node, part, part_type_for, run_module, sketch, subtract)
+from commandagi.design import (board, box, channels, circuit, component, connect, cylinder, extrude, fillet, footprints, graph,
+                               hole, input_, linear_pattern, net, node, part, part_type_for, run_module, sketch, subtract, union)
 from commandagi.design import cadquery as cq
 
 
@@ -50,6 +51,44 @@ class CadTests(unittest.TestCase):
         datum = next(n for n in g["nodes"].values() if n["type"] == "datumPlane")
         sk = next(n for n in g["nodes"].values() if n["type"] == "sketch")
         self.assertEqual(sk["inputs"]["plane"], wire(datum["id"]))
+
+
+    def test_a_feature_is_wired_to_the_heads_of_its_body_and_to_its_last_feature(self):
+        """What a feature acts on, and what runs first, in two wires: a part of n features declares about 2n wires,
+        not n². (A wire to every earlier feature made a plate of 129 holes 566 kB.)"""
+        def body(n):
+            plate = box(size=(n * 10 + 10, 30, 6), center=(0, 0, 3), name="Plate")
+            for i in range(n):
+                plate = hole(plate, at=(i * 10, 0, 6), diameter=4, depth=6)
+            boss = box(size=(4, 4, 4), center=(0, 10, 8), name="Boss")
+            plate = union(plate, boss)
+            return fillet(plate, radius=1, edges=[(0, -15, 3)])
+
+        g = part("Rail", lambda: body(3)).ir
+        wires = lambda node: {k: v["wire"]["node"] for k, v in g["nodes"][node]["inputs"].items() if isinstance(v, dict) and "wire" in v}
+        self.assertEqual(wires("Hole"), {"base.1": "Plate"})
+        self.assertEqual(wires("Hole_2"), {"base.1": "Plate", "base.2": "Hole"})
+        self.assertEqual(wires("Hole_3"), {"base.1": "Plate", "base.2": "Hole_2"})
+        self.assertEqual(wires("Boss"), {"base.1": "Plate", "base.2": "Hole_3"})
+        self.assertEqual(wires("Fillet_1"), {"on.1": "Plate", "on.2": "Boss"})
+
+        size = lambda n: len(json.dumps(part("Rail", lambda: body(n)).ir))
+        per_hole = [(size(b) - size(a)) / (b - a) for a, b in ((40, 80), (80, 160))]
+        self.assertLess(abs(per_hole[1] - per_hole[0]), 16, per_hole)
+        self.assertLess(size(129), 40_000)
+
+    def test_a_solid_made_beside_a_tool_stays_a_body_of_the_result(self):
+        def body():
+            plate = box(size=(40, 40, 4), name="Plate")
+            post = cylinder(radius=2, height=10, name="Post")
+            cap = cylinder(radius=4, height=2, base=(0, 0, 10), name="Cap", operation="add", after=[post])
+            return subtract(plate, cap)
+
+        g = part("Capped", body).ir
+        wires = lambda node: [v["wire"]["node"] for k, v in sorted(g["nodes"][node]["inputs"].items()) if isinstance(v, dict) and "wire" in v]
+        # The cap is cut from the plate; the post it was made on is still a solid of what comes back.
+        self.assertEqual(wires("Cap"), ["Plate"])
+        self.assertEqual(g["nodes"]["Cap"]["inputs"]["operation"], "cut")
 
 
 class EdaTests(unittest.TestCase):

@@ -4,9 +4,9 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, circle, constraint, cylinder, declare_threed, externalPart,
-                                      extrude, feature, fillet, import_, line, meshBody, parameter, part, plane, point, pointCloud,
-                                      sketch, slot)
+from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, chamfer, circle, constraint, cylinder, declare_threed,
+                                      externalPart, extrude, feature, fillet, hole, import_, line, meshBody, parameter, part, plane,
+                                      point, pointCloud, sketch, slot)
 
 
 def plate():
@@ -133,6 +133,35 @@ class ThreeDTests(unittest.TestCase):
         self.assertIn("makeHuman", THREED_FEATURES)
         self.assertNotIn("makehuman", THREED_FEATURES)
         read(pointCloud(id="pc", positions=positions))()
+
+    def test_a_hole_is_placed_and_faces_and_edges_are_chosen_by_a_query(self):
+        top = {"kind": "face", "select": {"normal": [0, 0, 1], "farthest": [0, 0, 1]}}
+        g = declare_threed(part(
+            box(id="plate", center=[0, 0, 4], size=[100, 60, 8], operation="new"),
+            sketch(point(id="a", x=-30, y=0), point(id="b", x=30, y=0), id="places", plane={"type": "datum", "plane": "plane_xy"}),
+            hole(id="cbore", face=top, positions=[[10, 20, 8], [-10, 20, 8]], diameter=5.5, through=True, style="counterbore", head_diameter=10, head_depth=5),
+            hole(id="pins", face=top, sketch="places", diameter=3, through=True, style="simple"),
+            chamfer(id="rims", distance=0.5, edges=[{"kind": "edge", "select": {"any": [{"createdBy": "cbore"}, {"createdBy": "pins"}], "geometry": "circle", "radius": {"max": 3}}}]),
+            fillet(id="corners", radius=2, edges=[{"kind": "edge", "select": {"parallel": [0, 0, 1], "not": {"inBox": {"min": [0, -99, -99], "max": [99, 99, 99]}}}}]),
+            name="Plate",
+        ))
+        n = g["nodes"]
+        self.assertEqual(n["cbore"]["inputs"]["positions"], [[10, 20, 8], [-10, 20, 8]])
+        self.assertEqual(n["cbore"]["inputs"]["face"], top)
+        self.assertEqual(n["pins"]["inputs"]["sketch"], "places")
+        self.assertEqual(n["rims"]["inputs"]["edges"][0]["select"]["any"][1], {"createdBy": "pins"})
+        # No feature names what it follows: the order of the file says it (the reader fills `consumes`).
+        self.assertNotIn("consumes", n["rims"]["inputs"])
+        self.assertEqual(g["meta"]["presentation"]["order"], ["plate", "places", "cbore", "pins", "rims", "corners"])
+
+        def refused(el):
+            with self.assertRaises(ValueError) as e:
+                declare_threed(part(box(id="plate", size=[1, 1, 1]), el))
+            return str(e.exception)
+
+        self.assertIn("positions/0: needs at least 3 items (got 2)", refused(hole(id="h", face=top, positions=[[1, 2]])))
+        self.assertIn("is not one of its fields", refused(fillet(id="f", edges=[{"kind": "edge", "select": {"vertical": True}}])))
+        self.assertIn("geometry", refused(fillet(id="f", edges=[{"kind": "edge", "select": {"geometry": "helix"}}])))
 
     def test_a_required_field_with_a_declared_default_may_be_left_out(self):
         # The TypeScript and Rust SDKs read the same assembly to the same inputs.
