@@ -59,6 +59,10 @@ class StandardsTests(unittest.TestCase):
         self.assertEqual(sized_hole({"size": "M4 normal fit", "style": "countersink"}),
                          {"size": "M4 normal fit", "style": "countersink", "diameter": 4.5, "headDiameter": 9.2, "headDepth": 2.35})
         self.assertEqual(sized_hole({"size": "M4 tap", "style": "simple"}), {"size": "M4 tap", "style": "simple", "diameter": 3.3})
+        # The size gives the head too: a head that differs is refused (clear the size to give your own).
+        with self.assertRaises(ValueError) as caught:
+            sized_hole({"size": "M4 close fit", "style": "counterbore", "headDiameter": 9})
+        self.assertEqual(str(caught.exception), 'headDiameter: "M4 close fit" is 8 mm (got 9); leave headDiameter out, or clear size')
 
     def test_a_material_is_a_row_with_its_density_and_its_source_and_a_mass_is_volume_times_density(self):
         self.assertEqual(material("6061-T6")["densityGCm3"], 2.7)

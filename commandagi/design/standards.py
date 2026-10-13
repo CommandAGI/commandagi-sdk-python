@@ -85,31 +85,28 @@ def _is_number(v: Any) -> bool:
 
 def sized_hole(hole: Dict[str, Any]) -> Dict[str, Any]:
     """A hole's fields with what its ``size`` says: the diameter, and for a counterbore or a countersink the head the
-    tables give for that thread where the hole does not say its own. A countersink's depth follows from its diameter
-    and angle. A ``diameter`` that differs from the size's is refused: leave it out, or clear ``size``."""
+    tables give for that thread (a counterbore for a hexagon socket head cap screw, DIN 974-1; a countersink for a
+    countersunk screw, DIN 74 form F, its depth from its diameter and angle). The size wins: a ``diameter``,
+    ``headDiameter`` or ``headDepth`` that differs from the size's is refused. Leave it out, or clear ``size`` to give
+    your own."""
     if not isinstance(hole.get("size"), str):
         return hole
     named = hole_size(hole["size"])
-    if _is_number(hole.get("diameter")) and abs(hole["diameter"] - named["diameter"]) > 1e-9:
-        raise ValueError(f'diameter: "{hole["size"]}" is {_number(named["diameter"])} mm (got {_number(hole["diameter"])}); '
-                         "leave diameter out, or clear size")
-    out = {**hole, "diameter": named["diameter"]}
-    if named["fit"] == "tap":
-        return out
+    says: Dict[str, Any] = {"diameter": named["diameter"]}
     bore: Optional[Dict[str, Any]] = named["row"].get("counterbore")
     sink: Optional[Dict[str, Any]] = named["row"].get("countersink")
-    if hole.get("style") == "counterbore" and bore:
-        out["headDiameter"] = hole["headDiameter"] if hole.get("headDiameter") is not None else bore["diameter"]
-        out["headDepth"] = hole["headDepth"] if hole.get("headDepth") is not None else bore["depth"]
-    elif hole.get("style") == "countersink" and sink:
-        head = hole["headDiameter"] if _is_number(hole.get("headDiameter")) else sink["diameter"]
-        out["headDiameter"] = head
-        if hole.get("headDepth") is not None:
-            out["headDepth"] = hole["headDepth"]
-        else:
-            depth = (head - named["diameter"]) / 2 / math.tan(sink["angleDeg"] * math.pi / 360)
-            out["headDepth"] = math.floor(depth * 1e4 + 0.5) / 1e4
-    return out
+    if named["fit"] != "tap" and hole.get("style") == "counterbore" and bore:
+        says["headDiameter"] = bore["diameter"]
+        says["headDepth"] = bore["depth"]
+    elif named["fit"] != "tap" and hole.get("style") == "countersink" and sink:
+        says["headDiameter"] = sink["diameter"]
+        depth = (sink["diameter"] - named["diameter"]) / 2 / math.tan(sink["angleDeg"] * math.pi / 360)
+        says["headDepth"] = math.floor(depth * 1e4 + 0.5) / 1e4
+    for field, value in says.items():
+        written = hole.get(field)
+        if _is_number(written) and abs(written - value) > 1e-9:
+            raise ValueError(f'{field}: "{hole["size"]}" is {_number(value)} mm (got {_number(written)}); leave {field} out, or clear size')
+    return {**hole, **says}
 
 
 def standard_row(table: str, key: str) -> Dict[str, Any]:
