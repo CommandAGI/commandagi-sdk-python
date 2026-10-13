@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest import mock
 
 from commandagi.design.threed import box, part
-from commandagi.kernel import Kernel, KernelError, where_of
+from commandagi.kernel import Kernel, KernelError, linked_parts, where_of
 
 
 class Where(unittest.TestCase):
@@ -34,12 +34,16 @@ class RunningService(unittest.TestCase):
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers["content-length"])))
                 seen.append((self.path, self.headers["authorization"], body))
-                answers = {"/export": {"content": "ISO-10303-21;"}, "/sheet": {"sheet": "sheet1", "format": "pdf", "contentBase64": "JVBERg=="},
-                           "/bom": {"lines": [], "csv": "item\n"}, "/observe": {"observation": {"bodies": [], "errors": {}}, "meshes": [], "meshTris": 0}}
-                self.send_response(200 if self.path in answers else 422)
+                failed = {"error": "build_failed", "status": "failed", "reason": "the build failed in 1 feature, so its geometry is not whole: cbore, a hole: hole face not found",
+                          "failures": [{"feature": "cbore", "type": "hole", "message": "hole face not found"}]}
+                answer = {"/export": (200, {"content": "ISO-10303-21;"}), "/measure": (422, {"error": "measures[0]: no such body"}),
+                          "/interference": (200, {"clashes": [], "engagements": [], "close": [], "pairs": 1}), "/tessellate": (422, failed),
+                          "/sheet": (200, {"sheet": "sheet1", "format": "pdf", "contentBase64": "JVBERg=="}), "/bom": (200, {"lines": [], "csv": "item\n"}),
+                          "/observe": (200, {"observation": {"bodies": [], "errors": {}}, "meshes": [], "meshTris": 0})}[self.path]
+                self.send_response(answer[0])
                 self.send_header("content-type", "application/json")
                 self.end_headers()
-                self.wfile.write(json.dumps(answers.get(self.path, {"error": "no such body"})).encode())
+                self.wfile.write(json.dumps(answer[1]).encode())
 
             def log_message(self, *a):
                 pass
@@ -54,6 +58,11 @@ class RunningService(unittest.TestCase):
                 self.assertEqual(kernel.export(plate, "step", bodies=["body_0"]), "ISO-10303-21;")
                 with self.assertRaises(KernelError) as refused:
                     kernel.measure("{}", "radius", {"body": "body_9", "kind": "edge", "index": 0})
+                bolt = part(box(id="bolt", size=[3, 3, 10], operation="new"), name="Bolt")
+                self.assertEqual(kernel.interference(plate, clearance=0.5, parts=linked_parts({"bolt.3d.py": bolt}))["pairs"], 1)
+                # A build that is not whole is refused, and the refusal lists what failed.
+                with self.assertRaises(KernelError) as partial:
+                    kernel.tessellate(plate, 0.1)
                 # A drawing sheet, a bill of materials with an assembly's linked part, and an observation with the
                 # caller's own materials table (the density a body's mass uses).
                 mine = [{"id": "6061-T6", "densityGCm3": 2.71, "source": "mill certificate 4711"}]
@@ -62,14 +71,18 @@ class RunningService(unittest.TestCase):
                 kernel.observe("{}", materials=mine)
             self.assertEqual(refused.exception.status, 422)
             self.assertIn("no such body", str(refused.exception))
-            self.assertEqual(seen[2], ("/sheet", "Bearer service-bearer", {"docText": "{}", "sheet": "sheet1", "format": "pdf"}))
-            self.assertEqual((seen[3][0], seen[3][2]["materials"], json.loads(seen[3][2]["parts"]["plate.3d.py"])["nodes"]["plate"]["type"]), ("/bom", mine, "box"))
-            self.assertEqual(seen[4], ("/observe", "Bearer service-bearer", {"docText": "{}", "digest": "", "materials": mine}))
-            (path, auth, body), (path2, auth2, body2) = seen[:2]
+            self.assertEqual(partial.exception.failures, [{"feature": "cbore", "type": "hole", "message": "hole face not found"}])
+            self.assertIn("the build failed in 1 feature", str(partial.exception))
+            self.assertEqual(seen[4], ("/sheet", "Bearer service-bearer", {"docText": "{}", "sheet": "sheet1", "format": "pdf"}))
+            self.assertEqual((seen[5][0], seen[5][2]["materials"], json.loads(seen[5][2]["parts"]["plate.3d.py"])["nodes"]["plate"]["type"]), ("/bom", mine, "box"))
+            self.assertEqual(seen[6], ("/observe", "Bearer service-bearer", {"docText": "{}", "digest": "", "materials": mine}))
+            (path, auth, body), (path2, auth2, body2), (path3, _, body3), _ = seen[:4]
+            self.assertEqual((path3, body3["clearance"], list(body3["parts"])), ("/interference", 0.5, ["3d:name:bolt.3d.py"]))
+            self.assertEqual(json.loads(body3["parts"]["3d:name:bolt.3d.py"]["docText"])["nodes"]["bolt"]["type"], "box")
             self.assertEqual((path, auth, body["format"], body["bodies"]), ("/export", "Bearer service-bearer", "step", ["body_0"]))
             # What a file declares goes as its graph: the plate is a node of it.
             self.assertEqual(json.loads(body["docText"])["nodes"]["plate"]["type"], "box")
-            self.assertEqual((path2, auth2, body2), ("/measure", "Bearer service-bearer", {"docText": "{}", "op": "radius", "a": {"body": "body_9", "kind": "edge", "index": 0}}))
+            self.assertEqual((path2, auth2, body2), ("/measure", "Bearer service-bearer", {"docText": "{}", "measures": [{"quantity": "radius", "a": {"body": "body_9", "kind": "edge", "index": 0}}]}))
         finally:
             server.shutdown()
             server.server_close()

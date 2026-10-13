@@ -38,11 +38,21 @@ def _plane_ref(plane: str) -> Dict[str, Any]:
 
 
 class Body(NodeRef):
-    """A body: the feature that last shaped it, and every feature it is made of."""
+    """A body: the feature that last shaped it (``id``), and the features that started the solids it is (``heads``).
 
-    def __init__(self, scope: Scope, id: str, state: List[str]):
+    A feature that acts on a body is wired to its ``heads`` and to ``id`` (``acts_on``). The heads say which solids it
+    acts on (the engine reads a solid's lineage); ``id`` says what runs first, and every earlier feature of the body
+    runs before ``id``. So a part of n features declares about 2n wires. A wire to every earlier feature said the same
+    and declared n² of them: a plate with 129 holes was 566 kB.
+    """
+
+    def __init__(self, scope: Scope, id: str, heads: Sequence[str]):
         super().__init__(scope, id)
-        self.state = list(state)
+        self.heads = list(dict.fromkeys(heads))
+
+    def acts_on(self) -> List[str]:
+        """What a feature that acts on this body is wired to, in order: its heads, then the feature that last shaped it."""
+        return list(dict.fromkeys([*self.heads, self.id]))
 
 
 class SketchRef(NodeRef):
@@ -61,13 +71,17 @@ def _default_name(s: Scope, type: str) -> str:
     return type[0].upper() + type[1:] + " " + str(n)
 
 
-def _feature(what: str, type: str, fields: Dict[str, Any], name: Optional[str], after: Sequence[str] = (), port: str = "base") -> Body:
+def _feature(what: str, type: str, fields: Dict[str, Any], name: Optional[str], after: Sequence[Body] = (), port: str = "base") -> Body:
+    """A feature that acts on the bodies ``after``: with none, it starts a body of its own."""
     s = _scope(what)
-    for i in after:
+    wires = list(dict.fromkeys(i for b in after for i in b.acts_on()))
+    for i in wires:
         if i not in s.nodes:
             raise ValueError(f"{what}: {i} is not a feature of this part")
-    ref = s.add(type, {**fields, **channels(port, [NodeRef(s, i) for i in after])}, label=name or _default_name(s, type))
-    return Body(s, ref.id, [*after, ref.id])
+    ref = s.add(type, {**fields, **channels(port, [NodeRef(s, i) for i in wires])}, label=name or _default_name(s, type))
+    # A solid that combines with nothing ("new") is a body of its own, whatever it runs after.
+    own = fields.get("operation") == "new" or not after
+    return Body(s, ref.id, [ref.id] if own else [h for b in after for h in b.heads])
 
 
 def part(name: str, fn: Callable[[], Union[Body, List[Body], None]], id: Optional[str] = None,
@@ -90,11 +104,8 @@ def instance(source: str, inputs: Optional[Dict[str, Any]] = None, name: Optiona
     return Body(s, ref.id, [ref.id])
 
 
-def _after(after: Optional[Sequence[Body]]) -> List[str]:
-    out: List[str] = []
-    for b in after or []:
-        out.extend(b.state)
-    return out
+def _after(after: Optional[Sequence[Body]]) -> List[Body]:
+    return list(after or [])
 
 
 def _v(v: Sequence[float]) -> List[float]:
@@ -199,7 +210,7 @@ def _boolean(what: str, op: str, target: Body, tools: Sequence[Body]) -> Body:
     if not tools:
         raise ValueError(f"{what} needs at least one tool body")
     s = _scope(what)
-    state = list(target.state)
+    body = target
     for tool in tools:
         n = s.nodes.get(tool.id)
         if not n or "operation" not in n["inputs"]:
@@ -207,10 +218,10 @@ def _boolean(what: str, op: str, target: Body, tools: Sequence[Body]) -> Body:
         n["inputs"]["operation"] = op
         for k in [k for k in n["inputs"] if k.startswith("base.")]:
             del n["inputs"][k]
-        before = [i for i in state if i not in tool.state]
-        n["inputs"].update(channels("base", [{"wire": {"node": i, "port": "out"}} for i in before]))
-        state = state + [i for i in tool.state if i not in state]
-    return Body(s, tools[-1].id, state)
+        n["inputs"].update(channels("base", [{"wire": {"node": i, "port": "out"}} for i in body.acts_on() if i != tool.id]))
+        # The tool is now part of the target. A solid the tool was made beside (its other heads) stays a solid.
+        body = Body(s, tool.id, [*body.heads, *[h for h in tool.heads if h != tool.id]])
+    return body
 
 
 def union(target: Body, *tools: Body) -> Body:
@@ -243,17 +254,17 @@ def hole(target: Body, at: Vec3, diameter: Optional[float] = None, depth: float 
 
 def fillet(target: Body, radius: float, edges: Sequence[Vec3], name: Optional[str] = None) -> Body:
     """Round the edges of ``target`` that pass through these points (the kernel matches the nearest edge)."""
-    return _feature("fillet()", "fillet", {"edges": [{"kind": "edge", "signature": {"point": list(e)}} for e in edges], "radius": radius}, name, target.state, port="on")
+    return _feature("fillet()", "fillet", {"edges": [{"kind": "edge", "signature": {"point": list(e)}} for e in edges], "radius": radius}, name, [target], port="on")
 
 
 def chamfer(target: Body, distance: float, edges: Sequence[Vec3], name: Optional[str] = None) -> Body:
-    return _feature("chamfer()", "chamfer", {"edges": [{"kind": "edge", "signature": {"point": list(e)}} for e in edges], "distance": distance}, name, target.state, port="on")
+    return _feature("chamfer()", "chamfer", {"edges": [{"kind": "edge", "signature": {"point": list(e)}} for e in edges], "distance": distance}, name, [target], port="on")
 
 
 def _seeded(what: str, type: str, seed: Body, fields: Dict[str, Any], name: Optional[str]) -> Body:
     s = _scope(what)
     ref = s.add(type, {"seed": seed, **fields}, label=name or _default_name(s, type))
-    return Body(s, ref.id, [*seed.state, ref.id])
+    return Body(s, ref.id, seed.heads)
 
 
 def copy(seed: Body, translate: Optional[Vec3] = None, rotate: Optional[Tuple[str, float]] = None, name: Optional[str] = None) -> Body:

@@ -17,12 +17,24 @@ Added
   rows were read.
 - `hole(body, at=…, size="M4 close fit", depth=…)` in the code-part primitives (`commandagi.design.cad`).
 - `Kernel.sheet`, `Kernel.bom`, and `Kernel.observe(doc, materials=…)`: a body's `mass["grams"]`.
+- 3D documents: a hole's `positions` and `sketch`; faces and edges chosen by a query, `{"kind", "select": {…}}`,
+  beside the pick; a part is built in the order of its elements (a feature that names no `consumes` follows every
+  body-making feature written before it).
+- `Kernel.interference`, `Kernel.measure_all`, `linked_parts`; `parts=` on every call (an assembly's files);
+  `KernelError.failures`.
 
 Changed
 
 - A joint's kinds: `hinge` is `revolute`, `slider` is `prismatic`, `ball` is `spherical`. Joints and mates are
   `joint(…)` and `mate(…)` elements: the reader refuses them inside `slot(name="dynamics")` and
   `slot(name="assembly")`.
+- `Kernel.measure(doc, quantity, a, b)` works with the platform too (the service takes `measures`).
+- `Kernel.export`, `measure`, `drawing` and `tessellate` refuse a build in which a feature failed. `tessellate`
+  answers each body's triangles, not only their count.
+- The call form (`part`, `subtract`, `hole`, `fillet` …) wires a feature to the heads of its body and to its last
+  feature: about two wires a feature, where a plate of 129 holes was 566 kB. `Body.state` is gone; `Body.heads` and
+  `Body.acts_on()` are what it has.
+- A union's refusal names the field at fault (`edges/0/select/vertical: is not one of its fields`).
 
 ## 0.5.0 (2026-10-13)
 

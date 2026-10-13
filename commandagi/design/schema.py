@@ -135,6 +135,12 @@ def validate(schema: Mapping[str, Any], value: Any, defs: Optional[Mapping[str, 
             r = resolve(o, defs)
             if isinstance(value, dict) and any("const" in p and k in value and _same(value[k], p["const"]) for k, p in (r.get("properties") or {}).items()):
                 return results[i]
+        # A union of objects told apart by what each must hold (a pick's `signature`, a selector's `select`): when the
+        # value holds every required field of one option only, that option says what is wrong in it.
+        if isinstance(value, dict):
+            holds = [i for i, o in enumerate(options) if resolve(o, defs).get("required") and all(k in value for k in resolve(o, defs)["required"])]
+            if len(holds) == 1:
+                return results[holds[0]]
         return [_issue(path, "anyOf", actual=_kind_of(value), has_actual=True)]
     t = s.get("type")
     types = [] if t is None else list(t) if isinstance(t, (list, tuple)) else [t]

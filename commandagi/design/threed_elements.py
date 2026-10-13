@@ -35,7 +35,7 @@ _BoxFeatureOptional = TypedDict("_BoxFeatureOptional", {"center": 'Vec3', "size"
 class BoxFeature(_BoxFeatureRequired, _BoxFeatureOptional):
     pass
 
-_ChamferFeatureRequired = TypedDict("_ChamferFeatureRequired", {"type": Literal["chamfer"], "edges": List['TopoRef'], "id": str, "name": str})
+_ChamferFeatureRequired = TypedDict("_ChamferFeatureRequired", {"type": Literal["chamfer"], "edges": List['TopoTarget'], "id": str, "name": str})
 _ChamferFeatureOptional = TypedDict("_ChamferFeatureOptional", {"distance": float, "distance2": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ChamferFeature(_ChamferFeatureRequired, _ChamferFeatureOptional):
     pass
@@ -141,7 +141,7 @@ _DatumPlaneFeatureOptional = TypedDict("_DatumPlaneFeatureOptional", {"offset": 
 class DatumPlaneFeature(_DatumPlaneFeatureRequired, _DatumPlaneFeatureOptional):
     pass
 
-_DeleteFaceFeatureRequired = TypedDict("_DeleteFaceFeatureRequired", {"type": Literal["deleteFace"], "faces": List['TopoRef'], "id": str, "name": str})
+_DeleteFaceFeatureRequired = TypedDict("_DeleteFaceFeatureRequired", {"type": Literal["deleteFace"], "faces": List['TopoTarget'], "id": str, "name": str})
 _DeleteFaceFeatureOptional = TypedDict("_DeleteFaceFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class DeleteFaceFeature(_DeleteFaceFeatureRequired, _DeleteFaceFeatureOptional):
     pass
@@ -152,12 +152,12 @@ _DevelopabilityVerdictOptional = TypedDict("_DevelopabilityVerdictOptional", {"b
 class DevelopabilityVerdict(_DevelopabilityVerdictRequired, _DevelopabilityVerdictOptional):
     pass
 
-_DomeFeatureRequired = TypedDict("_DomeFeatureRequired", {"type": Literal["dome"], "face": 'TopoRef', "id": str, "name": str})
+_DomeFeatureRequired = TypedDict("_DomeFeatureRequired", {"type": Literal["dome"], "face": 'TopoTarget', "id": str, "name": str})
 _DomeFeatureOptional = TypedDict("_DomeFeatureOptional", {"height": float, "rings": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class DomeFeature(_DomeFeatureRequired, _DomeFeatureOptional):
     pass
 
-_DraftFeatureRequired = TypedDict("_DraftFeatureRequired", {"type": Literal["draft"], "faces": List['TopoRef'], "id": str, "name": str})
+_DraftFeatureRequired = TypedDict("_DraftFeatureRequired", {"type": Literal["draft"], "faces": List['TopoTarget'], "id": str, "name": str})
 _DraftFeatureOptional = TypedDict("_DraftFeatureOptional", {"angle": float, "pullDirection": 'Vec3', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class DraftFeature(_DraftFeatureRequired, _DraftFeatureOptional):
     pass
@@ -198,11 +198,11 @@ class ExternalPartRef(_ExternalPartRefRequired, _ExternalPartRefOptional):
     pass
 
 _ExtrudeFeatureRequired = TypedDict("_ExtrudeFeatureRequired", {"type": Literal["extrude"], "profile": 'ProfileRef', "id": str, "name": str})
-_ExtrudeFeatureOptional = TypedDict("_ExtrudeFeatureOptional", {"distance": float, "symmetric": bool, "reverse": bool, "distance2": float, "draftAngle": float, "through": bool, "upToFace": 'TopoRef', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ExtrudeFeatureOptional = TypedDict("_ExtrudeFeatureOptional", {"distance": float, "symmetric": bool, "reverse": bool, "distance2": float, "draftAngle": float, "through": bool, "upToFace": 'TopoTarget', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ExtrudeFeature(_ExtrudeFeatureRequired, _ExtrudeFeatureOptional):
     pass
 
-_FilletFeatureRequired = TypedDict("_FilletFeatureRequired", {"type": Literal["fillet"], "edges": List['TopoRef'], "id": str, "name": str})
+_FilletFeatureRequired = TypedDict("_FilletFeatureRequired", {"type": Literal["fillet"], "edges": List['TopoTarget'], "id": str, "name": str})
 _FilletFeatureOptional = TypedDict("_FilletFeatureOptional", {"radius": float, "radius2": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class FilletFeature(_FilletFeatureRequired, _FilletFeatureOptional):
     pass
@@ -219,7 +219,7 @@ _FootprintPadOptional = TypedDict("_FootprintPadOptional", {"size": Tuple[float,
 class FootprintPad(_FootprintPadRequired, _FootprintPadOptional):
     pass
 
-_FullRoundFeatureRequired = TypedDict("_FullRoundFeatureRequired", {"type": Literal["fullRound"], "face": 'TopoRef', "id": str, "name": str})
+_FullRoundFeatureRequired = TypedDict("_FullRoundFeatureRequired", {"type": Literal["fullRound"], "face": 'TopoTarget', "id": str, "name": str})
 _FullRoundFeatureOptional = TypedDict("_FullRoundFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class FullRoundFeature(_FullRoundFeatureRequired, _FullRoundFeatureOptional):
     pass
@@ -269,8 +269,8 @@ _GraphFeatureOptional = TypedDict("_GraphFeatureOptional", {"nodeSizes": List[fl
 class GraphFeature(_GraphFeatureRequired, _GraphFeatureOptional):
     pass
 
-_HoleFeatureRequired = TypedDict("_HoleFeatureRequired", {"type": Literal["hole"], "face": 'TopoRef', "id": str, "name": str})
-_HoleFeatureOptional = TypedDict("_HoleFeatureOptional", {"diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "headDiameter": float, "headDepth": float, "size": str, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_HoleFeatureRequired = TypedDict("_HoleFeatureRequired", {"type": Literal["hole"], "face": 'TopoTarget', "id": str, "name": str})
+_HoleFeatureOptional = TypedDict("_HoleFeatureOptional", {"positions": List['Vec3'], "sketch": str, "diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "headDiameter": float, "headDepth": float, "size": str, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class HoleFeature(_HoleFeatureRequired, _HoleFeatureOptional):
     pass
 
@@ -381,7 +381,7 @@ _NurbsSpecOptional = TypedDict("_NurbsSpecOptional", {"weights": List[float], "k
 class NurbsSpec(_NurbsSpecRequired, _NurbsSpecOptional):
     pass
 
-_OffsetFacesFeatureRequired = TypedDict("_OffsetFacesFeatureRequired", {"type": Literal["offsetFaces"], "faces": List['TopoRef'], "id": str, "name": str})
+_OffsetFacesFeatureRequired = TypedDict("_OffsetFacesFeatureRequired", {"type": Literal["offsetFaces"], "faces": List['TopoTarget'], "id": str, "name": str})
 _OffsetFacesFeatureOptional = TypedDict("_OffsetFacesFeatureOptional", {"distance": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class OffsetFacesFeature(_OffsetFacesFeatureRequired, _OffsetFacesFeatureOptional):
     pass
@@ -492,12 +492,12 @@ _ScaleFeatureOptional = TypedDict("_ScaleFeatureOptional", {"factor": float, "ce
 class ScaleFeature(_ScaleFeatureRequired, _ScaleFeatureOptional):
     pass
 
-_SheetFlangeFeatureRequired = TypedDict("_SheetFlangeFeatureRequired", {"type": Literal["sheetFlange"], "edge": 'TopoRef', "id": str, "name": str})
+_SheetFlangeFeatureRequired = TypedDict("_SheetFlangeFeatureRequired", {"type": Literal["sheetFlange"], "edge": 'TopoTarget', "id": str, "name": str})
 _SheetFlangeFeatureOptional = TypedDict("_SheetFlangeFeatureOptional", {"length": float, "angle": float, "thickness": float, "bendRadius": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SheetFlangeFeature(_SheetFlangeFeatureRequired, _SheetFlangeFeatureOptional):
     pass
 
-_ShellFeatureRequired = TypedDict("_ShellFeatureRequired", {"type": Literal["shell"], "faces": List['TopoRef'], "id": str, "name": str})
+_ShellFeatureRequired = TypedDict("_ShellFeatureRequired", {"type": Literal["shell"], "faces": List['TopoTarget'], "id": str, "name": str})
 _ShellFeatureOptional = TypedDict("_ShellFeatureOptional", {"thickness": float, "outward": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ShellFeature(_ShellFeatureRequired, _ShellFeatureOptional):
     pass
@@ -682,14 +682,38 @@ _ThickenFeatureOptional = TypedDict("_ThickenFeatureOptional", {"distance": floa
 class ThickenFeature(_ThickenFeatureRequired, _ThickenFeatureOptional):
     pass
 
-_ThreadFeatureRequired = TypedDict("_ThreadFeatureRequired", {"type": Literal["thread"], "face": 'TopoRef', "id": str, "name": str})
+_ThreadFeatureRequired = TypedDict("_ThreadFeatureRequired", {"type": Literal["thread"], "face": 'TopoTarget', "id": str, "name": str})
 _ThreadFeatureOptional = TypedDict("_ThreadFeatureOptional", {"pitch": float, "length": float, "depth": float, "internal": bool, "rightHanded": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ThreadFeature(_ThreadFeatureRequired, _ThreadFeatureOptional):
+    pass
+
+#: A box in model coordinates, by two opposite corners.
+_TopoBoxRequired = TypedDict("_TopoBoxRequired", {"min": 'Vec3', "max": 'Vec3'})
+_TopoBoxOptional = TypedDict("_TopoBoxOptional", {}, total=False)
+class TopoBox(_TopoBoxRequired, _TopoBoxOptional):
+    pass
+
+#: WHAT FACES OR EDGES ARE, STATED AS DATA — the tests one face or edge of the bodies must pass to be chosen.
+_TopoQueryRequired = TypedDict("_TopoQueryRequired", {})
+_TopoQueryOptional = TypedDict("_TopoQueryOptional", {"normal": 'Vec3', "parallel": 'Vec3', "perpendicular": 'Vec3', "axis": 'Vec3', "geometry": Literal["line", "circle", "arc", "ellipse", "spline", "other", "plane", "cylinder", "cone", "sphere", "torus"], "length": 'TopoRange', "radius": 'TopoRange', "area": 'TopoRange', "ofFace": 'TopoQuery', "createdBy": str, "inBox": 'TopoBox', "farthest": 'Vec3', "any": List['TopoQuery'], "not": 'TopoQuery'}, total=False)
+class TopoQuery(_TopoQueryRequired, _TopoQueryOptional):
+    pass
+
+#: A range of a measured value. An end left out is open.
+_TopoRangeRequired = TypedDict("_TopoRangeRequired", {})
+_TopoRangeOptional = TypedDict("_TopoRangeOptional", {"min": float, "max": float}, total=False)
+class TopoRange(_TopoRangeRequired, _TopoRangeOptional):
     pass
 
 _TopoRefRequired = TypedDict("_TopoRefRequired", {"kind": Literal["face", "edge", "vertex"], "signature": 'TopoSignature'})
 _TopoRefOptional = TypedDict("_TopoRefOptional", {"feature": str, "label": str}, total=False)
 class TopoRef(_TopoRefRequired, _TopoRefOptional):
+    pass
+
+#: Faces or edges chosen by a TopoQuery when the feature is built: "every vertical edge", "the edges of the top face", "the rims the hole made". Beside the pick (TopoRef), which names one by where it was.
+_TopoSelectorRequired = TypedDict("_TopoSelectorRequired", {"kind": Literal["face", "edge"], "select": 'TopoQuery'})
+_TopoSelectorOptional = TypedDict("_TopoSelectorOptional", {"label": str}, total=False)
+class TopoSelector(_TopoSelectorRequired, _TopoSelectorOptional):
     pass
 
 _TopoSignatureRequired = TypedDict("_TopoSignatureRequired", {"point": 'Vec3'})
@@ -767,7 +791,7 @@ _WorldTrimeshColliderOptional = TypedDict("_WorldTrimeshColliderOptional", {}, t
 class WorldTrimeshCollider(_WorldTrimeshColliderRequired, _WorldTrimeshColliderOptional):
     pass
 
-_WrapTextFeatureRequired = TypedDict("_WrapTextFeatureRequired", {"type": Literal["wrapText"], "face": 'TopoRef', "sketch": 'Sketch', "id": str, "name": str})
+_WrapTextFeatureRequired = TypedDict("_WrapTextFeatureRequired", {"type": Literal["wrapText"], "face": 'TopoTarget', "sketch": 'Sketch', "id": str, "name": str})
 _WrapTextFeatureOptional = TypedDict("_WrapTextFeatureOptional", {"depth": float, "mode": Literal["emboss", "engrave"], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class WrapTextFeature(_WrapTextFeatureRequired, _WrapTextFeatureOptional):
     pass
@@ -786,7 +810,7 @@ class SketchProps(_SketchPropsRequired, _SketchPropsOptional):
 
 #: The keywords of extrude(…): the ExtrudeFeature fields, in snake_case.
 _ExtrudePropsRequired = TypedDict("_ExtrudePropsRequired", {"profile": 'ProfileRef', "id": str})
-_ExtrudePropsOptional = TypedDict("_ExtrudePropsOptional", {"distance": float, "symmetric": bool, "reverse": bool, "distance2": float, "draft_angle": float, "through": bool, "up_to_face": 'TopoRef', "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ExtrudePropsOptional = TypedDict("_ExtrudePropsOptional", {"distance": float, "symmetric": bool, "reverse": bool, "distance2": float, "draft_angle": float, "through": bool, "up_to_face": 'TopoTarget', "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ExtrudeProps(_ExtrudePropsRequired, _ExtrudePropsOptional):
     pass
 
@@ -809,19 +833,19 @@ class LoftProps(_LoftPropsRequired, _LoftPropsOptional):
     pass
 
 #: The keywords of fillet(…): the FilletFeature fields, in snake_case.
-_FilletPropsRequired = TypedDict("_FilletPropsRequired", {"edges": List['TopoRef'], "id": str})
+_FilletPropsRequired = TypedDict("_FilletPropsRequired", {"edges": List['TopoTarget'], "id": str})
 _FilletPropsOptional = TypedDict("_FilletPropsOptional", {"radius": float, "radius2": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class FilletProps(_FilletPropsRequired, _FilletPropsOptional):
     pass
 
 #: The keywords of chamfer(…): the ChamferFeature fields, in snake_case.
-_ChamferPropsRequired = TypedDict("_ChamferPropsRequired", {"edges": List['TopoRef'], "id": str})
+_ChamferPropsRequired = TypedDict("_ChamferPropsRequired", {"edges": List['TopoTarget'], "id": str})
 _ChamferPropsOptional = TypedDict("_ChamferPropsOptional", {"distance": float, "distance2": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ChamferProps(_ChamferPropsRequired, _ChamferPropsOptional):
     pass
 
 #: The keywords of shell(…): the ShellFeature fields, in snake_case.
-_ShellPropsRequired = TypedDict("_ShellPropsRequired", {"faces": List['TopoRef'], "id": str})
+_ShellPropsRequired = TypedDict("_ShellPropsRequired", {"faces": List['TopoTarget'], "id": str})
 _ShellPropsOptional = TypedDict("_ShellPropsOptional", {"thickness": float, "outward": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ShellProps(_ShellPropsRequired, _ShellPropsOptional):
     pass
@@ -899,14 +923,14 @@ class DatumPlaneProps(_DatumPlanePropsRequired, _DatumPlanePropsOptional):
     pass
 
 #: The keywords of draft(…): the DraftFeature fields, in snake_case.
-_DraftPropsRequired = TypedDict("_DraftPropsRequired", {"faces": List['TopoRef'], "id": str})
+_DraftPropsRequired = TypedDict("_DraftPropsRequired", {"faces": List['TopoTarget'], "id": str})
 _DraftPropsOptional = TypedDict("_DraftPropsOptional", {"angle": float, "pull_direction": 'Vec3', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class DraftProps(_DraftPropsRequired, _DraftPropsOptional):
     pass
 
 #: The keywords of hole(…): the HoleFeature fields, in snake_case.
-_HolePropsRequired = TypedDict("_HolePropsRequired", {"face": 'TopoRef', "id": str})
-_HolePropsOptional = TypedDict("_HolePropsOptional", {"diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "head_diameter": float, "head_depth": float, "size": str, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_HolePropsRequired = TypedDict("_HolePropsRequired", {"face": 'TopoTarget', "id": str})
+_HolePropsOptional = TypedDict("_HolePropsOptional", {"positions": List['Vec3'], "sketch": str, "diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "head_diameter": float, "head_depth": float, "size": str, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class HoleProps(_HolePropsRequired, _HolePropsOptional):
     pass
 
@@ -917,7 +941,7 @@ class TransformProps(_TransformPropsRequired, _TransformPropsOptional):
     pass
 
 #: The keywords of sheetFlange(…): the SheetFlangeFeature fields, in snake_case.
-_SheetFlangePropsRequired = TypedDict("_SheetFlangePropsRequired", {"edge": 'TopoRef', "id": str})
+_SheetFlangePropsRequired = TypedDict("_SheetFlangePropsRequired", {"edge": 'TopoTarget', "id": str})
 _SheetFlangePropsOptional = TypedDict("_SheetFlangePropsOptional", {"length": float, "angle": float, "thickness": float, "bend_radius": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class SheetFlangeProps(_SheetFlangePropsRequired, _SheetFlangePropsOptional):
     pass
@@ -929,25 +953,25 @@ class UnfoldProps(_UnfoldPropsRequired, _UnfoldPropsOptional):
     pass
 
 #: The keywords of wrapText(…): the WrapTextFeature fields, in snake_case.
-_WrapTextPropsRequired = TypedDict("_WrapTextPropsRequired", {"face": 'TopoRef', "sketch": 'Sketch', "id": str})
+_WrapTextPropsRequired = TypedDict("_WrapTextPropsRequired", {"face": 'TopoTarget', "sketch": 'Sketch', "id": str})
 _WrapTextPropsOptional = TypedDict("_WrapTextPropsOptional", {"depth": float, "mode": Literal["emboss", "engrave"], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class WrapTextProps(_WrapTextPropsRequired, _WrapTextPropsOptional):
     pass
 
 #: The keywords of deleteFace(…): the DeleteFaceFeature fields, in snake_case.
-_DeleteFacePropsRequired = TypedDict("_DeleteFacePropsRequired", {"faces": List['TopoRef'], "id": str})
+_DeleteFacePropsRequired = TypedDict("_DeleteFacePropsRequired", {"faces": List['TopoTarget'], "id": str})
 _DeleteFacePropsOptional = TypedDict("_DeleteFacePropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class DeleteFaceProps(_DeleteFacePropsRequired, _DeleteFacePropsOptional):
     pass
 
 #: The keywords of fullRound(…): the FullRoundFeature fields, in snake_case.
-_FullRoundPropsRequired = TypedDict("_FullRoundPropsRequired", {"face": 'TopoRef', "id": str})
+_FullRoundPropsRequired = TypedDict("_FullRoundPropsRequired", {"face": 'TopoTarget', "id": str})
 _FullRoundPropsOptional = TypedDict("_FullRoundPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class FullRoundProps(_FullRoundPropsRequired, _FullRoundPropsOptional):
     pass
 
 #: The keywords of dome(…): the DomeFeature fields, in snake_case.
-_DomePropsRequired = TypedDict("_DomePropsRequired", {"face": 'TopoRef', "id": str})
+_DomePropsRequired = TypedDict("_DomePropsRequired", {"face": 'TopoTarget', "id": str})
 _DomePropsOptional = TypedDict("_DomePropsOptional", {"height": float, "rings": int, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class DomeProps(_DomePropsRequired, _DomePropsOptional):
     pass
@@ -959,7 +983,7 @@ class CopyBodyProps(_CopyBodyPropsRequired, _CopyBodyPropsOptional):
     pass
 
 #: The keywords of thread(…): the ThreadFeature fields, in snake_case.
-_ThreadPropsRequired = TypedDict("_ThreadPropsRequired", {"face": 'TopoRef', "id": str})
+_ThreadPropsRequired = TypedDict("_ThreadPropsRequired", {"face": 'TopoTarget', "id": str})
 _ThreadPropsOptional = TypedDict("_ThreadPropsOptional", {"pitch": float, "length": float, "depth": float, "internal": bool, "right_handed": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ThreadProps(_ThreadPropsRequired, _ThreadPropsOptional):
     pass
@@ -977,7 +1001,7 @@ class CombineProps(_CombinePropsRequired, _CombinePropsOptional):
     pass
 
 #: The keywords of offsetFaces(…): the OffsetFacesFeature fields, in snake_case.
-_OffsetFacesPropsRequired = TypedDict("_OffsetFacesPropsRequired", {"faces": List['TopoRef'], "id": str})
+_OffsetFacesPropsRequired = TypedDict("_OffsetFacesPropsRequired", {"faces": List['TopoTarget'], "id": str})
 _OffsetFacesPropsOptional = TypedDict("_OffsetFacesPropsOptional", {"distance": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class OffsetFacesProps(_OffsetFacesPropsRequired, _OffsetFacesPropsOptional):
     pass
@@ -1172,6 +1196,9 @@ SketchSegment = Union['_SketchSegment26', '_SketchSegment27', '_SketchSegment28'
 SketchSolveStatus = Literal["ok", "over", "under", "inconsistent"]
 
 SourceTexture = Union['SourceImageTexture', 'SourceDataTexture', 'SourceCompressedTexture']
+
+#: What a feature takes where it needs faces or edges: one picked (TopoRef) or the ones a query chooses.
+TopoTarget = Union['TopoRef', 'TopoSelector']
 
 UnwrapSurface = Union['PlanarSurface', 'CylindricalSurface', 'ConicalSurface', 'SphericalSurface', 'ToroidalSurface']
 
