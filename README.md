@@ -162,6 +162,40 @@ In a CommandAGI editor, a `.py` code node runs under Pyodide in a sandboxed work
 this importer (OCCT does not run there). `run_module(source, path, inputs)` is what the sandbox calls. Tests:
 `python -m unittest discover -s tests`.
 
+## The 3D kernel: `commandagi.kernel`
+
+`commandagi.design.threed` declares a part and builds nothing. `Kernel` asks the CommandAGI 3D design service
+(OpenCascade) to build it. It uses the standard library only.
+
+```python
+from commandagi.design.threed import box, cylinder, part
+from commandagi.kernel import Kernel
+
+plate = part(
+    box(id="plate", center=[0, 0, 4], size=[60, 40, 8], operation="new"),
+    cylinder(id="hole", center=[0, 0, -1], axis=[0, 0, 1], radius=3, height=10, operation="cut", consumes=["plate"]),
+    name="Plate",
+)
+kernel = Kernel()                                  # reads COMMANDAGI_THREED
+seen = kernel.observe(plate)["observation"]        # bodies, faces, edges, mass properties, each feature's error
+assert not seen["errors"], seen["errors"]          # a body is built from the features that did not fail: read this
+open("plate.step", "w").write(kernel.export(plate, "step"))
+```
+
+One setting chooses the service:
+
+| `COMMANDAGI_THREED` | the service | needs |
+| --- | --- | --- |
+| `platform` (the default) | the hosted one | the network and `COMMANDAGI_API_KEY` |
+| `local` | this computer, offline, no account. `Kernel` starts it and stops it when Python exits | Node 22 and, once: `npm install -g commandagi` then `commandagi threed install` (it downloads OpenCascade as WebAssembly, about 130 MB) |
+| a URL (or `COMMANDAGI_THREED_URL`) | one that runs already: `commandagi threed serve --port 8091` | `COMMANDAGI_THREED_TOKEN`, the bearer you started it with |
+
+`observe(doc)`, `export(doc, "step" | "iges", bodies=)`, `measure(doc, "distance" | "angle" | "radius" | "closest", a,
+b)`, `drawing(doc, direction=, up=, section=)`, `tessellate(doc, deflection)`. `doc` is what a file declares, its
+graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"body": "body_0", "kind": "face" | "edge" |
+"vertex" | "body", "index": n}`, with the index as `observe` lists it. One service keeps the last documents it built,
+so `observe` then `export` then `measure` of one document is one build. `measure` works with a local service only.
+
 ## Reinforcement learning
 
 `commandagi.gym_env.CommandAGIEnv` wraps a sim session as a Gymnasium env (`pip install
@@ -175,3 +209,20 @@ this importer (OCCT does not run there). `run_module(source, path, inputs)` is w
 | `COMMANDAGI_API_KEY` | your `cagi_…` key. Its scopes decide what every call may do |
 | `COMMANDAGI_BASE_URL` | API origin (default `https://api.commandagi.com`) |
 | `COMMANDAGI_THREAD_ID` | default thread for self-thread methods. Set automatically when your code runs inside the platform |
+| `COMMANDAGI_THREED` | the 3D kernel `Kernel` calls: `platform` (the default), `local`, or a URL |
+| `COMMANDAGI_THREED_URL`, `COMMANDAGI_THREED_TOKEN` | a 3D design service that runs already, and its bearer |
+
+## Versions
+
+- A release is the tag `v<version>` in this repository and the same version on PyPI. Pin an exact version:
+  `commandagi==0.5.0`. A range (`^`, `~=`, `>=`) takes the next release without asking you.
+- The three SDKs (Python, TypeScript, Rust) carry one version number. A vocabulary at version X in one language is
+  the vocabulary at version X in the others.
+- A version promises nothing about the next one. CommandAGI keeps no compatibility layers: a release may rename or
+  remove a function, an element or an attribute, with no alias and no migration. `CHANGELOG.md` says what changed.
+- So a document belongs with the version that reads it. Keep the pin in the project that holds the documents, and
+  change both together. A document you open in a CommandAGI editor is read by the SDK that editor ships.
+
+## Licence
+
+MIT (`LICENSE`).
