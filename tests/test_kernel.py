@@ -67,14 +67,14 @@ class RunningService(unittest.TestCase):
                 # caller's own materials table (the density a body's mass uses).
                 mine = [{"id": "6061-T6", "densityGCm3": 2.71, "source": "mill certificate 4711"}]
                 self.assertEqual(kernel.sheet("{}", sheet="sheet1", format="pdf")["contentBase64"], "JVBERg==")
-                self.assertEqual(kernel.bom("{}", parts={"plate.3d.py": plate}, materials=mine)["csv"], "item\n")
+                self.assertEqual(kernel.bom("{}", parts=linked_parts({"plate.3d.py": plate}), materials=mine)["csv"], "item\n")
                 kernel.observe("{}", materials=mine)
             self.assertEqual(refused.exception.status, 422)
             self.assertIn("no such body", str(refused.exception))
             self.assertEqual(partial.exception.failures, [{"feature": "cbore", "type": "hole", "message": "hole face not found"}])
             self.assertIn("the build failed in 1 feature", str(partial.exception))
             self.assertEqual(seen[4], ("/sheet", "Bearer service-bearer", {"docText": "{}", "sheet": "sheet1", "format": "pdf"}))
-            self.assertEqual((seen[5][0], seen[5][2]["materials"], json.loads(seen[5][2]["parts"]["plate.3d.py"])["nodes"]["plate"]["type"]), ("/bom", mine, "box"))
+            self.assertEqual((seen[5][0], seen[5][2]["materials"], json.loads(seen[5][2]["parts"]["3d:name:plate.3d.py"]["docText"])["nodes"]["plate"]["type"]), ("/bom", mine, "box"))
             self.assertEqual(seen[6], ("/observe", "Bearer service-bearer", {"docText": "{}", "digest": "", "materials": mine}))
             (path, auth, body), (path2, auth2, body2), (path3, _, body3), _ = seen[:4]
             self.assertEqual((path3, body3["clearance"], list(body3["parts"])), ("/interference", 0.5, ["3d:name:bolt.3d.py"]))

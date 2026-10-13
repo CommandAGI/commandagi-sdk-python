@@ -240,19 +240,20 @@ class Kernel:
                 doc_id = "sdk"
         return self._post("/threed/observe", {"docId": doc_id, "docText": text, "digest": "", **own})
 
-    def sheet(self, doc: Any, *, sheet: Optional[str] = None, format: str = "svg", materials: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    def sheet(self, doc: Any, *, sheet: Optional[str] = None, format: str = "svg", materials: Optional[List[Dict[str, Any]]] = None,
+              parts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """An engineering drawing sheet the document declares (``sheet(…)``), as a file: ``content`` is its text (SVG,
         DXF), ``contentBase64`` its bytes (PDF). The views are projected from this build with hidden edges dashed, the
         dimensions are measured on it (``dimensions``: each one's value and text) and the title block is the document's
         engineering data. A document with a failed feature draws no sheet."""
-        return self._op("sheet", doc, {"sheet": sheet, "format": format, "materials": materials})
+        return self._op("sheet", doc, {"sheet": sheet, "format": format, "materials": materials, "parts": parts})
 
     def bom(self, doc: Any, *, parts: Optional[Dict[str, Any]] = None, materials: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """The bill of materials: ``lines`` (a line per part with its engineering data and its mass from this build) and
-        the same table as ``csv``. ``parts`` are an assembly's linked parts, each by the path the assembly names it
-        with: its document (graph or text). A linked part that is not given is a line with its name."""
-        texts = {path: _doc_text(part) for path, part in parts.items()} if parts else None
-        return self._op("bom", doc, {"parts": texts, "materials": materials})
+        the same table as ``csv``. ``parts`` are the files an assembly places (``linked_parts``): each placed 3D document
+        is the lines of its own parts, and a file that is not given is a line with its name. ``failures``: each feature
+        that failed to build (a line's mass is then of what was built)."""
+        return self._op("bom", doc, {"parts": parts, "materials": materials})
 
     # ``parts``, on every call below: the files an assembly places (``externalPart(file_name="bolt.3d.py")``), which
     # the service cannot read. ``linked_parts`` makes it from documents: {"bolt.3d.py": bolt, "bracket.step": text}.
