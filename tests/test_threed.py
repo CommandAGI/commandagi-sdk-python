@@ -5,8 +5,8 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, circle, constraint, cylinder, declare_threed, externalPart,
-                                      extrude, feature, fillet, import_, line, meshBody, parameter, part, plane, point, pointCloud,
-                                      sketch, slot)
+                                      extrude, feature, fillet, import_, joint, line, mate, meshBody, parameter, part, plane, point,
+                                      pointCloud, sheet, sketch, slot)
 
 
 def plate():
@@ -156,6 +156,52 @@ class ThreeDTests(unittest.TestCase):
             with self.assertRaises(ValueError) as caught:
                 read(child)
             self.assertEqual(str(caught.exception), message)
+
+    def test_a_bodys_engineering_data_a_joint_a_mate_and_a_sheet_are_typed_elements(self):
+        engineering = {
+            "partNumber": "CA-0001", "material": "6061-T6", "process": "cnc-milling", "finish": "anodize clear, 10 µm",
+            "vendor": {"name": "Misumi", "partNumber": "HFS5-2020-300"},
+            "cost": {"amount": 12.5, "currency": "USD", "source": "quote Q-118", "date": "2026-10-01"},
+        }
+        j1 = {"id": "j1", "kind": "revolute", "a": "base", "b": "arm", "anchor": [0, 0, 40], "axis": [0, 0, 1], "limits": [-1.5, 1.5],
+              "refA": {"kind": "face", "point": [0, 0, 40], "direction": [0, 0, 1]}}
+        n = declare_threed(part(
+            box(id="base", center=[0, 0, 0], size=[10, 10, 10], operation="new"),
+            body(id="base", engineering=engineering),
+            slot(name="dynamics", value={"ground": {"enabled": True}}),
+            joint(id="j1", kind="revolute", a="base", b="arm", anchor=[0, 0, 40], axis=[0, 0, 1], limits=[-1.5, 1.5],
+                  ref_a={"kind": "face", "point": [0, 0, 40], "direction": [0, 0, 1]}),
+            joint(id="j2", kind="screw", a="arm", anchor=[0, 0, 0], pitch=2),
+            sheet(id="sheet1", views=[{"id": "front", "view": "front"}, {"id": "top", "view": "top"}], title={"drawnBy": "JV"}),
+            name="P"))["nodes"]
+        self.assertEqual(n["bodyMeta"]["inputs"], {"base": {"engineering": engineering}})
+        # The joints are the `joints` port of the document's dynamics, beside what its slot holds.
+        self.assertEqual(n["dynamics"]["inputs"], {"ground": {"enabled": True}, "joints": [j1, {"id": "j2", "kind": "screw", "a": "arm", "anchor": [0, 0, 0], "pitch": 2}]})
+        self.assertEqual(n["dynamics"]["type"], "3d.dynamics")
+        # A sheet's fields with a default may be left out.
+        self.assertEqual(n["drawings"]["inputs"], {"value": [{
+            "id": "sheet1", "views": [{"id": "front", "view": "front"}, {"id": "top", "view": "top"}], "title": {"drawnBy": "JV"},
+            "size": "A3", "scale": 1, "projection": "first-angle", "hiddenLines": True, "holeCallouts": True, "overallDimensions": True}]})
+        m1 = {"id": "m1", "kind": "concentric", "a": "p1", "b": "p2", "axis": "Z"}
+        self.assertEqual(declare_threed(assembly(mate(**m1), name="A"))["nodes"]["assembly"], {"id": "assembly", "type": "3d.assembly", "inputs": {"mates": [m1]}})
+
+        def refused(message, *children):
+            with self.assertRaises(ValueError) as caught:
+                declare_threed(part(*children, name="P"))
+            self.assertEqual(str(caught.exception), message)
+        refused('<joint id="j1">: kind: must be one of fixed, revolute, prismatic, cylindrical, planar, screw, spherical, universal (got "hinge")',
+                joint(id="j1", kind="hinge", a="base", anchor=[0, 0, 0]))
+        refused('<joint id="j1">: anchor: is required', joint(id="j1", kind="fixed", a="base"))
+        refused('<body id="base">: engineering/process: must be one of cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, '
+                'sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, '
+                'manual, purchased (got "magic"); engineering/cost/currency: is required',
+                body(id="base", engineering={"process": "magic", "cost": {"amount": 1, "source": "x", "date": "2026-10-01"}}))
+        refused('<slot name="dynamics">: joints are written as joint(…) elements', slot(name="dynamics", value={"joints": []}))
+        refused("two joint elements are called j1", joint(**{k: v for k, v in j1.items() if k != "refA"}), joint(**{k: v for k, v in j1.items() if k != "refA"}))
+        with self.assertRaisesRegex(ValueError, "drawings is not a slot"):
+            declare_threed(part(slot(name="drawings", value=[]), name="P"))
+        with self.assertRaisesRegex(ValueError, r'<sheet id="s">: views: '):
+            declare_threed(part(sheet(id="s", views=[]), name="P"))
 
     def test_a_world_body_written_by_tsx_reads_with_its_declared_fields(self):
         # The element an ingest writes in a .3d.tsx (sdk/typescript threed.test.ts reads the same one).

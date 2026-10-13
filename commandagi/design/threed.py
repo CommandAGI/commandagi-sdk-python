@@ -14,7 +14,7 @@ TypeScript SDK's JSX (``commandagi/design`` ``threed.ts``)::
             id="sketch1", name="Sketch1", plane={"type": "datum", "plane": "plane_xy"},
         ),
         extrude(id="extrude1", name="Extrude1", profile={"sketch": "sketch1"}, distance=6, operation="new"),
-        body(id="extrude1", material="aluminium-6061"),
+        body(id="extrude1", engineering={"material": "6061-T6", "process": "cnc-milling"}),
         name="Mounting plate",
     )
 
@@ -30,14 +30,21 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
     sketch(*entities, id=, name=, plane=)     a sketch: point(id=, x=, y=), a segment by its type (line, circle, arc,
                                               spline, ellipse, ellipseArc), constraint(id=, kind=, entities=, …),
                                               projection(id=, ref=, feature=)
-    body(id=, name=, material=, visible=)     a body's own data (``bodyMeta[id]``)
+    body(id=, name=, material=, engineering=) a body's own data (``bodyMeta[id]``): its name, its look (``material``)
+                                              and what it is (``engineering``: the material grade by its id in a
+                                              materials table, the process, the finish, the vendor and the cost)
+    joint(id=, kind=, a=, b=, anchor=, axis=, limits=, …)   a joint between two bodies (``dynamics.joints``): fixed,
+                                              revolute, prismatic, cylindrical, planar, screw, spherical or universal
+    mate(id=, kind=, a=, b=, axis=, …)        a mate between two components of an assembly (``assembly.mates``)
+    sheet(id=, size=, scale=, projection=, views=[…], …)    an engineering drawing sheet of the document (``drawings``)
     slot(name=, value=)                       any other field of the document, whole
 
 The reader declares the document's graph exactly: a feature is a node of its type with its fields as ports, a plane a
 ``plane`` node, a parameter an ``input`` node whose ``drives`` are its bindings, a slot a ``3d.<field>`` node, the bodies
 one ``3d.bodyMeta`` node. The order of the feature elements is the order of the left-hand list (``presentation.order``).
 Every node carries the call it came from in ``meta.source``; a sketch's entities and the bodies are listed by key in
-``meta.sources``. Units are millimetres and radians, as stored. Anything else is refused by name, never guessed.
+``meta.sources``. Units are millimetres and radians, as stored. A ``hole(size="M4 close fit")`` has that size's diameter
+(``standards.py``). Anything else is refused by name, never guessed.
 
 A feature element is checked against its type's schema (``SCHEMA``; its keywords are typed in ``threed_elements.py``,
 ``ExtrudeProps`` …): the feature ``{type: <tag>, name: <its id when absent>, …its fields}``, a sketch with the ``sketch``
@@ -56,6 +63,7 @@ from typing import Any, Dict, List, Optional, Set
 from .element import Element, child_elements, declares, define
 from .ir import slug
 from .schema import describe_issue, validate, with_defaults
+from .standards import sized_hole
 from .threed_schema import SCHEMA
 
 #: The feature types a 3D document holds, by tag: the roots of ``SCHEMA`` (``threed_schema.py``), generated from the
@@ -63,7 +71,7 @@ from .threed_schema import SCHEMA
 THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
-_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "point", "constraint", "projection", "line", "circle",
+_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "mate", "sheet", "point", "constraint", "projection", "line", "circle",
                  "arc", "spline", "ellipse", "ellipseArc", "input"}
 #: A sketch's segment kinds, by tag.
 SKETCH_SEGMENTS: List[str] = ["line", "circle", "arc", "spline", "ellipse", "ellipseArc"]
@@ -78,7 +86,15 @@ BUILTIN_PLANES: Dict[str, Dict[str, Any]] = {
 _VIEW_ATTRS = ["semanticVisibility"]
 _PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step"]
 #: Document fields a slot may not hold: they have elements of their own, or are the graph itself.
-_NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility"}
+_NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility",
+              "drawings"}
+#: Elements that are the items of a list the document holds: the tag, the document field (its node), the port of that
+#: node that holds the list, and the definition each item is checked against (``SCHEMA["$defs"]``).
+THREED_LISTS: Dict[str, Dict[str, str]] = {
+    "joint": {"node": "dynamics", "port": "joints", "def": "DynamicsJoint"},
+    "mate": {"node": "assembly", "port": "mates", "def": "Mate"},
+    "sheet": {"node": "drawings", "port": "value", "def": "DrawingSheet"},
+}
 #: Slots whose value is an object: each field is a port of the slot's node; any other slot holds its value whole.
 _OBJECT_SLOTS = {"environment", "assembly", "sceneConstraints", "dynamics", "animation", "optimization", "standardParts"}
 
@@ -86,11 +102,12 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the 3D document: what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "part": _HOLDS, "assembly": _HOLDS, "parameter": {}, "plane": {}, "body": {}, "slot": {}, "feature": {},
+    "joint": {}, "mate": {}, "sheet": {},
     **{t: (_HOLDS if t == "sketch" else {}) for t in THREED_FEATURES},
     "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {},
 }
 
-__all__ = ["THREED_FEATURES", "SKETCH_SEGMENTS", "BUILTIN_PLANES", "SIGNATURES", "declare_threed", "is_threed",
+__all__ = ["THREED_FEATURES", "THREED_LISTS", "SKETCH_SEGMENTS", "BUILTIN_PLANES", "SIGNATURES", "declare_threed", "is_threed",
            *define(globals(), "threed", SIGNATURES)]
 
 
@@ -219,6 +236,17 @@ def _check_feature(el: Element, feature: Dict[str, Any]) -> Dict[str, Any]:
     return filled
 
 
+def _check_value(el: Element, definition: str, value: Any, at: str = "") -> Any:
+    """A value checked against a definition of the schema (a body's engineering data, a joint, a mate, a sheet), with
+    each required field it leaves out filled with its declared default; refused with every issue when it does not fit."""
+    root = {"$ref": f"#/$defs/{definition}"}
+    filled = with_defaults(root, value, SCHEMA["$defs"])
+    issues = validate(root, filled, SCHEMA["$defs"], at)
+    if issues:
+        raise ValueError(f"{_where(el)}: {'; '.join(describe_issue(x) for x in issues)}")
+    return filled
+
+
 def _builtin_planes_of(root: Element) -> List[str]:
     """The built-in planes a root says the document has (``builtinPlanes``); absent: all three."""
     v = root.props.get("builtinPlanes")
@@ -253,6 +281,7 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
     bodies: Dict[str, Any] = {}
     body_sources: Dict[str, Any] = {}
     declared: List[Element] = []
+    lists: Dict[str, Dict[str, Any]] = {}
     for el in child_elements(root):
         if el.tag == "parameter":
             _no_children(el)
@@ -283,9 +312,21 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             i = _id_of(el)
             if i in bodies:
                 raise ValueError(f"two body elements are called {i}")
-            bodies[i] = _fields(el, ("id",))
+            body_fields = _fields(el, ("id",))
+            if "engineering" in body_fields:
+                body_fields["engineering"] = _check_value(el, "PartEngineering", body_fields["engineering"], "engineering")
+            bodies[i] = body_fields
             if el.source is not None:
                 body_sources[i] = el.source
+        elif el.tag in THREED_LISTS:
+            _no_children(el)
+            i = _id_of(el)
+            held = lists.setdefault(el.tag, {"items": [], "sources": {}})
+            if any(x.get("id") == i for x in held["items"]):
+                raise ValueError(f"two {el.tag} elements are called {i}")
+            held["items"].append(_check_value(el, THREED_LISTS[el.tag]["def"], _fields(el)))
+            if el.source is not None:
+                held["sources"][f"{el.tag}:{i}"] = el.source
         elif el.tag == "slot":
             _no_children(el)
             field = el.props.get("name")
@@ -303,6 +344,9 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
                 if not isinstance(value, dict):
                     raise ValueError(f"{_where(el)}: the document's {field} is an object")
                 inputs = value
+                for tag, held_in in THREED_LISTS.items():
+                    if held_in["node"] == field and held_in["port"] in inputs:
+                        raise ValueError(f"{_where(el)}: {held_in['port']} are written as {tag}(…) elements")
             nodes[field] = {"id": field, "type": f"3d.{field}", "inputs": inputs, **_meta(el)}
         elif el.tag in _FEATURES:
             declared.append(el)
@@ -334,6 +378,12 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
                 raise ValueError(f"{_where(el)}: a sketch's points, segments and constraints are its child elements")
             sk, sources = _sketch_of(el)
             inputs = {**rest, "sketch": sk}
+        # A hole that names a standard size ("M4 close fit") has that size's diameter and head (standards.py).
+        if el.tag == "hole" and isinstance(inputs.get("size"), str):
+            try:
+                inputs = sized_hole(inputs)
+            except ValueError as e:
+                raise ValueError(f"{_where(el)}: {e}") from None
         if not generic:
             filled = _check_feature(el, {"type": ftype, "id": i, "name": label if label is not None else i,
                                          **({"suppressed": suppressed} if suppressed is not None else {}), **inputs})
@@ -367,6 +417,17 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             continue
         inputs = _copy.deepcopy({k: v for k, v in p.items() if k != "name"})
         nodes[i] = {"id": i, "type": "plane", "label": p["name"], "inputs": inputs}
+    for tag, held in lists.items():
+        field, port = THREED_LISTS[tag]["node"], THREED_LISTS[tag]["port"]
+        if field not in nodes:
+            claim(field, f"the document's {field} ({tag})")
+            nodes[field] = {"id": field, "type": f"3d.{field}", "inputs": {}}
+        node = nodes[field]
+        node["inputs"] = {**node["inputs"], port: held["items"]}
+        if held["sources"]:
+            node_meta = dict(node.get("meta") or {})
+            node_meta["sources"] = {**(node_meta.get("sources") or {}), **held["sources"]}
+            node["meta"] = node_meta
     if bodies:
         claim("bodyMeta", "the bodies (body)")
         nodes["bodyMeta"] = {"id": "bodyMeta", "type": "3d.bodyMeta", "inputs": bodies, **({"meta": {"sources": body_sources}} if body_sources else {})}
