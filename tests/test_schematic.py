@@ -131,5 +131,18 @@ result = group(
         self.assertEqual(n["net_N1"]["meta"]["source"]["tag"], "net")
 
 
+    def test_a_part_names_the_pins_it_leaves_open_on_purpose_by_pin_number(self):
+        n = run(sheet('''    resistor("R1", resistance="1k", sch_x=0, sch_y=0, no_connect=["2"]),
+    part("K2", symbol="station:SSR", library="station.kicad_sym", sch_x=50.8, sch_y=0, no_connect=["3", "4"]),
+    part("J1", pins=["1", "2", "3"], no_connect=["3"]),
+'''), "open.sch.py")["nodes"]
+        self.assertEqual(n["R1"]["inputs"]["noConnect"], ["2"])
+        self.assertEqual(n["K2"]["inputs"], {"ref": "K2", "symbol": "station:SSR", "library": "station.kicad_sym", "pins": [], "noConnect": ["3", "4"]})
+        self.assertEqual(n["J1"]["inputs"]["noConnect"], ["3"])
+        for bad in ("[]", '"3"', "[3]", '["3", "3"]', '[""]'):
+            with self.assertRaisesRegex(ValueError, "noConnect is a list of pin numbers"):
+                run(sheet(f'    part("K2", symbol="a:B", library="a.kicad_sym", no_connect={bad}),\n'), "s.sch.py")
+
+
 if __name__ == "__main__":
     unittest.main()
