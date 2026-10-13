@@ -1171,6 +1171,166 @@
             "withThread": false
           }
         ]
+      },
+      {
+        "name": "eda",
+        "doc": "A circuit in code (docs/eda-authoring.md): check it, route it and make its files with no editor open. fileId is the Drive id of its schematic (.sch.tsx, .sch.py, .sch.rs) or of its board (.pcb.tsx, .pcb.py, .pcb.rs).",
+        "factory": null,
+        "methods": [
+          {
+            "name": "erc",
+            "tool": "sch_erc",
+            "doc": "Electrical rule check of the schematic: each violation with its rule, severity, pins, and the code elements (file, line) that declare them. CommandAGI's rules over the netlist, not KiCad's ERC. `warnings: false` lists the errors only.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "drc",
+            "tool": "pcb_drc",
+            "doc": "Design rule check of the board: each violation with the code elements it is about. A rule given in opts (clearance, trackWidth …) replaces the board's.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "netlist",
+            "tool": "sch_netlist",
+            "doc": "The circuit's parts, pins and nets, as the schematic states them.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "autoroute",
+            "tool": "pcb_autoroute",
+            "doc": "Route the board's open connections on the copper layers given (default the two outer layers, through vias) and write the traces into its code. The result names each connection left unrouted; `complete` is false while one is.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "fabricate",
+            "tool": "pcb_fabricate",
+            "doc": "The manufacturing files of the board (Gerber layers, drill files, bill of materials, pick-and-place); `omitted` names what a file leaves out.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "model3d",
+            "tool": "pcb_model3d",
+            "doc": "The board as a 3D model (format: step or obj). The STEP is an assembly: the board with its holes, each part's own model where its footprint names one in the drive, else a bounding body that says so.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
       }
     ]
   },
