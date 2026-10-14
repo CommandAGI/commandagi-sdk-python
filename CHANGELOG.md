@@ -4,7 +4,9 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
-## Unreleased
+## 0.5.0 (2026-10-14)
+
+The first release with the design layer. 0.5.0 was prepared on 2026-10-13 and not published; this entry holds all of it.
 
 Changed
 
@@ -44,7 +46,6 @@ Changed
   `Body.acts_on()` are what it has.
 - A union's refusal names the field at fault (`edges/0/select/vertical: is not one of its fields`).
 
-## 0.5.0 (2026-10-13)
 
 The first release that contains `commandagi.design`. PyPI 0.4.0 was built on 2026-09-23, before the design layer was
 written; the version in the source stayed at 0.4.0 for the 106 commits after it, so the source and the package had
