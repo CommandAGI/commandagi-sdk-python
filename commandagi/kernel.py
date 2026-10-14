@@ -1,12 +1,13 @@
 """The 3D kernel: what a 3D document *is* once OpenCascade has built it.
 
 ``commandagi.design.threed`` declares a part; it builds nothing. :class:`Kernel` asks the CommandAGI 3D design service
-to build it: its solids, their exact volume and area, a STEP file, a measurement, a drawing view. One service, in one
-of three places, chosen by one setting::
+to build it: its solids, their exact volume and area, a STEP file, a measurement, a drawing view. It speaks the kernel
+contract (``POST <kernel>/v1/<op>``, ``GET <kernel>/v1/health``; the CommandAGI repository's docs/local-platform.md
+§ kernels), which the service on this computer and the platform's door answer alike. One setting says where it runs::
 
     from commandagi.kernel import Kernel
 
-    kernel = Kernel()                      # reads COMMANDAGI_THREED: "platform" (the default) | "local"
+    kernel = Kernel()                      # reads COMMANDAGI_THREED: "local,cloud" (the default) | "local" | "cloud"
     seen = kernel.observe(graph)           # bodies, faces, edges, volume, area, meshes; status and failures
     step = kernel.export(graph, "step")    # an ISO 10303-21 file, as text
     report = kernel.interference(graph, clearance=0.5)   # which bodies clash, engage in a thread, or are too near
@@ -16,20 +17,29 @@ A BUILD IN WHICH A FEATURE FAILED IS NOT WHOLE. ``observe`` answers it, with ``s
 ``drawing`` and ``tessellate`` refuse it: :class:`KernelError` with ``status`` 422 and the same ``failures``. A STEP
 file cannot say that two features are missing from it.
 
+``COMMANDAGI_THREED`` is the places to try, in order, words apart by ``,`` (the setting ``kernels.3d.place``). A place
+where the kernel is not installed is passed over; a refusal of the op itself is the answer and is not asked elsewhere.
+
 =================  =====================================================================================================
-``platform``       the hosted service, with your ``COMMANDAGI_API_KEY``. Needs the network and an account.
 ``local``          this computer, offline, no account. The SDK starts ``commandagi threed serve`` (the ``commandagi``
                    npm package: ``npm install -g commandagi`` then ``commandagi threed install``, once) and stops it
-                   when Python exits.
-a URL              a service that already runs (``commandagi threed serve``), with ``COMMANDAGI_THREED_TOKEN``.
-                   ``COMMANDAGI_THREED_URL`` names it too, as it does for the local host.
+                   when Python exits. ``COMMANDAGI_THREED_URL`` (with ``COMMANDAGI_THREED_TOKEN``) names one that
+                   runs already in its place.
+``cloud``          the platform's kernel door, with your ``COMMANDAGI_API_KEY``. Needs the network and an account.
+a URL              only a service that already runs (``commandagi threed serve``), with ``COMMANDAGI_THREED_TOKEN``.
 =================  =====================================================================================================
+
+Every answer says where it ran: ``Kernel.last_ran`` (``{"kernel", "build", "place"}``). The place is where this SDK sent
+the request, never what the answer claims, so a result that ran on this computer says ``local`` and is never a cloud
+result.
 
 The standard library only: no ``requests``, so it imports wherever ``commandagi.design`` does.
 """
 from __future__ import annotations
 
 import atexit
+import base64
+import hashlib
 import json
 import os
 import secrets
@@ -39,7 +49,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ._generated import DEFAULT_BASE_URL, ENV_API_KEY, ENV_BASE_URL
 
@@ -47,7 +57,7 @@ ENV_THREED = "COMMANDAGI_THREED"
 ENV_THREED_URL = "COMMANDAGI_THREED_URL"
 ENV_THREED_TOKEN = "COMMANDAGI_THREED_TOKEN"
 
-__all__ = ["Kernel", "KernelError", "linked_parts", "ENV_THREED", "ENV_THREED_URL", "ENV_THREED_TOKEN"]
+__all__ = ["Kernel", "KernelError", "KernelAbsent", "linked_parts", "kernel_places", "call_kernel", "where_of", "ENV_THREED", "ENV_THREED_URL", "ENV_THREED_TOKEN"]
 
 
 class KernelError(Exception):
@@ -77,13 +87,110 @@ def _doc_text(doc: Any) -> str:
     return json.dumps(declare(doc, "Part")["graph"] if declare else graph_of(doc))
 
 
-def where_of(where: Optional[str], env: Dict[str, str]) -> str:
-    """Which service: ``platform``, ``local`` or a URL. An argument wins, then ``COMMANDAGI_THREED_URL`` (a service that
-    runs already), then ``COMMANDAGI_THREED``, then the platform."""
-    chosen = (where or env.get(ENV_THREED_URL) or env.get(ENV_THREED) or "platform").strip()
-    if chosen in ("platform", "local") or chosen.startswith(("http://", "https://")):
-        return chosen.rstrip("/")
-    raise ValueError(f"{ENV_THREED} is \"platform\", \"local\" or the URL of a running service, not {chosen!r}")
+
+# ── the placement: a port of packages/domain/world/kernels.js ────────────────────────────────────────────────────────
+#
+# The CommandAGI repository has ONE function that chooses where a kernel call runs: `callKernel` in
+# packages/domain/world/kernels.js, which the local host, the local platform's worker and the TypeScript SDK (a generated
+# copy) run. Python cannot run it, so `kernel_places` and `call_kernel` are its port, rule for rule. A change there is
+# a change here.
+
+KERNEL_NAMES = ("3d",)
+KERNEL_PLACES = ("local", "cloud")
+
+
+class KernelAbsent(Exception):
+    """A transport's kernel is not there (not installed, not configured): the next place is tried."""
+
+
+Transport = Callable[[str, Optional[Dict[str, Any]]], Tuple[int, Any]]
+
+
+def kernel_places(name: str, value: Any) -> List[str]:
+    """The places to try, in order, from the setting's value (a list, or the same list as one text with commas).
+    None or empty: local, then cloud."""
+    if name not in KERNEL_NAMES:
+        raise ValueError(f'no kernel "{name}": one of {", ".join(KERNEL_NAMES)}')
+    if value is None or value == "":
+        return list(KERNEL_PLACES)
+    items = [p.strip() for p in value.split(",") if p.strip()] if isinstance(value, str) else value
+    if not isinstance(items, (list, tuple)) or not items or any(p not in KERNEL_PLACES for p in items) or len(set(items)) != len(items):
+        raise ValueError(f'kernels.{name}.place is a list of "local" and "cloud", each at most once, not {json.dumps(value)}')
+    return list(items)
+
+
+def kernel_file(file: Any) -> Dict[str, str]:
+    """A file as an input: its content id (sha256 of its bytes, hex) and its bytes (base64)."""
+    data = file.encode("utf-8") if isinstance(file, str) else bytes(file)
+    return {"id": hashlib.sha256(data).hexdigest(), "bytes": base64.b64encode(data).decode("ascii")}
+
+
+def call_kernel(kernel: str, op: str, places: List[str], at: Dict[str, Optional[Transport]],
+                files: Optional[Dict[str, Any]] = None, params: Optional[Dict[str, Any]] = None) -> Tuple[int, Dict[str, Any]]:
+    """One call of ``op`` → (status, body), the body with ``ran`` set from the place it was sent to. A place with no
+    transport, a transport that raises :class:`KernelAbsent`, a 404 or a 503 ``kernel_unavailable`` falls to the next
+    place; any other answer is the answer. When no place ran it: 503 ``kernel_unavailable`` with each place and why.
+    ``op == "health"`` asks ``GET /v1/health``."""
+    import re
+
+    if not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", op):
+        return 400, {"error": f'"{op}" is not an op name'}
+    request = None
+    if op != "health":
+        request = {"inputs": {name: kernel_file(f) for name, f in (files or {}).items()}, "params": params or {}}
+    tried: List[Dict[str, str]] = []
+    for place in places:
+        send = at.get(place)
+        if send is None:
+            tried.append({"place": place, "why": "no such place here"})
+            continue
+        try:
+            status, body = send(f"/v1/{op}", request)
+        except KernelAbsent as e:
+            tried.append({"place": place, "why": str(e)})
+            continue
+        if not isinstance(body, dict):
+            body = {"error": "the kernel answered something that is not a JSON object"}
+        if status == 404 or (status == 503 and body.get("error") == "kernel_unavailable"):
+            tried.append({"place": place, "why": f'no op "{op}"' if status == 404 else str(body.get("reason") or body.get("error"))})
+            continue
+        ran = body.get("ran")
+        # An op's answer names its build in ``ran``; the health names it at the top.
+        build = ran.get("build") if isinstance(ran, dict) and isinstance(ran.get("build"), str) else body.get("build") if isinstance(body.get("build"), str) else None
+        return status, {**body, "ran": {"kernel": kernel, "build": build, "place": place}}
+    why = "; ".join(f"{t['place']}: {t['why']}" for t in tried) or "no places"
+    return 503, {"error": "kernel_unavailable", "reason": f"no place ran {kernel} {op}: {why}", "tried": tried}
+
+
+def where_of(where: Optional[str], env: Dict[str, str]) -> Tuple[List[str], Optional[str]]:
+    """Where a Kernel runs → (places, url of a running service or None). An argument wins, then ``COMMANDAGI_THREED``.
+    A URL there is the one place (local, at that URL); ``COMMANDAGI_THREED_URL`` names the local place's service."""
+    chosen = (where or env.get(ENV_THREED) or "").strip()
+    if chosen.startswith(("http://", "https://")):
+        return ["local"], chosen.rstrip("/")
+    try:
+        places = kernel_places("3d", chosen)
+    except ValueError:
+        raise ValueError(f'{ENV_THREED} is "local", "cloud", both apart by "," in the order to try, or the URL of a running service, not {chosen!r}') from None
+    url = (env.get(ENV_THREED_URL) or "").strip().rstrip("/")
+    return places, url or None
+
+
+def _http(url: str, key: str, body: Optional[Dict[str, Any]], timeout: float) -> Tuple[int, Any]:
+    """One request → (status, its JSON). Raises OSError when there was no answer."""
+    request = urllib.request.Request(
+        url, data=None if body is None else json.dumps(body).encode(), method="GET" if body is None else "POST",
+        headers={"authorization": f"Bearer {key}", **({} if body is None else {"content-type": "application/json"})},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=max(1.0, timeout)) as answer:
+            status, text = answer.status, answer.read().decode()
+    except urllib.error.HTTPError as e:
+        status, text = e.code, e.read().decode(errors="replace")
+    try:
+        return status, json.loads(text)
+    except ValueError:
+        return status, {"error": text[:300] or f"HTTP {status}"}
 
 
 class _Local:
@@ -93,6 +200,24 @@ class _Local:
     proc: Optional[subprocess.Popen] = None
     url = ""
     token = ""
+    installed: Optional[str] = None  # None: not asked yet; "": installed; else why it is not
+
+    @classmethod
+    def absent(cls) -> str:
+        """Why the local kernel cannot start here, or "" when it can. Asked once: ``commandagi threed status``."""
+        with cls.lock:
+            if cls.installed is None:
+                cli = shutil.which("commandagi")
+                if not cli:
+                    cls.installed = "no `commandagi` command is on PATH (npm install -g commandagi, then commandagi threed install)"
+                else:
+                    try:
+                        out = subprocess.run([cli, "threed", "status"], capture_output=True, text=True, timeout=60)
+                        said = json.loads(out.stdout.strip().splitlines()[-1]) if out.stdout.strip() else {}
+                        cls.installed = "" if said.get("installed") else "the local 3D kernel is not installed (commandagi threed install)"
+                    except (OSError, ValueError, subprocess.SubprocessError, IndexError) as e:
+                        cls.installed = f"`commandagi threed status` did not answer ({e})"
+            return cls.installed
 
     @classmethod
     def ensure(cls, start_timeout: float) -> None:
@@ -149,8 +274,9 @@ class _Local:
             proc.kill()
 
 
+
 class Kernel:
-    """The 3D design service, where ``where`` (or the environment) says it is. See the module's text."""
+    """The 3D kernel, placed where ``where`` (or the environment) says. See the module's text."""
 
     def __init__(
         self,
@@ -162,65 +288,70 @@ class Kernel:
         timeout: float = 300.0,
         start_timeout: float = 180.0,
     ) -> None:
-        self.where = where_of(where, dict(os.environ))
+        self.places, self._url = where_of(where, dict(os.environ))
         self.timeout = timeout
         self._start_timeout = start_timeout
-        if self.where == "platform":
-            self._key = api_key or os.environ.get(ENV_API_KEY)
-            if not self._key:
-                raise KernelError(f"the platform's 3D service needs an API key: pass api_key or set {ENV_API_KEY}, or set {ENV_THREED}=local")
-            self._base = (base_url or os.environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL).rstrip("/")
-        elif self.where != "local":
-            self._key = token or os.environ.get(ENV_THREED_TOKEN)
-            if not self._key:
-                raise KernelError(f"a running 3D service asks for its bearer: pass token or set {ENV_THREED_TOKEN}")
-            self._base = self.where
+        self._key = api_key or os.environ.get(ENV_API_KEY) or ""
+        self._base = (base_url or os.environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL).rstrip("/")
+        self._token = token or os.environ.get(ENV_THREED_TOKEN) or ""
+        if self._url and not self._token:
+            raise KernelError(f"a running 3D service asks for its bearer: pass token or set {ENV_THREED_TOKEN}")
+        #: Where the last answer ran: ``{"kernel", "build", "place"}``. ``local`` is this computer, never the cloud.
+        self.last_ran: Optional[Dict[str, Any]] = None
 
-    # ── transport ────────────────────────────────────────────────────────────────────────────────────────────────
-    def _post(self, route: str, body: Dict[str, Any]) -> Dict[str, Any]:
-        if self.where == "local":
+    # ── transports ───────────────────────────────────────────────────────────────────────────────────────────────
+    def _local(self, path: str, body: Optional[Dict[str, Any]]) -> Tuple[int, Any]:
+        if self._url:
+            base, key = self._url, self._token
+        else:
+            why = _Local.absent()
+            if why:
+                raise KernelAbsent(why)
             _Local.ensure(self._start_timeout)
             base, key = _Local.url, _Local.token
-        else:
-            base, key = self._base, self._key
+        try:
+            return _http(base + path, key, body, self.timeout)
+        except (urllib.error.URLError, OSError) as e:
+            raise KernelError(f"{path}: no answer from {base} ({getattr(e, 'reason', e)})") from None
+
+    def _cloud(self, path: str, body: Optional[Dict[str, Any]]) -> Tuple[int, Any]:
         # The platform starts a host for the first caller and answers 503 until it is up: ask again until the time is
-        # spent. A service on this computer is asked once.
+        # spent. A place that has no kernel (`kernel_unavailable`) is not waited for.
         deadline = time.monotonic() + self.timeout
         while True:
-            request = urllib.request.Request(
-                base + route, data=json.dumps(body).encode(), method="POST",
-                headers={"authorization": f"Bearer {key}", "content-type": "application/json"},
-            )
             try:
-                with urllib.request.urlopen(request, timeout=max(1.0, deadline - time.monotonic())) as answer:
-                    return json.loads(answer.read().decode())
-            except urllib.error.HTTPError as e:
-                text = e.read().decode(errors="replace")
-                failures = None
-                try:
-                    said = json.loads(text)
-                    why = said.get("error") or said.get("reason") or text
-                    if said.get("reason") and said.get("error"):
-                        why = f"{said['error']}: {said['reason']}"
-                    if isinstance(said.get("failures"), list):
-                        failures = said["failures"]
-                except ValueError:
-                    why = text[:300]
-                if e.code == 503 and self.where == "platform" and time.monotonic() + 3 < deadline:
-                    time.sleep(3)
-                    continue
-                raise KernelError(f"{route}: {why} (HTTP {e.code})", e.code, failures) from None
+                status, said = _http(f"{self._base}/kernels/3d{path}", self._key, body, deadline - time.monotonic())
             except (urllib.error.URLError, OSError) as e:
-                raise KernelError(f"{route}: no answer from {base} ({getattr(e, 'reason', e)})") from None
+                raise KernelError(f"{path}: no answer from {self._base} ({getattr(e, 'reason', e)})") from None
+            waiting = status == 503 and not (isinstance(said, dict) and said.get("error") == "kernel_unavailable")
+            if waiting and time.monotonic() + 3 < deadline:
+                time.sleep(3)
+                continue
+            return status, said
+
+    def call(self, op: str, doc: Any = None, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """One op of the kernel contract → the whole answer (``outputs``, ``result``, ``ran``). Raises
+        :class:`KernelError` with the kernel's refusal (``status``, and ``failures`` for a build that is not whole)."""
+        status, body = call_kernel(
+            "3d", op, self.places,
+            {"local": self._local, "cloud": self._cloud if self._key else None},
+            files={} if op == "health" else {"doc": _doc_text(doc)},
+            params={k: v for k, v in (params or {}).items() if v is not None},
+        )
+        self.last_ran = body.get("ran")
+        if status != 200:
+            why = body.get("error") or body.get("reason") or f"HTTP {status}"
+            if body.get("error") and body.get("reason"):
+                why = f"{body['error']}: {body['reason']}"
+            failures = body.get("failures") if isinstance(body.get("failures"), list) else None
+            raise KernelError(f"{op}: {why} (HTTP {status})", status, failures)
+        return body
 
     def _op(self, op: str, doc: Any, fields: Dict[str, Any]) -> Dict[str, Any]:
-        body = {"docText": _doc_text(doc), **{k: v for k, v in fields.items() if v is not None}}
-        if self.where == "platform":
-            return self._post("/threed/op", {"op": op, **body})
-        return self._post("/" + op, body)
+        return self.call(op, doc, fields)["result"]
 
     # ── what the kernel answers ──────────────────────────────────────────────────────────────────────────────────
-    def observe(self, doc: Any, *, doc_id: Optional[str] = None, materials: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    def observe(self, doc: Any, *, materials: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
         """Build the document. ``observation``: each body's bounds, volume, area, faces, edges and vertices;
         ``observation["status"]`` (``"built"``, or ``"failed"``: a body is then built from what did not fail) and
         ``observation["failures"]`` (each failed feature, with why). ``meshes``: the triangles.
@@ -229,16 +360,7 @@ class Kernel:
         density, and ``mass["massFrom"]`` says the row and its source. ``materials`` are the rows of your own tables,
         nearest first (``commandagi.design.standards.material``); the shipped table is read after them. A body with no
         grade has ``mass["noMass"]``."""
-        text = _doc_text(doc)
-        own = {"materials": materials} if materials else {}
-        if self.where != "platform":
-            return self._post("/observe", {"docText": text, "digest": "", **own})
-        if doc_id is None:
-            try:
-                doc_id = str(json.loads(text).get("id") or "sdk")
-            except ValueError:
-                doc_id = "sdk"
-        return self._post("/threed/observe", {"docId": doc_id, "docText": text, "digest": "", **own})
+        return self._op("observe", doc, {"digest": "", "materials": materials or None})
 
     def sheet(self, doc: Any, *, sheet: Optional[str] = None, format: str = "svg", materials: Optional[List[Dict[str, Any]]] = None,
               parts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:

@@ -6,6 +6,14 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 ## Unreleased
 
+Changed
+
+- `Kernel` speaks the kernel contract (`POST <kernel>/v1/<op>`, `GET <kernel>/v1/health`) and is placed by
+  `COMMANDAGI_THREED`: `local`, `cloud`, both apart by `,` in the order to try (default `local,cloud`), or a running
+  service's URL. `platform` is not a value now: write `cloud`. A place where the kernel is not installed is passed
+  over; a refusal of the op is the answer. `Kernel.last_ran` says where each answer ran (`local` is never a cloud
+  result), and `Kernel.call(op, doc, params)` gives a whole answer. `observe` takes no `doc_id`.
+
 Added
 
 - A 3D document's engineering vocabulary (`commandagi.design.threed`, checked against the one schema, as in the

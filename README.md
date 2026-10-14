@@ -185,13 +185,19 @@ open("plate.step", "w").write(kernel.export(plate, "step"))   # refused (KernelE
 A part is built in the order of its elements: the cut above follows the plate because it is written after it.
 `consumes=[…]` names the features a feature follows instead.
 
-One setting chooses the service:
+One setting says where it runs: `COMMANDAGI_THREED`, the places to try in order, apart by `,` (default `local,cloud`).
+A place where the kernel is not installed is passed over. A refusal of the op itself (a build that is not whole) is
+the answer: it is not asked of the next place. `kernel.last_ran` says where each answer ran (`{"kernel", "build",
+"place"}`); `place` is where the SDK sent the request, so a result made on this computer says `local` and is never a
+cloud result.
 
-| `COMMANDAGI_THREED` | the service | needs |
+| place | the kernel | needs |
 | --- | --- | --- |
-| `platform` (the default) | the hosted one | the network and `COMMANDAGI_API_KEY` |
-| `local` | this computer, offline, no account. `Kernel` starts it and stops it when Python exits | Node 22 and, once: `npm install -g commandagi` then `commandagi threed install` (it downloads OpenCascade as WebAssembly, about 130 MB) |
-| a URL (or `COMMANDAGI_THREED_URL`) | one that runs already: `commandagi threed serve --port 8091` | `COMMANDAGI_THREED_TOKEN`, the bearer you started it with |
+| `local` | this computer, offline, no account. `Kernel` starts it and stops it when Python exits; `COMMANDAGI_THREED_URL` names one that runs already (`commandagi threed serve --port 8091`) | Node 22 and, once: `npm install -g commandagi` then `commandagi threed install` (it downloads OpenCascade as WebAssembly, about 130 MB); for a running one, `COMMANDAGI_THREED_TOKEN`, the bearer you started it with |
+| `cloud` | the platform's kernel door (`/kernels/3d/v1/<op>`) | the network and `COMMANDAGI_API_KEY` |
+
+A URL in `COMMANDAGI_THREED` is that running service only. Both places speak one contract (`POST <kernel>/v1/<op>`,
+`GET <kernel>/v1/health`), and `kernel.call(op, doc, params)` gives a whole answer (`outputs`, `result`, `ran`).
 
 `observe(doc)`, `export(doc, "step" | "iges", bodies=)`, `measure(doc, "distance" | "angle" | "radius" | "closest", a,
 b)`, `measure_all(doc, [{"quantity", "a", "b"}, …])` (many on one build), `interference(doc, clearance=, bodies=)`,
@@ -222,7 +228,7 @@ graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"bod
 | `COMMANDAGI_API_KEY` | your `cagi_…` key. Its scopes decide what every call may do |
 | `COMMANDAGI_BASE_URL` | API origin (default `https://api.commandagi.com`) |
 | `COMMANDAGI_THREAD_ID` | default thread for self-thread methods. Set automatically when your code runs inside the platform |
-| `COMMANDAGI_THREED` | the 3D kernel `Kernel` calls: `platform` (the default), `local`, or a URL |
+| `COMMANDAGI_THREED` | where `Kernel` runs: `local`, `cloud`, both apart by `,` in the order to try (default `local,cloud`), or a running service's URL |
 | `COMMANDAGI_THREED_URL`, `COMMANDAGI_THREED_TOKEN` | a 3D design service that runs already, and its bearer |
 
 ## Versions
