@@ -4,6 +4,10 @@ import base64
 import hashlib
 import json
 import os
+import shutil
+import stat
+import sys
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -164,6 +168,30 @@ class Placed(unittest.TestCase):
                 Kernel().export("{}")
         self.assertEqual(nowhere.exception.status, 503)
         self.assertIn("local: no `commandagi` command is on PATH; cloud: no such place here", str(nowhere.exception))
+
+    def test_the_local_kernel_is_found_from_what_commandagi_threed_status_prints(self):
+        # The npm package's `commandagi threed status` prints one JSON object over several lines (cli.mjs: print).
+        folder = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, folder)
+        cli = os.path.join(folder, "commandagi")
+
+        def status_says(printed):
+            with open(cli, "w") as f:
+                f.write(f"#!{sys.executable}\nimport sys\nsys.stdout.write({printed!r})\n")
+            os.chmod(cli, os.stat(cli).st_mode | stat.S_IEXEC)
+            _Local.installed = None
+            with mock.patch.dict(os.environ, {"PATH": folder}, clear=True):
+                return _Local.absent()
+
+        here = {"dir": "/x/3d-design/eval", "installed": True, "available": True, "via": "local"}
+        self.assertEqual(status_says(json.dumps(here, indent=2) + "\n"), "")
+        self.assertIn("commandagi threed install", status_says(json.dumps({**here, "installed": False}, indent=2) + "\n"))
+        self.assertIn("commandagi threed install", status_says("Usage: commandagi\n"))
+        with mock.patch.dict(os.environ, {"PATH": folder}, clear=True):
+            with self.assertRaises(KernelError) as nowhere:
+                Kernel().export("{}")
+        self.assertIn("commandagi threed install", str(nowhere.exception))
+        self.assertNotIn("Expecting value", str(nowhere.exception))
 
 
 if __name__ == "__main__":

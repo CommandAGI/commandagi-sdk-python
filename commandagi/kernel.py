@@ -211,12 +211,23 @@ class _Local:
                 if not cli:
                     cls.installed = "no `commandagi` command is on PATH (npm install -g commandagi, then commandagi threed install)"
                 else:
+                    said: Any = None
                     try:
+                        # Its standard output is one JSON object, printed over several lines.
                         out = subprocess.run([cli, "threed", "status"], capture_output=True, text=True, timeout=60)
-                        said = json.loads(out.stdout.strip().splitlines()[-1]) if out.stdout.strip() else {}
-                        cls.installed = "" if said.get("installed") else "the local 3D kernel is not installed (commandagi threed install)"
-                    except (OSError, ValueError, subprocess.SubprocessError, IndexError) as e:
-                        cls.installed = f"`commandagi threed status` did not answer ({e})"
+                        heard = next(iter((out.stdout or out.stderr).strip().splitlines()), "nothing")
+                        said = json.loads(out.stdout)
+                    except (OSError, subprocess.SubprocessError) as e:
+                        heard = str(e)
+                    except ValueError:
+                        pass
+                    if not isinstance(said, dict):
+                        cls.installed = (f"`{cli} threed status` gave no status (it said: {heard[:200]}); install the local 3D "
+                                         "kernel with `npm install -g commandagi` then `commandagi threed install`")
+                    elif said.get("installed") is not True:
+                        cls.installed = "the local 3D kernel is not installed (run `commandagi threed install` once)"
+                    else:
+                        cls.installed = ""
             return cls.installed
 
     @classmethod
