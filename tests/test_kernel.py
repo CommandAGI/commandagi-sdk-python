@@ -170,7 +170,7 @@ class Placed(unittest.TestCase):
         self.assertIn("local: no `commandagi` command is on PATH; cloud: no such place here", str(nowhere.exception))
 
     def test_the_local_kernel_is_found_from_what_commandagi_threed_status_prints(self):
-        # The npm package's `commandagi threed status` prints one JSON object over several lines (cli.mjs: print).
+        # @commandagi/host's `commandagi threed status` prints one JSON object over several lines (cli.mjs: print).
         folder = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, folder)
         cli = os.path.join(folder, "commandagi")

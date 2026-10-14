@@ -21,8 +21,8 @@ file cannot say that two features are missing from it.
 where the kernel is not installed is passed over; a refusal of the op itself is the answer and is not asked elsewhere.
 
 =================  =====================================================================================================
-``local``          this computer, offline, no account. The SDK starts ``commandagi threed serve`` (the ``commandagi``
-                   npm package: ``npm install -g commandagi`` then ``commandagi threed install``, once) and stops it
+``local``          this computer, offline, no account. The SDK starts ``commandagi threed serve`` (the npm package
+                   ``@commandagi/host``: ``npm install -g @commandagi/host`` then ``commandagi threed install``, once) and stops it
                    when Python exits. ``COMMANDAGI_THREED_URL`` (with ``COMMANDAGI_THREED_TOKEN``) names one that
                    runs already in its place.
 ``cloud``          the platform's kernel door, with your ``COMMANDAGI_API_KEY``. Needs the network and an account.
@@ -209,7 +209,7 @@ class _Local:
             if cls.installed is None:
                 cli = shutil.which("commandagi")
                 if not cli:
-                    cls.installed = "no `commandagi` command is on PATH (npm install -g commandagi, then commandagi threed install)"
+                    cls.installed = "no `commandagi` command is on PATH (npm install -g @commandagi/host, then commandagi threed install)"
                 else:
                     said: Any = None
                     try:
@@ -223,7 +223,7 @@ class _Local:
                         pass
                     if not isinstance(said, dict):
                         cls.installed = (f"`{cli} threed status` gave no status (it said: {heard[:200]}); install the local 3D "
-                                         "kernel with `npm install -g commandagi` then `commandagi threed install`")
+                                         "kernel with `npm install -g @commandagi/host` then `commandagi threed install`")
                     elif said.get("installed") is not True:
                         cls.installed = "the local 3D kernel is not installed (run `commandagi threed install` once)"
                     else:
@@ -238,8 +238,8 @@ class _Local:
             cli = shutil.which("commandagi")
             if not cli:
                 raise KernelError(
-                    "the local 3D kernel is the `commandagi` npm package, and no `commandagi` command is on PATH. "
-                    "Install it once: `npm install -g commandagi` then `commandagi threed install`"
+                    "the local 3D kernel is the npm package `@commandagi/host`, and no `commandagi` command is on PATH. "
+                    "Install it once: `npm install -g @commandagi/host` then `commandagi threed install`"
                 )
             # The bearer is made here and lives in this process and the child's environment only.
             token = secrets.token_hex(32)

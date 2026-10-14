@@ -193,7 +193,7 @@ cloud result.
 
 | place | the kernel | needs |
 | --- | --- | --- |
-| `local` | this computer, offline, no account. `Kernel` starts it and stops it when Python exits; `COMMANDAGI_THREED_URL` names one that runs already (`commandagi threed serve --port 8091`) | Node 22 and, once: `npm install -g commandagi` then `commandagi threed install` (it downloads OpenCascade as WebAssembly, about 130 MB); for a running one, `COMMANDAGI_THREED_TOKEN`, the bearer you started it with |
+| `local` | this computer, offline, no account. `Kernel` starts it and stops it when Python exits; `COMMANDAGI_THREED_URL` names one that runs already (`commandagi threed serve --port 8091`) | Node 22 and, once: `npm install -g @commandagi/host` then `commandagi threed install` (it downloads OpenCascade as WebAssembly, about 130 MB); for a running one, `COMMANDAGI_THREED_TOKEN`, the bearer you started it with |
 | `cloud` | the platform's kernel door (`/kernels/3d/v1/<op>`) | the network and `COMMANDAGI_API_KEY` |
 
 A URL in `COMMANDAGI_THREED` is that running service only. Both places speak one contract (`POST <kernel>/v1/<op>`,
