@@ -64,8 +64,8 @@ class CommandAGI(GeneratedClient):
         http: Optional[requests.Session] = None,
         timeout: Optional[float] = 120.0,
     ) -> None:
-        """``timeout``: how many seconds a call waits for its answer (None: no limit). A long operation (an autoroute
-        of a large board) needs more than the default; ``call(..., timeout=...)`` sets it for one call."""
+        """``timeout``: how many seconds a call waits for its answer (None: no limit). A long operation (routing
+        a large board) needs more than the default; ``call(..., timeout=...)`` sets it for one call."""
         self.api_key = api_key or os.environ.get(ENV_API_KEY)
         if not self.api_key:
             raise CommandAGIError("", f"pass api_key or set {ENV_API_KEY}")

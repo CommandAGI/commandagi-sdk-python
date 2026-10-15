@@ -1250,33 +1250,6 @@
             "withThread": false
           },
           {
-            "name": "autoroute",
-            "tool": "pcb_autoroute",
-            "doc": "Route the board's open connections on the copper layers given (default the two outer layers, through vias) and write the traces into its code. The result names each connection left unrouted; `complete` is false while one is.",
-            "params": [
-              {
-                "name": "fileId",
-                "key": "fileId",
-                "type": "string",
-                "required": true,
-                "spread": false,
-                "prefix": null,
-                "cli": "positional"
-              },
-              {
-                "name": "opts",
-                "key": null,
-                "type": "object",
-                "required": false,
-                "spread": true,
-                "prefix": null,
-                "cli": "spread"
-              }
-            ],
-            "bound": {},
-            "withThread": false
-          },
-          {
             "name": "fabricate",
             "tool": "pcb_fabricate",
             "doc": "The manufacturing files of the board (Gerber layers, drill files, bill of materials, pick-and-place); `omitted` names what a file leaves out.",
@@ -1468,7 +1441,7 @@
           {
             "name": "routeNets",
             "tool": "pcb_route_nets",
-            "doc": "Route the nets named ({ nets }; all when none) with their net classes' rules; their copper is ripped up first. Names each connection it could not route.",
+            "doc": "Route what is open of the nets named ({ nets }; all when none) with their net classes' rules, from the copper they have, on the copper layers given ({ layers }; default the two outer layers, through vias), and write the traces into the board's code. { ripUp: true } removes the nets' copper first. The result names each connection left unrouted; `complete` is false while one is.",
             "params": [
               {
                 "name": "fileId",

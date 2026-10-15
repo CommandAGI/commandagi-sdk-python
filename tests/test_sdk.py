@@ -136,7 +136,7 @@ class Sessions(unittest.TestCase):
 
 
 class Timeouts(unittest.TestCase):
-    """A call waits as long as the caller says (feedback #8: a fixed 120 s cut long autoroutes off)."""
+    """A call waits as long as the caller says (feedback #8: a fixed 120 s cut long routing calls off)."""
 
     def setUp(self):
         import http.server
@@ -169,13 +169,13 @@ class Timeouts(unittest.TestCase):
     def test_the_clients_timeout_bounds_every_call(self):
         cagi = CommandAGI(api_key="cagi_test", base_url=self.url, timeout=0.2)
         with self.assertRaises(CommandAGIError) as caught:
-            cagi.call("pcb_autoroute", {})
-        self.assertEqual(caught.exception.tool, "pcb_autoroute")
+            cagi.call("pcb_route_nets", {})
+        self.assertEqual(caught.exception.tool, "pcb_route_nets")
         self.assertIn("no answer within 0.2 s", str(caught.exception))
 
     def test_a_calls_own_timeout_overrides_the_clients(self):
         cagi = CommandAGI(api_key="cagi_test", base_url=self.url, timeout=0.2)
-        self.assertEqual(cagi.call("pcb_autoroute", {}, timeout=5), {"ok": True})
+        self.assertEqual(cagi.call("pcb_route_nets", {}, timeout=5), {"ok": True})
         self.assertEqual(CommandAGI(api_key="cagi_test", base_url=self.url, timeout=None).call("whoami"), {"ok": True})
 
 

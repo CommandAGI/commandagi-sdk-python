@@ -29,7 +29,7 @@ cagi.call("list_snapshots")
 ```
 
 A call waits 120 s for its answer. `CommandAGI(timeout=600)` sets it for every call (None: no limit), and
-`cagi.call("pcb_autoroute", {...}, timeout=900)` for one call. A call with no answer in time raises
+`cagi.call("pcb_route_nets", {...}, timeout=900)` for one call. A call with no answer in time raises
 `CommandAGIError`; the platform may still finish the operation.
 
 A Python document can go where only TSX is read: `commandagi.design.to_tsx(result)` writes its root element as the

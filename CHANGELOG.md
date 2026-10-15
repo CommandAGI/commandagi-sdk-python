@@ -13,6 +13,11 @@ Added
 - `eda.layout`, `eda.layout_score`, `eda.check_layout`, `eda.constrain`, `eda.place_group`, `eda.route_nets`,
   `eda.rip_up`: the layout tools (`pcb_layout`, `pcb_layout_score`, …).
 
+Removed
+
+- `eda.autoroute` (`pcb_autoroute`): the board has one router. `eda.route_nets` routes what is open of the nets from
+  the copper they have, on the copper layers given (`layers`), and `ripUp: true` routes them whole.
+
 ## 0.5.1 (2026-10-15)
 
 Fixed
