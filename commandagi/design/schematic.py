@@ -38,6 +38,12 @@ The calls (the first arguments are positional attributes; everything else is a k
                                                                              marker); the electrical rule check does
                                                                              not report them as pins on nothing
     … spice=[{"id", "model", "terminals"}]                                   on any part: its SPICE package bindings
+    … part_number=, manufacturer=, mpn=, rating=, attrs={"Tolerance": "1%"}  on any part but a ground: its engineering
+                                                                             data, each a KiCad property of the part
+                                                                             (CommandAGI IPN, Manufacturer, MPN, Rating,
+                                                                             and attrs by their own names): the BOM and
+                                                                             the board's footprint carry them;
+                                                                             part_fields(inputs) reads them back
 
 ``sch_x`` and ``sch_y`` are the sheet's own coordinates: millimetres, Y DOWN. ``sch_rotation`` is 0, 90, 180 or 270
 degrees; ``sch_mirror`` is "x" or "y". A part with neither is declared and not placed. A library part's pins and body
@@ -80,7 +86,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 }
 
 __all__ = ["SCH_WIRE", "SCH_JUNCTION", "SCH_LABEL", "NET", "ATTACHMENT", "SHEET_PARTS", "SIGNATURES", "LIBRARY_PIN_PORT",
-           "sch_symbol_type_for", "declare_sheet", *define(globals(), "schematic", SIGNATURES)]
+           "PART_FIELDS", "part_fields", "sch_symbol_type_for", "declare_sheet", *define(globals(), "schematic", SIGNATURES)]
 
 
 def sch_symbol_type_for(sockets: List[str]) -> str:
@@ -193,6 +199,75 @@ def _no_connect(el: Element) -> Dict[str, Any]:
     return {"noConnect": list(v)}
 
 
+#: A part's fields: the engineering data a part states, each one KiCad ``property`` form on the part (``foreign``, the
+#: form the board editor writes), so the BOM, the KiCad board and a 3D body's join read one thing. The named
+#: arguments, by the property each writes (the TypeScript SDK's ``PART_FIELDS``); ``attrs`` holds any other field by its
+#: KiCad name.
+PART_FIELDS: Dict[str, str] = {"partNumber": "CommandAGI IPN", "manufacturer": "Manufacturer", "mpn": "MPN", "rating": "Rating"}
+_FIELD_EXAMPLES = {"partNumber": "MF-R-3K", "manufacturer": "Yageo", "mpn": "RC0805FR-073KL", "rating": "0.125 W"}
+#: The keyword each field is written with here.
+_FIELD_ARGS = {"partNumber": "part_number", "manufacturer": "manufacturer", "mpn": "mpn", "rating": "rating"}
+#: Fields a part holds otherwise: its reference, its value, its footprint.
+_OWN_FIELDS = ("Reference", "Value", "Footprint")
+_FIELD_PROPS = [*PART_FIELDS, "attrs"]
+
+
+def _field_form(name: str, value: str) -> Dict[str, Any]:
+    """One field as the part carries it: ``(property "MPN" "…" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))``."""
+    def sym(v: str) -> Dict[str, Any]:
+        return {"kind": "atom", "v": v, "q": False}
+
+    def lst(*items: Any) -> Dict[str, Any]:
+        return {"kind": "list", "items": list(items)}
+    return lst(sym("property"), {"kind": "atom", "v": name, "q": True}, {"kind": "atom", "v": value, "q": True},
+               lst(sym("at"), sym("0"), sym("0"), sym("0")),
+               lst(sym("effects"), lst(sym("font"), lst(sym("size"), sym("1.27"), sym("1.27"))), lst(sym("hide"), sym("yes"))))
+
+
+def _fields(el: Element) -> Dict[str, Any]:
+    """The fields a part states (``part_number``, ``manufacturer``, ``mpn``, ``rating``, ``attrs``), as its property forms."""
+    forms = []
+    for prop, name in PART_FIELDS.items():
+        v = el.props.get(prop)
+        if v is None:
+            continue
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError(f'{_where(el)}: {_FIELD_ARGS[prop]} is text ("{_FIELD_EXAMPLES[prop]}")')
+        forms.append(_field_form(name, v))
+    attrs = el.props.get("attrs")
+    if attrs is not None:
+        if not isinstance(attrs, dict) or not all(isinstance(v, str) and v.strip() for v in attrs.values()):
+            raise ValueError(f'{_where(el)}: attrs is an object of text ({{ Tolerance: "1%" }})')
+        for name, v in attrs.items():
+            named = next((a for a, n in PART_FIELDS.items() if n == name), None)
+            if named:
+                raise ValueError(f"{_where(el)}: attrs names {name}: say it with {_FIELD_ARGS[named]}=")
+            if not isinstance(name, str) or not name.strip() or name in _OWN_FIELDS:
+                raise ValueError(f"{_where(el)}: attrs names {name}, which is the part's own (its name, value or footprint)")
+            forms.append(_field_form(name, v))
+    return {"foreign": forms} if forms else {}
+
+
+def part_fields(inputs: Dict[str, Any]) -> Dict[str, Any]:
+    """A part's fields, read back from its node's inputs (the ``property`` forms it carries): the named ones by their
+    argument (``partNumber``, ``manufacturer``, ``mpn``, ``rating``), any other in ``attrs``. A part with none gives {}."""
+    out: Dict[str, Any] = {}
+    attrs: Dict[str, str] = {}
+    for form in inputs.get("foreign") or []:
+        items = form.get("items") if isinstance(form, dict) and form.get("kind") == "list" else None
+        if not items or len(items) < 3 or items[0].get("v") != "property":
+            continue
+        name, value = items[1].get("v"), items[2].get("v")
+        if not isinstance(name, str) or not isinstance(value, str) or name in _OWN_FIELDS:
+            continue
+        named = next((a for a, n in PART_FIELDS.items() if n == name), None)
+        if named:
+            out[named] = value
+        else:
+            attrs[name] = value
+    return {**out, **({"attrs": attrs} if attrs else {})}
+
+
 def _pin_number(written: str) -> str:
     m = re.match(r"^pin(.+)$", written, re.IGNORECASE)
     return m.group(1) if m else written
@@ -251,6 +326,7 @@ def _netlist_part(s: Scope, el: Element, ref: str) -> Dict[str, Any]:
     inputs["pins"] = pins
     inputs.update(_spice(el))
     inputs.update(_no_connect(el))
+    inputs.update(_fields(el))
     node = s.add(part_type_for(pins), inputs, id=ref, label=ref, meta=_meta(el))
     return {"ref": ref, "id": node.id, "units": {}, "ideal": None, "pins": pins}
 
@@ -266,7 +342,7 @@ def declare_sheet(children: List[Element]) -> None:
         ideal = SHEET_PARTS.get(el.tag)
         if ideal:
             _refuse_unknown(el, ["name", "spice", "noConnect", *_PLACE, *([ideal["value"]] if ideal["value"] else []),
-                                 *(["excitation"] if ideal.get("excitation") else [])])
+                                 *(["excitation"] if ideal.get("excitation") else []), *([] if ideal.get("power") else _FIELD_PROPS)])
             ref = el.props.get("name")
             if not isinstance(ref, str) or not ref:
                 raise ValueError(f"<{el.tag}> needs a name")
@@ -290,13 +366,14 @@ def declare_sheet(children: List[Element]) -> None:
                 inputs["excitation"] = _plain(el.props["excitation"], f"{_where(el)} excitation")
             inputs.update(_spice(el))
             inputs.update(_no_connect(el))
+            inputs.update(_fields(el))
             node = s.add(part_type_for(pins), inputs, id=ref, label=ref, meta=_meta(el))
             placed = {"ref": ref, "id": node.id, "units": {}, "ideal": ideal}
             _place(s, placed, 1, el, [p["id"] for p in pins])
             parts[ref] = placed
             continue
         if el.tag == "part":
-            _refuse_unknown(el, ["name", "symbol", "library", "value", "pins", "spice", "noConnect", *_PLACE])
+            _refuse_unknown(el, ["name", "symbol", "library", "value", "pins", "spice", "noConnect", *_FIELD_PROPS, *_PLACE])
             ref = _str(el, "name", "the part's reference (U1)")
             if ref in parts:
                 raise ValueError(f"two parts are called {ref}")
@@ -319,6 +396,7 @@ def declare_sheet(children: List[Element]) -> None:
             inputs.update(symbol=symbol, library=library, pins=[])
             inputs.update(_spice(el))
             inputs.update(_no_connect(el))
+            inputs.update(_fields(el))
             node = s.add(part_type_for([]), inputs, id=ref, label=ref, meta=_meta(el))
             placed = {"ref": ref, "id": node.id, "units": {}, "ideal": None}
             _place(s, placed, 1, el, [])

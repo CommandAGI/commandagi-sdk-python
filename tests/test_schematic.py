@@ -3,7 +3,7 @@ from (the source map the editor writes edits back with). Run: python -m unittest
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.schematic import sch_symbol_type_for
+from commandagi.design.schematic import part_fields, sch_symbol_type_for
 
 DIVIDER = '''from commandagi.design.schematic import ground, group, resistor, trace, voltagesource
 
@@ -142,6 +142,48 @@ result = group(
         for bad in ("[]", '"3"', "[3]", '["3", "3"]', '[""]'):
             with self.assertRaisesRegex(ValueError, "noConnect is a list of pin numbers"):
                 run(sheet(f'    part("K2", symbol="a:B", library="a.kicad_sym", no_connect={bad}),\n'), "s.sch.py")
+
+    def test_a_part_states_its_engineering_data_as_kicad_property_forms_read_back_by_part_fields(self):
+        n = run(sheet('''    resistor("R1", resistance="3k", sch_x=0, sch_y=0, part_number="MF-R-3K", manufacturer="Yageo", mpn="RC0805FR-073KL",
+             rating="0.125 W"),
+    part("K2", symbol="station:SSR", library="station.kicad_sym", sch_x=50.8, sch_y=0, mpn="G3NA-225B",
+         attrs={"Tolerance": "1%", "Datasheet": "https://example.com/g3na.pdf"}),
+    part("J1", pins=["1", "2"], part_number="MF-J-2"),
+'''), "fields.sch.py")["nodes"]
+        self.assertEqual(n["R1"]["inputs"]["foreign"], [field_form("CommandAGI IPN", "MF-R-3K"), field_form("Manufacturer", "Yageo"),
+                                                        field_form("MPN", "RC0805FR-073KL"), field_form("Rating", "0.125 W")])
+        self.assertEqual(n["K2"]["inputs"]["foreign"], [field_form("MPN", "G3NA-225B"), field_form("Tolerance", "1%"),
+                                                        field_form("Datasheet", "https://example.com/g3na.pdf")])
+        self.assertEqual(part_fields(n["R1"]["inputs"]), {"partNumber": "MF-R-3K", "manufacturer": "Yageo", "mpn": "RC0805FR-073KL", "rating": "0.125 W"})
+        self.assertEqual(part_fields(n["K2"]["inputs"]), {"mpn": "G3NA-225B", "attrs": {"Tolerance": "1%", "Datasheet": "https://example.com/g3na.pdf"}})
+        self.assertEqual(part_fields(n["J1"]["inputs"]), {"partNumber": "MF-J-2"})
+        k2 = '    part("K2", symbol="a:B", library="a.kicad_sym", {}),\n'
+        for bad in ('""', "3", '["X"]'):
+            with self.assertRaisesRegex(ValueError, r'mpn is text \("RC0805FR-073KL"\)'):
+                run(sheet(k2.format(f"mpn={bad}")), "s.sch.py")
+        with self.assertRaisesRegex(ValueError, r'attrs is an object of text \(\{ Tolerance: "1%" \}\)'):
+            run(sheet(k2.format('attrs={"Tolerance": 1}')), "s.sch.py")
+        # One field, one way to say it: a field the part has an argument for, or its own name, value or footprint.
+        with self.assertRaisesRegex(ValueError, "attrs names MPN: say it with mpn="):
+            run(sheet(k2.format('attrs={"MPN": "X"}')), "s.sch.py")
+        with self.assertRaisesRegex(ValueError, "attrs names CommandAGI IPN: say it with part_number="):
+            run(sheet(k2.format('attrs={"CommandAGI IPN": "X"}')), "s.sch.py")
+        with self.assertRaisesRegex(ValueError, "attrs names Value, which is the part's own"):
+            run(sheet(k2.format('attrs={"Value": "X"}')), "s.sch.py")
+        with self.assertRaisesRegex(ValueError, "prop mpn is not read"):
+            run(sheet('    junction("J", sch_x=0, sch_y=0, mpn="X"),\n'), "s.sch.py")
+
+
+def field_form(name, value):
+    """A part's field as the part carries it: KiCad's ``property`` form, as the board editor writes one."""
+    def sym(v):
+        return {"kind": "atom", "v": v, "q": False}
+
+    def lst(*items):
+        return {"kind": "list", "items": list(items)}
+    return lst(sym("property"), {"kind": "atom", "v": name, "q": True}, {"kind": "atom", "v": value, "q": True},
+               lst(sym("at"), sym("0"), sym("0"), sym("0")),
+               lst(sym("effects"), lst(sym("font"), lst(sym("size"), sym("1.27"), sym("1.27"))), lst(sym("hide"), sym("yes"))))
 
 
 if __name__ == "__main__":
