@@ -14,7 +14,8 @@ A record is an element and its fields are the element's attributes; a list of re
 
     world(name, kind, description?, from_?, model?,   world.py             space, unit(uid …), view, scene (body children)
           links?)
-    device(name …)                                    definition.py        channel(id, dir, medium, format, transport …)
+    device(name …, firmware?, revision?)              definition.py        channel(id, dir, medium, format, transport …)
+    firmware(name, hardware?)                         firmware.py          channel(id, dir, medium, format, transport …)
     dashboard(name …)                                 <name>.dashboard.py  param(id, type …), one layout: split(axis,
                                                                            ratio) of two split|pane(id, kind …), or one
                                                                            pane; region(side, tab …)
@@ -49,6 +50,7 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "world": _HOLDS, "space": {"snake": ["origin_mm", "size_mm"]}, "unit": {"snake": ["size_mm"]}, "view": {}, "scene": _HOLDS, "body": {},
     "device": {**_HOLDS, "snake": ["model_number", "product_url", "price_usd", "record_hz", "spec_check", "dimensions_mm"]}, "channel": {},
+    "firmware": _HOLDS,
     "dashboard": _HOLDS, "param": {}, "split": _HOLDS, "pane": {}, "region": {},
     "geoproject": _HOLDS, "dateRange": {}, "camera": {}, "reference": {},
     "opgraph": _HOLDS, "node": {}, "wire": {},
@@ -130,6 +132,22 @@ _DEVICE = Vocabulary("device", "a device definition", "device", {
     "device": {"parents": [], "required": ["name"]},
     "channel": {"parents": ["device"], "key": "id", "required": ["id"]},
 }, _device, lambda doc: _unsupported("device"))
+
+
+# ── firmware.py (what a firmware says it gives: its channels and the hardware revisions it is built for) ──────────────
+
+
+def _firmware(t: DocTree) -> Dict[str, Any]:
+    if "channels" in t["attrs"]:
+        raise ValueError("<firmware>: write each channel as a <channel> element, not a channels attribute")
+    channels = [_attrs(c) for c in _kids(t, "channel")]
+    return {**_attrs(t), **({"channels": channels} if channels else {})}
+
+
+_FIRMWARE = Vocabulary("firmware", "a firmware's declaration", "firmware", {
+    "firmware": {"parents": [], "required": ["name"]},
+    "channel": {"parents": ["firmware"], "key": "id", "required": ["id"]},
+}, _firmware, lambda doc: _unsupported("firmware"))
 
 
 # ── <name>.dashboard.py ────────────────────────────────────────────────────────────────────────────────────────────
@@ -295,7 +313,7 @@ def _unsupported(format: str) -> DocTree:
 
 
 #: The vocabularies of the ontology's files, by format.
-ONTOLOGY = {"world": _WORLD, "device": _DEVICE, "dashboard": _DASHBOARD, "geo": _GEO, "opgraph": _OPGRAPH}
+ONTOLOGY = {"world": _WORLD, "device": _DEVICE, "firmware": _FIRMWARE, "dashboard": _DASHBOARD, "geo": _GEO, "opgraph": _OPGRAPH}
 
 for _v in ONTOLOGY.values():
     register_vocabulary(_v, "ontology")
