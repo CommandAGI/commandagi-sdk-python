@@ -96,7 +96,10 @@ def _doc_text(doc: Any) -> str:
 # a change here.
 
 KERNEL_NAMES = ("3d", "fea")
-KERNEL_PLACES = ("local", "cloud")
+# ``page`` is the workbench page's own kernel (``observe`` only): Python has no transport for it and passes it over.
+KERNEL_PLACES = ("page", "local", "cloud")
+# The page holds only the 3D kernel: the fea kernel's places begin on this computer.
+DEFAULT_PLACES = {"3d": ("page", "local", "cloud"), "fea": ("local", "cloud")}
 
 
 class KernelAbsent(Exception):
@@ -108,14 +111,14 @@ Transport = Callable[[str, Optional[Dict[str, Any]]], Tuple[int, Any]]
 
 def kernel_places(name: str, value: Any) -> List[str]:
     """The places to try, in order, from the setting's value (a list, or the same list as one text with commas).
-    None or empty: local, then cloud."""
+    None or empty: the page, this computer, then the cloud."""
     if name not in KERNEL_NAMES:
         raise ValueError(f'no kernel "{name}": one of {", ".join(KERNEL_NAMES)}')
     if value is None or value == "":
-        return list(KERNEL_PLACES)
+        return list(DEFAULT_PLACES[name])
     items = [p.strip() for p in value.split(",") if p.strip()] if isinstance(value, str) else value
     if not isinstance(items, (list, tuple)) or not items or any(p not in KERNEL_PLACES for p in items) or len(set(items)) != len(items):
-        raise ValueError(f'kernels.{name}.place is a list of "local" and "cloud", each at most once, not {json.dumps(value)}')
+        raise ValueError(f'kernels.{name}.place is a list of "page", "local", "cloud", each at most once, not {json.dumps(value)}')
     return list(items)
 
 
@@ -171,7 +174,7 @@ def where_of(where: Optional[str], env: Dict[str, str]) -> Tuple[List[str], Opti
     try:
         places = kernel_places("3d", chosen)
     except ValueError:
-        raise ValueError(f'{ENV_THREED} is "local", "cloud", both apart by "," in the order to try, or the URL of a running service, not {chosen!r}') from None
+        raise ValueError(f'{ENV_THREED} is a list of "page", "local" and "cloud" apart by "," in the order to try (Python passes "page" over), or the URL of a running service, not {chosen!r}') from None
     url = (env.get(ENV_THREED_URL) or "").strip().rstrip("/")
     return places, url or None
 

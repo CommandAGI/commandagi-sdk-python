@@ -55,12 +55,12 @@ def doc_of(body):
 
 class Places(unittest.TestCase):
     def test_one_setting_chooses_the_places(self):
-        self.assertEqual(where_of(None, {}), (["local", "cloud"], None))
+        self.assertEqual(where_of(None, {}), (["page", "local", "cloud"], None))
         self.assertEqual(where_of(None, {"COMMANDAGI_THREED": "cloud"}), (["cloud"], None))
         self.assertEqual(where_of(None, {"COMMANDAGI_THREED": "cloud, local", "COMMANDAGI_THREED_URL": "http://127.0.0.1:8091/"}), (["cloud", "local"], "http://127.0.0.1:8091"))
         self.assertEqual(where_of("http://127.0.0.1:8091/", {"COMMANDAGI_THREED": "cloud"}), (["local"], "http://127.0.0.1:8091"))
         for bad in ("platform", "local,local", "moon"):
-            with self.assertRaisesRegex(ValueError, '"local", "cloud"'):
+            with self.assertRaisesRegex(ValueError, '"page", "local" and "cloud"'):
                 where_of(None, {"COMMANDAGI_THREED": bad})
         self.assertEqual(kernel_places("3d", ["cloud"]), ["cloud"])
 
