@@ -414,6 +414,14 @@ class Kernel:
         ``points``. ``bodies`` lists each body's id, part name and volume."""
         return self._op("interference", doc, {"clearance": clearance, "bodies": bodies, "parts": parts})
 
+    def check(self, doc: Any, *, parts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """The checks the document declares (``check(kind=…)``), run on one build, with its ``accept`` and ``permitted``
+        entries applied: each finding with its ``check``, ``rule``, ``severity``, ``body`` (id, name, part number),
+        ``world`` and body-local ``local`` location; each check's ``status`` (``skipped`` with its ``reason`` when it could
+        not run, never ``passed``) and its ``limits``. ``problems`` counts the standing errors and the skipped checks. A
+        document that declares none gets the interference check."""
+        return self._op("check", doc, {"parts": parts})
+
     def drawing(self, doc: Any, *, direction: Optional[List[float]] = None, up: Optional[List[float]] = None,
                 bodies: Optional[List[str]] = None, section: Optional[Dict[str, Any]] = None, parts: Optional[Dict[str, Any]] = None) -> Any:
         """A drawing view with hidden lines removed: the visible and hidden edges projected along ``direction``."""

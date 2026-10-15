@@ -93,7 +93,8 @@ class Placed(unittest.TestCase):
                     "/v1/sheet": (200, {"result": {"sheet": "sheet1", "format": "pdf", "contentBase64": "JVBERg=="}}),
                     "/v1/bom": (200, {"result": {"lines": [], "csv": "item\n"}}),
                     "/v1/observe": (200, {"result": {"observation": {"bodies": [], "errors": {}}, "meshes": [], "meshTris": 0}}),
-                    "/v1/health": (200, {"kernel": "3d", "build": "sha256:abc"})}[path]
+                    "/v1/health": (200, {"kernel": "3d", "build": "sha256:abc"}),
+                    "/v1/check": (200, {"result": {"declared": True, "checks": [{"id": "clash", "kind": "interference", "status": "passed"}], "findings": [], "problems": 0}})}[path]
 
         server, url, seen = serve(answer)
         try:
@@ -115,6 +116,8 @@ class Placed(unittest.TestCase):
                 self.assertEqual(kernel.bom("{}", parts=linked_parts({"plate.3d.py": plate}), materials=mine)["csv"], "item\n")
                 kernel.observe("{}", materials=mine)
                 self.assertEqual(kernel.call("health")["build"], "sha256:abc")
+                self.assertEqual(kernel.check(plate)["checks"][0]["status"], "passed")
+            self.assertEqual(seen[8][0], "/v1/check")
             self.assertEqual(refused.exception.status, 422)
             self.assertIn("no such body", str(refused.exception))
             self.assertEqual(partial.exception.failures, FAILED["failures"])
