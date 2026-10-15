@@ -189,8 +189,8 @@ class ThreeDTests(unittest.TestCase):
     def test_a_bodys_engineering_data_a_joint_a_mate_and_a_sheet_are_typed_elements(self):
         engineering = {
             "partNumber": "CA-0001", "material": "6061-T6", "process": "cnc-milling", "finish": "anodize clear, 10 µm",
-            "vendor": {"name": "Misumi", "partNumber": "HFS5-2020-300"},
-            "cost": {"amount": 12.5, "currency": "USD", "source": "quote Q-118", "date": "2026-10-01"},
+            "suppliers": [{"name": "Misumi", "sku": "HFS5-2020-300", "currency": "USD", "priceBreaks": [{"quantity": 1, "unitPrice": 12.5}],
+                           "source": "quote Q-118", "date": "2026-10-01"}],
         }
         j1 = {"id": "j1", "kind": "revolute", "a": "base", "b": "arm", "anchor": [0, 0, 40], "axis": [0, 0, 1], "limits": [-1.5, 1.5],
               "refA": {"kind": "face", "point": [0, 0, 40], "direction": [0, 0, 1]}}
@@ -223,8 +223,8 @@ class ThreeDTests(unittest.TestCase):
         refused('<joint id="j1">: anchor: is required', joint(id="j1", kind="fixed", a="base"))
         refused('<body id="base">: engineering/process: must be one of cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, '
                 'sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, '
-                'manual, purchased (got "magic"); engineering/cost/currency: is required',
-                body(id="base", engineering={"process": "magic", "cost": {"amount": 1, "source": "x", "date": "2026-10-01"}}))
+                'manual, purchased (got "magic"); engineering/suppliers/0/name: is required',
+                body(id="base", engineering={"process": "magic", "suppliers": [{"sku": "x"}]}))
         refused('<slot name="dynamics">: joints are written as joint(…) elements', slot(name="dynamics", value={"joints": []}))
         refused("two joint elements are called j1", joint(**{k: v for k, v in j1.items() if k != "refA"}), joint(**{k: v for k, v in j1.items() if k != "refA"}))
         with self.assertRaisesRegex(ValueError, "drawings is not a slot"):

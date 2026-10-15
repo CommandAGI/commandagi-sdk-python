@@ -51,6 +51,9 @@ The calls (the first arguments are positional attributes; everything else is a k
                                                                              package ("<n> pins, pitch <mm> mm, body
                                                                              <l> x <w> mm"): check(kind="pinout") and
                                                                              check(kind="footprint") read them
+    … suppliers=, alternates=, datasheet=, lifecycle=, compliance=, shipping=  its logistics, as KiCad properties too
+                                                                             (``part_fields.py``; LCSC Part, Datasheet,
+                                                                             RoHS, HS Code …)
 
 ``sch_x`` and ``sch_y`` are the sheet's own coordinates: millimetres, Y DOWN. ``sch_rotation`` is 0, 90, 180 or 270
 degrees; ``sch_mirror`` is "x" or "y". A part with neither is declared and not placed. A library part's pins and body
@@ -69,6 +72,7 @@ from .circuit_checks import declare_circuit_checks
 from .eda import circuit, part_type_for
 from .element import Element, child_elements, declares, define
 from .ir import Scope, channels, current_scope, slug
+from .part_fields import FIELD_ARGUMENTS, PART_FIELDS, part_field_forms, part_fields
 
 SCH_WIRE = "sch.wire"
 SCH_JUNCTION = "sch.junction"
@@ -208,84 +212,14 @@ def _no_connect(el: Element) -> Dict[str, Any]:
     return {"noConnect": list(v)}
 
 
-#: A part's fields: the engineering data a part states, each one KiCad ``property`` form on the part (``foreign``, the
-#: form the board editor writes), so the BOM, the KiCad board and a 3D body's join read one thing. The named
-#: arguments, by the property each writes (the TypeScript SDK's ``PART_FIELDS``); ``attrs`` holds any other field by its
-#: KiCad name.
-PART_FIELDS: Dict[str, str] = {"partNumber": "CommandAGI IPN", "manufacturer": "Manufacturer", "mpn": "MPN", "rating": "Rating",
-                               "pinoutVerified": "Pinout Verified", "footprintVerified": "Footprint Verified",
-                               "packageDimensions": "Package Dimensions"}
-_FIELD_EXAMPLES = {"partNumber": "MF-R-3K", "manufacturer": "Yageo", "mpn": "RC0805FR-073KL", "rating": "0.125 W",
-                   "pinoutVerified": "datasheet https://www.ti.com/lit/ds/symlink/sn74lvc1t45.pdf p. 3, 2026-10-15",
-                   "footprintVerified": "measured 2026-10-15, calipers on the reel's part",
-                   "packageDimensions": "6 pins, pitch 0.95 mm, body 2.9 x 1.6 mm"}
-#: The keyword each field is written with here.
-_FIELD_ARGS = {"partNumber": "part_number", "manufacturer": "manufacturer", "mpn": "mpn", "rating": "rating",
-               "pinoutVerified": "pinout_verified", "footprintVerified": "footprint_verified", "packageDimensions": "package_dimensions"}
-#: How a pinout or a footprint is known, and a datasheet's package (the TypeScript SDK's ``VERIFIED``, ``PACKAGE``):
-#: the circuit's ``check(kind="pinout")`` and ``check(kind="footprint")`` read them.
-_VERIFIED = re.compile(r"^(?:memory|datasheet https?://\S+ p\. \d+, \d{4}-\d{2}-\d{2}|measured \d{4}-\d{2}-\d{2}(?:, .+)?)$")
-_PACKAGE = re.compile(r"^\d+ pins, pitch \d+(?:\.\d+)? mm, body \d+(?:\.\d+)? x \d+(?:\.\d+)? mm$")
-_GRAMMAR = {"pinoutVerified": _VERIFIED, "footprintVerified": _VERIFIED, "packageDimensions": _PACKAGE}
-#: Fields a part holds otherwise: its reference, its value, its footprint.
-_OWN_FIELDS = ("Reference", "Value", "Footprint")
-_FIELD_PROPS = [*PART_FIELDS, "attrs"]
-
-
-def _field_form(name: str, value: str) -> Dict[str, Any]:
-    """One field as the part carries it: ``(property "MPN" "…" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))``."""
-    def sym(v: str) -> Dict[str, Any]:
-        return {"kind": "atom", "v": v, "q": False}
-
-    def lst(*items: Any) -> Dict[str, Any]:
-        return {"kind": "list", "items": list(items)}
-    return lst(sym("property"), {"kind": "atom", "v": name, "q": True}, {"kind": "atom", "v": value, "q": True},
-               lst(sym("at"), sym("0"), sym("0"), sym("0")),
-               lst(sym("effects"), lst(sym("font"), lst(sym("size"), sym("1.27"), sym("1.27"))), lst(sym("hide"), sym("yes"))))
+#: The props that state a part's fields (its text fields and its logistics: ``part_fields.py``).
+_FIELD_PROPS = FIELD_ARGUMENTS
 
 
 def _fields(el: Element) -> Dict[str, Any]:
-    """The fields a part states (``part_number``, ``manufacturer``, ``mpn``, ``rating``, ``attrs``), as its property forms."""
-    forms = []
-    for prop, name in PART_FIELDS.items():
-        v = el.props.get(prop)
-        if v is None:
-            continue
-        if not isinstance(v, str) or not v.strip() or (prop in _GRAMMAR and not _GRAMMAR[prop].match(v)):
-            raise ValueError(f'{_where(el)}: {_FIELD_ARGS[prop]} is text ("{_FIELD_EXAMPLES[prop]}")')
-        forms.append(_field_form(name, v))
-    attrs = el.props.get("attrs")
-    if attrs is not None:
-        if not isinstance(attrs, dict) or not all(isinstance(v, str) and v.strip() for v in attrs.values()):
-            raise ValueError(f'{_where(el)}: attrs is an object of text ({{ Tolerance: "1%" }})')
-        for name, v in attrs.items():
-            named = next((a for a, n in PART_FIELDS.items() if n == name), None)
-            if named:
-                raise ValueError(f"{_where(el)}: attrs names {name}: say it with {_FIELD_ARGS[named]}=")
-            if not isinstance(name, str) or not name.strip() or name in _OWN_FIELDS:
-                raise ValueError(f"{_where(el)}: attrs names {name}, which is the part's own (its name, value or footprint)")
-            forms.append(_field_form(name, v))
+    """The fields a part states, as its property forms (``part_fields.py``)."""
+    forms = part_field_forms(_where(el), el.props)
     return {"foreign": forms} if forms else {}
-
-
-def part_fields(inputs: Dict[str, Any]) -> Dict[str, Any]:
-    """A part's fields, read back from its node's inputs (the ``property`` forms it carries): the named ones by their
-    argument (``partNumber``, ``manufacturer``, ``mpn``, ``rating``), any other in ``attrs``. A part with none gives {}."""
-    out: Dict[str, Any] = {}
-    attrs: Dict[str, str] = {}
-    for form in inputs.get("foreign") or []:
-        items = form.get("items") if isinstance(form, dict) and form.get("kind") == "list" else None
-        if not items or len(items) < 3 or items[0].get("v") != "property":
-            continue
-        name, value = items[1].get("v"), items[2].get("v")
-        if not isinstance(name, str) or not isinstance(value, str) or name in _OWN_FIELDS:
-            continue
-        named = next((a for a, n in PART_FIELDS.items() if n == name), None)
-        if named:
-            out[named] = value
-        else:
-            attrs[name] = value
-    return {**out, **({"attrs": attrs} if attrs else {})}
 
 
 def _pin_number(written: str) -> str:

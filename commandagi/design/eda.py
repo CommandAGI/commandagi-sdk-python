@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from .ir import Declaration, NodeRef, Out, Scope, channels, current_scope, slug, using
+from .part_fields import part_field_forms
 
 _SMD = ["F.Cu", "F.Paste", "F.Mask"]
 _TH = ["*.Cu", "*.Mask"]
@@ -133,8 +134,21 @@ def board(width: float, height: float, origin: Tuple[float, float] = (0, 0), thi
 
 
 def component(ref: str, footprint: Dict[str, Any], value: Optional[str] = None, at: Any = None, pin_names: Optional[Dict[str, str]] = None,
-              aliases: Optional[Dict[str, str]] = None, symbol: Optional[str] = None) -> PartRef:
+              aliases: Optional[Dict[str, str]] = None, symbol: Optional[str] = None, part_number: Optional[str] = None,
+              manufacturer: Optional[str] = None, mpn: Optional[str] = None, rating: Optional[str] = None,
+              attrs: Optional[Dict[str, str]] = None, suppliers: Optional[List[Dict[str, Any]]] = None,
+              alternates: Optional[List[Dict[str, Any]]] = None, datasheet: Optional[str] = None,
+              lifecycle: Optional[Dict[str, Any]] = None, compliance: Optional[Dict[str, Any]] = None,
+              shipping: Optional[Dict[str, Any]] = None, pinout_verified: Optional[str] = None,
+              footprint_verified: Optional[str] = None, package_dimensions: Optional[str] = None) -> PartRef:
+    """A part of the circuit. Its engineering data and logistics (``part_number`` … ``package_dimensions``) are KiCad
+    property forms, the same as a schematic part's (``part_fields.py``)."""
     s = _scope("component()")
+    fields = part_field_forms(f'component(ref="{ref}")', {
+        "partNumber": part_number, "manufacturer": manufacturer, "mpn": mpn, "rating": rating, "attrs": attrs,
+        "suppliers": suppliers, "alternates": alternates, "datasheet": datasheet, "lifecycle": lifecycle,
+        "compliance": compliance, "shipping": shipping, "pinoutVerified": pinout_verified,
+        "footprintVerified": footprint_verified, "packageDimensions": package_dimensions})
     pins = []
     for p in footprint["pads"]:
         name = (pin_names or {}).get(p["number"], p.get("name"))
@@ -154,6 +168,8 @@ def component(ref: str, footprint: Dict[str, Any], value: Optional[str] = None, 
         inputs["placement"] = {"x": at[0], "y": at[1], "rot": 0, "side": "top"} if isinstance(at, (tuple, list)) else {"rot": 0, "side": "top", **at}
     if footprint.get("attr"):
         inputs["attr"] = footprint["attr"]
+    if fields:
+        inputs["foreign"] = fields
     node = s.add(part_type_for(pins), inputs, id=f"part_{ref}", label=ref)
     handle = PartRef(s, node.id, ref, [{k: v for k, v in p.items() if k != "pad"} for p in pins], {k.lower(): v for k, v in (aliases or {}).items()})
     s.state["parts"][ref] = handle

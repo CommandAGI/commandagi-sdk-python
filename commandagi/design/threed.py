@@ -47,7 +47,13 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
                                               projection(id=, ref=, feature=)
     body(id=, name=, material=, engineering=) a body's own data (``bodyMeta[id]``): its name, its look (``material``)
                                               and what it is (``engineering``: the material grade by its id in a
-                                              materials table, the process, the finish, the vendor and the cost)
+                                              materials table, the process and how it is made, the finish, its
+                                              suppliers and their terms, its inspection, compliance, shipping and
+                                              lifecycle; docs/formats.md § logistics)
+    item(id=, name=, qty=, ref=, engineering=)   a part of the product with no geometry here (``items``): a cable in
+                                              the box, or another design by ``ref`` (a board's .pcb.tsx)
+    assemble(id=, order=, parts=, fasteners=, tools=, fixture=, by=, minutes=, rate_per_hour=, currency=, instruction=)
+                                              one assembly step (``assemblySteps``)
     joint(id=, kind=, a=, b=, anchor=, axis=, limits=, …)   a joint between two bodies (``dynamics.joints``): fixed,
                                               revolute, prismatic, cylindrical, planar, screw, spherical or universal
     mate(id=, kind=, a=, b=, axis=, …)        a mate between two components of an assembly (``assembly.mates``)
@@ -93,7 +99,7 @@ from .threed_schema import SCHEMA
 THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
-_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "mate", "sheet", "check", "accept", "permitted", "fastener", "point", "constraint", "projection", "line", "circle",
+_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "mate", "sheet", "check", "accept", "permitted", "fastener", "item", "assemble", "point", "constraint", "projection", "line", "circle",
                  "arc", "spline", "ellipse", "ellipseArc", "input"}
 #: A sketch's segment kinds, by tag.
 SKETCH_SEGMENTS: List[str] = ["line", "circle", "arc", "spline", "ellipse", "ellipseArc"]
@@ -109,7 +115,7 @@ _VIEW_ATTRS = ["semanticVisibility"]
 _PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step", "tolerance"]
 #: Document fields a slot may not hold: they have elements of their own, or are the graph itself.
 _NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility",
-              "drawings", "checks", "accepted", "permitted", "fasteners"}
+              "drawings", "checks", "accepted", "permitted", "fasteners", "items", "assemblySteps"}
 #: Elements that are the items of a list the document holds: the tag, the document field (its node), the port of that
 #: node that holds the list, and the definition each item is checked against (``SCHEMA["$defs"]``).
 THREED_LISTS: Dict[str, Dict[str, str]] = {
@@ -120,6 +126,8 @@ THREED_LISTS: Dict[str, Dict[str, str]] = {
     "accept": {"node": "accepted", "port": "value", "def": "AcceptedFinding"},
     "permitted": {"node": "permitted", "port": "value", "def": "PermittedFinding"},
     "fastener": {"node": "fasteners", "port": "value", "def": "FastenerStack"},
+    "item": {"node": "items", "port": "value", "def": "ProductItem"},
+    "assemble": {"node": "assemblySteps", "port": "value", "def": "AssemblyStep"},
 }
 #: Slots whose value is an object: each field is a port of the slot's node; any other slot holds its value whole.
 _OBJECT_SLOTS = {"environment", "assembly", "sceneConstraints", "dynamics", "animation", "optimization", "standardParts"}
@@ -128,7 +136,7 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the 3D document: what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "part": _HOLDS, "assembly": _HOLDS, "parameter": {}, "plane": {}, "body": {}, "slot": {}, "feature": {},
-    "joint": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {},
+    "joint": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "item": {}, "assemble": {},
     **{t: (_HOLDS if t == "sketch" else {}) for t in THREED_FEATURES},
     "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {},
 }

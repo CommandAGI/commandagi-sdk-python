@@ -57,6 +57,15 @@ them; the editor and the layout operations write each one back):
     thermal(name, parts, watts, spacing, away_from, distance)
     objective(weights)                the weight of each term of the layout score.
 
+How the board is made (docs/formats.md § logistics):
+    fab(suppliers, finish, mask, silk, min_track, min_space, min_drill, min_annular_ring, max_layers, thicknesses,
+        assembly, inspection, compliance, shipping)
+                                      the fab house (the first of ``suppliers``, with its terms), its capabilities for
+                                      the service ordered (mm), the finish, the solder mask and silk colours, the
+                                      assembly ({"house", "sides"}), the board's test ({"electrical", "procedure",
+                                      "acceptance", …}), its compliance and shipping. One per board. The board's
+                                      layers, thickness and copper stay its own.
+
 Coordinates are the board's own: millimetres, Y DOWN, from the outline's corner. An end is bound by what it says,
 never by where it is drawn: ".R1 > .pin2" (a pin of a component, by its number), ".V1" (a via, by name), ".T1 > .end"
 (a point of another trace or arc: .start, .end or its index). Anything else is refused by name, never guessed. Each
@@ -72,6 +81,7 @@ from typing import Any, Dict, List, Optional
 from .circuit_checks import declare_circuit_checks
 from .element import Element, child_elements, declares, define
 from .ir import Declaration, Scope, slug, using
+from .part_fields import check_facet, check_offers
 
 BOARD_PART = "eda.footprint"
 CONDUCTOR = "eda.conductor"
@@ -97,7 +107,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "stack": {}, "graphic": {}, "text": {}, "dimension": {}, "kicad": {}, "net": {},
     "component": {}, "trace": {}, "arc": {}, "via": {}, "pour": {},
     "check": {}, "accept": {},
-    "netclass": {}, "diffpair": {}, "group": {}, "keepout": {}, "thermal": {}, "objective": {},
+    "netclass": {}, "diffpair": {}, "group": {}, "keepout": {}, "thermal": {}, "objective": {}, "fab": {},
 }
 
 __all__ = ["BOARD_PART", "CONDUCTOR", "BOARD_FACT", "BOARD_FOOTPRINTS", "BOARD_LAYERS", "SIGNATURES", "trace_point_id",
@@ -209,7 +219,7 @@ def trace_point_id(index: int, count: int) -> str:
 
 
 _CONDUCTORS = {"trace", "arc", "via", "pour"}
-_FACTS = {"graphic", "text", "dimension", "kicad", "net", "netclass", "diffpair", "group", "keepout", "thermal", "objective"}
+_FACTS = {"graphic", "text", "dimension", "kicad", "net", "netclass", "diffpair", "group", "keepout", "thermal", "objective", "fab"}
 #: The layout's constraints, each a board fact (``fact`` is its tag), as the TypeScript SDK's.
 _CONSTRAINTS = ("netclass", "diffpair", "group", "keepout", "thermal", "objective")
 _NET_KINDS = ("signal", "power", "ground", "noisy", "sensitive", "highspeed")
@@ -312,6 +322,75 @@ def _constraint_fact(el: Element) -> Dict[str, Any]:
             raise ValueError(f"{_where(el)} needs weights")
         put("weights", weights)
     return out
+
+
+_FAB_CAPABILITIES = ["minTrack", "minSpace", "minDrill", "minAnnularRing"]
+_SIDES = ["top", "bottom"]
+_ELECTRICAL = ["flying-probe", "fixture", "none"]
+_INSPECTION_KEYS = ["dimensions", "procedure", "acceptance", "sampling", "electrical", "minutes", "ratePerHour", "currency"]
+
+
+def _fab_fact(el: Element) -> Dict[str, Any]:
+    """The board's ``fab(...)``: the house that makes it (``suppliers``, the first is the one that makes it), its
+    capabilities for the service ordered, the finish, mask and silk, the assembly, the board's test and its compliance
+    and shipping (docs/formats.md § logistics). The board's layers, thickness and copper are its own and are not
+    restated here."""
+    _refuse_unknown(el, ["suppliers", "finish", "mask", "silk", *_FAB_CAPABILITIES, "maxLayers", "thicknesses", "assembly", "inspection", "compliance", "shipping"])
+    w = _where(el)
+    out: Dict[str, Any] = {}
+    if el.props.get("suppliers") is not None:
+        out["suppliers"] = check_offers(w, el.props["suppliers"])
+    for k in ("finish", "mask", "silk"):
+        v = _text(el, k)
+        if v is not None:
+            if not v.strip():
+                raise ValueError(f"{w}: {k} is text")
+            out[k] = v
+    for k in _FAB_CAPABILITIES:
+        v = _positive(el, k)
+        if v is not None:
+            out[k] = v
+    max_layers = _num(el, "maxLayers")
+    if max_layers is not None:
+        if not (float(max_layers).is_integer() and max_layers >= 1):
+            raise ValueError(f"{w}: maxLayers is a whole number of copper layers")
+        out["maxLayers"] = max_layers
+    t = _plain(el, "thicknesses", lambda v: isinstance(v, (list, tuple)) and len(v) > 0 and all(_is_num(x) and x > 0 for x in v),
+               "a list of the finished thicknesses the house offers (mm)")
+    if t is not None:
+        out["thicknesses"] = t
+    a = el.props.get("assembly")
+    if a is not None:
+        if not _is_object(a) or any(k not in ("house", "sides") for k in a):
+            raise ValueError(f"{w}: assembly is {{ house, sides }}")
+        if a.get("house") is not None and not (isinstance(a["house"], str) and a["house"].strip()):
+            raise ValueError(f"{w}: assembly.house is the house that places the parts")
+        sides = a.get("sides")
+        if sides is not None and not (isinstance(sides, (list, tuple)) and sides and all(x in _SIDES for x in sides) and len(set(sides)) == len(sides)):
+            raise ValueError(f'{w}: assembly.sides is a list of "top", "bottom"')
+        out["assembly"] = json.loads(json.dumps(a))
+    i = el.props.get("inspection")
+    if i is not None:
+        if not _is_object(i):
+            raise ValueError(f"{w}: inspection is an object ({{ {', '.join(_INSPECTION_KEYS)} }})")
+        for k in i:
+            if k not in _INSPECTION_KEYS:
+                raise ValueError(f"{w}: inspection.{k} is not read (it takes {', '.join(_INSPECTION_KEYS)})")
+        if i.get("electrical") is not None and i["electrical"] not in _ELECTRICAL:
+            raise ValueError(f"{w}: inspection.electrical is one of {', '.join(_ELECTRICAL)}")
+        for k in ("procedure", "acceptance", "sampling"):
+            if i.get(k) is not None and not (isinstance(i[k], str) and i[k].strip()):
+                raise ValueError(f"{w}: inspection.{k} is text")
+        for k in ("minutes", "ratePerHour"):
+            if i.get(k) is not None and not (_is_num(i[k]) and i[k] >= 0):
+                raise ValueError(f"{w}: inspection.{k} is a number, 0 or more")
+        if i.get("currency") is not None and not (isinstance(i["currency"], str) and re.match(r"^[A-Z]{3}$", i["currency"])):
+            raise ValueError(f'{w}: inspection.currency is an ISO 4217 code ("USD")')
+        out["inspection"] = json.loads(json.dumps(i))
+    for k in ("compliance", "shipping"):
+        if el.props.get(k) is not None:
+            out[k] = check_facet(w, k, el.props[k])
+    return out
 _PIN = re.compile(r"^\s*\.([A-Za-z0-9_#\-]+)\s*>\s*\.([A-Za-z0-9_+\-]+)\s*$")
 
 
@@ -407,6 +486,7 @@ def _declare_board(s: Scope, root: Element) -> None:
     nets: set = set()
     constraint_names: set = set()
     kicad_forms = 0
+    fabs = 0
     for el in children:
         nm = el.props.get("name")
         if el.tag == "component":
@@ -433,6 +513,10 @@ def _declare_board(s: Scope, root: Element) -> None:
             kicad_forms += 1
             if kicad_forms > 1:
                 raise ValueError("a board has one <kicad>")
+        elif el.tag == "fab":
+            fabs += 1
+            if fabs > 1:
+                raise ValueError("a board has one <fab>")
         elif el.tag in _CONSTRAINTS:
             key = "objective" if el.tag == "objective" else f"{el.tag}:{nm}" if isinstance(nm, str) else None
             if key is not None and key in constraint_names:
@@ -677,6 +761,8 @@ def _declare_board(s: Scope, root: Element) -> None:
             if not float(code).is_integer() or code < 0:
                 raise ValueError(f"{_where(el)}: code is a KiCad net code (0 or more)")
             s.add(BOARD_FACT, {"fact": "net", "name": el.props["name"], "code": code}, label="Net", meta=_meta(el))
+        elif el.tag == "fab":
+            s.add(BOARD_FACT, {"fact": "fab", **_fab_fact(el)}, label="Fab", meta=_meta(el))
         elif el.tag in _CONSTRAINTS:
             s.add(BOARD_FACT, {"fact": el.tag, **_constraint_fact(el)}, label=el.tag, meta=_meta(el))
 

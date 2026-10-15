@@ -3,6 +3,15 @@ SDK's ``design/circuit-checks.ts``, element for element):
 
     check(id="erc", kind="erc")                                  the electrical rule check (a schematic, a board)
     check(id="drc", kind="drc", severity="warning")              the design rule check (a board); its errors as warnings
+    check(id="pinout", kind="pinout")                            every part's pinout checked against its datasheet or
+                                                                 measured (its pinout_verified, ``part_fields.py``)
+    check(id="footprint", kind="footprint")                      every part's pads checked, and its footprint's pad
+                                                                 count, pitch and body equal to its package_dimensions
+    check(id="cost", kind="cost", options={"quantities": [10, 100]})
+                                                                 a logistics check (sourcing, process, assembly,
+                                                                 inspection, compliance, shipping, lifecycle, cost:
+                                                                 docs/formats.md § logistics), with its own options
+    accept(id="lbl", check="sourcing", rule="no-supplier", refs=["J9"], reason="…")   a logistics finding of one part
     accept(id="tx", check="erc", rule="pin_conflict", refs=["U1", "U3"], reason="the bus is open-drain")
     accept(id="edge", check="drc", rule="clearance", region={"min": [0, 0], "max": [3, 3]}, reason="…")
 
@@ -10,6 +19,7 @@ They are no node of the circuit: the reader keeps them in the graph's ``meta`` (
 """
 from __future__ import annotations
 
+import copy
 import re
 from typing import Any, Dict, List, Optional
 
@@ -51,17 +61,21 @@ def declare_circuit_checks(s: Scope, elements: List[Element]) -> List[Element]:
     for el in elements:
         at = {} if el.source is None else {"source": el.source}
         if el.tag == "check":
-            _only(el, ["id", "kind", "severity"])
+            _only(el, ["id", "kind", "severity", "options"])
             id_ = _text(el, "id", "the check's name (erc)")
             if not _ID.match(id_):
                 raise ValueError(f"{_where(el)}: id is letters, digits, _ . -")
             if any(c["id"] == id_ for c in checks + accepted):
                 raise ValueError(f"two checks or accepts are called {id_}")
-            kind = _text(el, "kind", "what is checked: erc, drc, pinout, footprint")
+            kind = _text(el, "kind", "what is checked: erc, drc, pinout, footprint, or a logistics kind (sourcing, process, assembly, inspection, compliance, shipping, lifecycle, cost)")
             severity = el.props.get("severity")
             if severity is not None and severity not in ("error", "warning"):
                 raise ValueError(f"{_where(el)}: severity is error or warning")
-            checks.append({"id": id_, "kind": kind, **({"severity": severity} if severity else {}), **at})
+            options = el.props.get("options")
+            if options is not None and not isinstance(options, dict):
+                raise ValueError(f"{_where(el)}: options is an object (the cost check's {{ quantities: [10, 100] }})")
+            checks.append({"id": id_, "kind": kind, **({"severity": severity} if severity else {}),
+                           **({"options": copy.deepcopy(options)} if options is not None else {}), **at})
         elif el.tag == "accept":
             _only(el, ["id", "check", "rule", "refs", "net", "region", "reason"])
             id_ = _text(el, "id", "the accept's name")
