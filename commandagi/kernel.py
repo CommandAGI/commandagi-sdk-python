@@ -95,11 +95,11 @@ def _doc_text(doc: Any) -> str:
 # copy) run. Python cannot run it, so `kernel_places` and `call_kernel` are its port, rule for rule. A change there is
 # a change here.
 
-KERNEL_NAMES = ("3d", "fea")
+KERNEL_NAMES = ("3d", "fea", "slicer")
 # ``page`` is the workbench page's own kernel (``observe`` only): Python has no transport for it and passes it over.
 KERNEL_PLACES = ("page", "local", "cloud")
-# The page holds only the 3D kernel: the fea kernel's places begin on this computer.
-DEFAULT_PLACES = {"3d": ("page", "local", "cloud"), "fea": ("local", "cloud")}
+# The page holds only the 3D kernel: the fea kernel's and the slicer's places begin on this computer.
+DEFAULT_PLACES = {"3d": ("page", "local", "cloud"), "fea": ("local", "cloud"), "slicer": ("local", "cloud")}
 
 
 class KernelAbsent(Exception):
@@ -111,7 +111,7 @@ Transport = Callable[[str, Optional[Dict[str, Any]]], Tuple[int, Any]]
 
 def kernel_places(name: str, value: Any) -> List[str]:
     """The places to try, in order, from the setting's value (a list, or the same list as one text with commas).
-    None or empty: the 3D kernel's page, this computer, then the cloud (the fea kernel has no page)."""
+    None or empty: the 3D kernel's page, this computer, then the cloud (the fea kernel and the slicer have no page)."""
     if name not in KERNEL_NAMES:
         raise ValueError(f'no kernel "{name}": one of {", ".join(KERNEL_NAMES)}')
     if value is None or value == "":
