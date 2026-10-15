@@ -60,4 +60,4 @@ __all__ = [
     "ENV_THREAD_ID",
     "DEFAULT_BASE_URL",
 ]
-__version__ = "0.5.1"
+__version__ = "0.6.0"

@@ -242,7 +242,7 @@ graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"bod
 ## Versions
 
 - A release is the tag `v<version>` in this repository and the same version on PyPI. Pin an exact version:
-  `commandagi==0.5.1`. A range (`^`, `~=`, `>=`) takes the next release without asking you.
+  `commandagi==0.6.0`. A range (`^`, `~=`, `>=`) takes the next release without asking you.
 - The three SDKs (Python, TypeScript, Rust) carry one version number. A vocabulary at version X in one language is
   the vocabulary at version X in the others.
 - A version promises nothing about the next one. CommandAGI keeps no compatibility layers: a release may rename or
