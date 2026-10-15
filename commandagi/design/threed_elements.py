@@ -10,10 +10,22 @@ try:
 except ImportError:  # pragma: no cover
     from typing_extensions import Literal, TypedDict  # type: ignore
 
-#: A FINDING ACCEPTED ON PURPOSE: `<accept check body region reason />`. It suppresses the findings of that check on that body whose location, in the body's own frame, lies in `region`. A region larger than 5 % of the body's box or than 100 000 mm³ is refused: it suppresses nothing and is itself an error. A suppressed finding stays in the report with the accept that suppressed it.
-_AcceptedFindingRequired = TypedDict("_AcceptedFindingRequired", {"id": str, "check": str, "body": str, "region": 'CheckRegion', "reason": str})
-_AcceptedFindingOptional = TypedDict("_AcceptedFindingOptional", {}, total=False)
+#: A FINDING ACCEPTED ON PURPOSE: `<accept check body region reason />`. It suppresses the findings of that check on that body whose location, in the body's own frame, lies in `region`. A region larger than 5 % of the body's box or than 100 000 mm³ is refused: it suppresses nothing and is itself an error. A suppressed finding stays in the report with the accept that suppressed it. An accept with no region covers only findings with no place (a logistics finding: `<accept check="sourcing" body="Label" rule="no-supplier" reason="…" />`).
+_AcceptedFindingRequired = TypedDict("_AcceptedFindingRequired", {"id": str, "check": str, "body": str, "reason": str})
+_AcceptedFindingOptional = TypedDict("_AcceptedFindingOptional", {"rule": str, "region": 'CheckRegion'}, total=False)
 class AcceptedFinding(_AcceptedFindingRequired, _AcceptedFindingOptional):
+    pass
+
+#: An approved second source: another maker's part that may be fitted in place of this one.
+_AlternateRequired = TypedDict("_AlternateRequired", {"manufacturer": str, "mpn": str})
+_AlternateOptional = TypedDict("_AlternateOptional", {"note": str}, total=False)
+class Alternate(_AlternateRequired, _AlternateOptional):
+    pass
+
+#: ONE ASSEMBLY STEP: `<assemble>`.
+_AssemblyStepRequired = TypedDict("_AssemblyStepRequired", {"id": str})
+_AssemblyStepOptional = TypedDict("_AssemblyStepOptional", {"order": int, "parts": List[str], "fasteners": List[str], "tools": List[str], "fixture": str, "by": str, "minutes": float, "ratePerHour": float, "currency": str, "instruction": str}, total=False)
+class AssemblyStep(_AssemblyStepRequired, _AssemblyStepOptional):
     pass
 
 __AxisRef1Required = TypedDict("__AxisRef1Required", {"type": Literal["datumAxis"], "axis": Literal["X", "Y", "Z"]})
@@ -91,6 +103,12 @@ _CombineFeatureOptional = TypedDict("_CombineFeatureOptional", {"operation": Lit
 class CombineFeature(_CombineFeatureRequired, _CombineFeatureOptional):
     pass
 
+#: WHAT A PART COMPLIES WITH.
+_ComplianceRequired = TypedDict("_ComplianceRequired", {})
+_ComplianceOptional = TypedDict("_ComplianceOptional", {"rohs": Literal["compliant", "exempt", "non-compliant"], "rohsExemption": str, "reach": Literal["compliant", "non-compliant", "svhc"], "conflictMinerals": Literal["none", "reported", "unknown"], "eccn": str, "certifications": List[str]}, total=False)
+class Compliance(_ComplianceRequired, _ComplianceOptional):
+    pass
+
 #: A placed component's footprint — the pads it contributes, and the planes they land on.
 _ComponentFootprintRequired = TypedDict("_ComponentFootprintRequired", {"pads": List['FootprintPad'], "layers": List['CopperLayerRef']})
 _ComponentFootprintOptional = TypedDict("_ComponentFootprintOptional", {"libId": str, "part": str}, total=False)
@@ -135,6 +153,12 @@ class CopperPourFeature(_CopperPourFeatureRequired, _CopperPourFeatureOptional):
 _CopyBodyFeatureRequired = TypedDict("_CopyBodyFeatureRequired", {"type": Literal["copyBody"], "bodyId": str, "id": str, "name": str})
 _CopyBodyFeatureOptional = TypedDict("_CopyBodyFeatureOptional", {"translate": 'Vec3', "rotateAxis": 'AxisRef', "rotateAngle": float, "count": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CopyBodyFeature(_CopyBodyFeatureRequired, _CopyBodyFeatureOptional):
+    pass
+
+#: A dimension to inspect, with its tolerance.
+_CriticalDimensionRequired = TypedDict("_CriticalDimensionRequired", {"name": str, "nominal": float, "plus": float, "minus": float})
+_CriticalDimensionOptional = TypedDict("_CriticalDimensionOptional", {"unit": Literal["mm", "deg"], "method": str}, total=False)
+class CriticalDimension(_CriticalDimensionRequired, _CriticalDimensionOptional):
     pass
 
 _CylinderFeatureRequired = TypedDict("_CylinderFeatureRequired", {"type": Literal["cylinder"], "id": str, "name": str})
@@ -233,7 +257,7 @@ class ExtrudeFeature(_ExtrudeFeatureRequired, _ExtrudeFeatureOptional):
 
 #: A FASTENER STACK: `<fastener part length at axis clamped receiver washer nut grip />`. It places a screw of the fastener library (by its part id, `iso-4762-m6`: the library's `mechanical-fasteners` parts, built from the same tables), its washer and its nut, and it records what the screw does: it clamps these parts into this receiver. The fasteners check reads the record.
 _FastenerStackRequired = TypedDict("_FastenerStackRequired", {"id": str, "part": str, "length": float, "at": 'Vec3', "clamped": List[str]})
-_FastenerStackOptional = TypedDict("_FastenerStackOptional", {"axis": 'Vec3', "receiver": str, "washer": str, "nut": str, "grip": float, "fit": 'FastenerFit', "minEngagement": float}, total=False)
+_FastenerStackOptional = TypedDict("_FastenerStackOptional", {"axis": 'Vec3', "receiver": str, "washer": str, "nut": str, "grip": float, "fit": 'FastenerFit', "minEngagement": float, "torque": float}, total=False)
 class FastenerStack(_FastenerStackRequired, _FastenerStackOptional):
     pass
 
@@ -314,10 +338,22 @@ _ImportFeatureOptional = TypedDict("_ImportFeatureOptional", {"operation": 'Bool
 class ImportFeature(_ImportFeatureRequired, _ImportFeatureOptional):
     pass
 
+#: HOW A PART IS INSPECTED OR TESTED, AND WHEN IT IS ACCEPTED.
+_InspectionRequired = TypedDict("_InspectionRequired", {})
+_InspectionOptional = TypedDict("_InspectionOptional", {"dimensions": List['CriticalDimension'], "procedure": str, "acceptance": str, "sampling": str, "electrical": Literal["none", "flying-probe", "fixture"], "minutes": float, "ratePerHour": float, "currency": str}, total=False)
+class Inspection(_InspectionRequired, _InspectionOptional):
+    pass
+
 #: The geometry of a body that a joint binds: a face, an edge or a vertex, named by where it is.
 _JointReferenceRequired = TypedDict("_JointReferenceRequired", {"kind": Literal["face", "edge", "vertex"], "point": 'Vec32'})
 _JointReferenceOptional = TypedDict("_JointReferenceOptional", {"direction": 'Vec32', "label": str}, total=False)
 class JointReference(_JointReferenceRequired, _JointReferenceOptional):
+    pass
+
+#: WHERE A BOUGHT PART IS IN ITS LIFE, AND HOW MANY ARE ON THE SHELF.
+_LifecycleRequired = TypedDict("_LifecycleRequired", {"status": Literal["active", "nrnd", "eol", "obsolete"]})
+_LifecycleOptional = TypedDict("_LifecycleOptional", {"lastTimeBuy": str, "onHand": int, "reorderPoint": int, "source": str, "date": str}, total=False)
+class Lifecycle(_LifecycleRequired, _LifecycleOptional):
     pass
 
 _LinearPatternFeatureRequired = TypedDict("_LinearPatternFeatureRequired", {"type": Literal["linearPattern"], "seedFeature": str, "id": str, "name": str})
@@ -334,6 +370,12 @@ class LoftFeature(_LoftFeatureRequired, _LoftFeatureOptional):
 _MakeHumanFeatureRequired = TypedDict("_MakeHumanFeatureRequired", {"type": Literal["makeHuman"], "id": str, "name": str})
 _MakeHumanFeatureOptional = TypedDict("_MakeHumanFeatureOptional", {"subdivision": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature', "gender": float, "age": float, "muscle": float, "weight": float, "height": float, "proportions": float, "cupsize": float, "firmness": float, "african": float, "asian": float, "caucasian": float}, total=False)
 class MakeHumanFeature(_MakeHumanFeatureRequired, _MakeHumanFeatureOptional):
+    pass
+
+#: HOW AND WHERE A MADE PART IS MADE: the device or the shop, the process parameters, the time and its rate.
+_MakeSpecRequired = TypedDict("_MakeSpecRequired", {})
+_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "currency": str, "leadTimeDays": float}, total=False)
+class MakeSpec(_MakeSpecRequired, _MakeSpecOptional):
     pass
 
 #: A constraint between two placed components. References a component by its `ExternalPartRef` feature id and a local axis on that component. The assembly solver relaxes both components' placements (position AND orientation) toward simultaneous satisfaction of every mate with least motion; unsatisfiable mates (missing components) are reported, never silently dropped.
@@ -421,21 +463,21 @@ _OffsetFacesFeatureOptional = TypedDict("_OffsetFacesFeatureOptional", {"distanc
 class OffsetFacesFeature(_OffsetFacesFeatureRequired, _OffsetFacesFeatureOptional):
     pass
 
+#: A packed part's size and mass.
+_PackagedSizeRequired = TypedDict("_PackagedSizeRequired", {"size": Tuple[float, float, float], "grams": float})
+_PackagedSizeOptional = TypedDict("_PackagedSizeOptional", {}, total=False)
+class PackagedSize(_PackagedSizeRequired, _PackagedSizeOptional):
+    pass
+
 #: The rectangle of parameter space a chart occupies. Half-open in the periodic direction.
 _ParamRectRequired = TypedDict("_ParamRectRequired", {"uMin": float, "uMax": float, "vMin": float, "vMax": float})
 _ParamRectOptional = TypedDict("_ParamRectOptional", {}, total=False)
 class ParamRect(_ParamRectRequired, _ParamRectOptional):
     pass
 
-#: What a part costs, with where and when the price was read.
-_PartCostRequired = TypedDict("_PartCostRequired", {"amount": float, "currency": str, "source": str, "date": str})
-_PartCostOptional = TypedDict("_PartCostOptional", {"per": Literal["each", "m", "kg", "m2"], "quantity": int}, total=False)
-class PartCost(_PartCostRequired, _PartCostOptional):
-    pass
-
-#: A part's engineering data: its material grade, process, finish, vendor, cost.
+#: A part's engineering data: its material grade and finish, how it is made or who sells it, and the logistics a declared check may require (docs/formats.md § logistics).
 _PartEngineeringRequired = TypedDict("_PartEngineeringRequired", {})
-_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "finish": str, "vendor": 'PartVendor', "cost": 'PartCost', "mass": 'PartMass'}, total=False)
+_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle'}, total=False)
 class PartEngineering(_PartEngineeringRequired, _PartEngineeringOptional):
     pass
 
@@ -443,12 +485,6 @@ class PartEngineering(_PartEngineeringRequired, _PartEngineeringOptional):
 _PartMassRequired = TypedDict("_PartMassRequired", {"grams": float, "source": str})
 _PartMassOptional = TypedDict("_PartMassOptional", {}, total=False)
 class PartMass(_PartMassRequired, _PartMassOptional):
-    pass
-
-#: Who sells a part, and under which number.
-_PartVendorRequired = TypedDict("_PartVendorRequired", {"name": str})
-_PartVendorOptional = TypedDict("_PartVendorOptional", {"partNumber": str, "url": str}, total=False)
-class PartVendor(_PartVendorRequired, _PartVendorOptional):
     pass
 
 _PathPatternFeatureRequired = TypedDict("_PathPatternFeatureRequired", {"type": Literal["pathPattern"], "seedFeature": str, "path": 'ProfileRef', "id": str, "name": str})
@@ -512,6 +548,18 @@ _PointCloudFeatureOptional = TypedDict("_PointCloudFeatureOptional", {"colors": 
 class PointCloudFeature(_PointCloudFeatureRequired, _PointCloudFeatureOptional):
     pass
 
+#: The unit price from a quantity up (`@commandagi/core` quantity-terms' PriceBreak).
+_PriceBreakRequired = TypedDict("_PriceBreakRequired", {"quantity": int, "unitPrice": float})
+_PriceBreakOptional = TypedDict("_PriceBreakOptional", {}, total=False)
+class PriceBreak(_PriceBreakRequired, _PriceBreakOptional):
+    pass
+
+#: A PART OF THE PRODUCT WITH NO GEOMETRY HERE: `<item>` (a cable in the box, foam tape, or another design by `ref`).
+_ProductItemRequired = TypedDict("_ProductItemRequired", {"id": str, "name": str})
+_ProductItemOptional = TypedDict("_ProductItemOptional", {"qty": int, "ref": str, "engineering": 'PartEngineering'}, total=False)
+class ProductItem(_ProductItemRequired, _ProductItemOptional):
+    pass
+
 #: A profile drawn from a sketch's solved closed regions.
 _ProfileRefRequired = TypedDict("_ProfileRefRequired", {"sketch": str})
 _ProfileRefOptional = TypedDict("_ProfileRefOptional", {"regions": List[float]}, total=False)
@@ -541,6 +589,12 @@ class SheetFlangeFeature(_SheetFlangeFeatureRequired, _SheetFlangeFeatureOptiona
 _ShellFeatureRequired = TypedDict("_ShellFeatureRequired", {"type": Literal["shell"], "faces": List['TopoTarget'], "id": str, "name": str})
 _ShellFeatureOptional = TypedDict("_ShellFeatureOptional", {"thickness": float, "outward": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ShellFeature(_ShellFeatureRequired, _ShellFeatureOptional):
+    pass
+
+#: WHAT CUSTOMS AND A CARRIER NEED OF A PART.
+_ShippingRequired = TypedDict("_ShippingRequired", {})
+_ShippingOptional = TypedDict("_ShippingOptional", {"hsCode": str, "origin": str, "hazmat": str, "packaged": 'PackagedSize', "packaging": str}, total=False)
+class Shipping(_ShippingRequired, _ShippingOptional):
     pass
 
 __SkeletonFeature21Required = TypedDict("__SkeletonFeature21Required", {})
@@ -705,6 +759,12 @@ class SplitFeature(_SplitFeatureRequired, _SplitFeatureOptional):
 _SubdivBodyFeatureRequired = TypedDict("_SubdivBodyFeatureRequired", {"type": Literal["subdivBody"], "controlPoints": List['Vec3'], "faces": List[List[float]], "level": float, "id": str, "name": str})
 _SubdivBodyFeatureOptional = TypedDict("_SubdivBodyFeatureOptional", {"operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SubdivBodyFeature(_SubdivBodyFeatureRequired, _SubdivBodyFeatureOptional):
+    pass
+
+#: WHO SELLS A PART, AND ON WHAT TERMS: one supplier's offer (docs/formats.md § logistics). The quantity terms (`stock`, `moq`, `orderMultiple`, `leadTimeDays`, `priceBreaks`) are the ones a component catalog's offer states. A price or a stock says where and when it was read (`source`, `date`).
+_SupplierOfferRequired = TypedDict("_SupplierOfferRequired", {"name": str})
+_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "leadTimeDays": float, "stock": int, "source": str, "date": str}, total=False)
+class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
     pass
 
 _SweepFeatureRequired = TypedDict("_SweepFeatureRequired", {"type": Literal["sweep"], "profile": 'ProfileRef', "path": 'ProfileRef', "id": str, "name": str})
