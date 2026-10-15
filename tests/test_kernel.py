@@ -94,7 +94,9 @@ class Placed(unittest.TestCase):
                     "/v1/bom": (200, {"result": {"lines": [], "csv": "item\n"}}),
                     "/v1/observe": (200, {"result": {"observation": {"bodies": [], "errors": {}}, "meshes": [], "meshTris": 0}}),
                     "/v1/health": (200, {"kernel": "3d", "build": "sha256:abc"}),
-                    "/v1/check": (200, {"result": {"declared": True, "checks": [{"id": "clash", "kind": "interference", "status": "passed"}], "findings": [], "problems": 0}})}[path]
+                    "/v1/check": (200, {"result": {"declared": True, "checks": [{"id": "clash", "kind": "interference", "status": "passed"}], "findings": [], "problems": 0}}),
+                    "/v1/dfm": (200, {"result": {"process": "mill", "part": "plate", "verdict": "fail", "findings": [
+                        {"check": "mill.depth", "status": "fail", "value": 3.78, "limit": 3, "unit": "xD", "where": [{"body": "body_0", "faces": [4], "at": [0, 0, 3]}], "message": "too deep"}]}})}[path]
 
         server, url, seen = serve(answer)
         try:
@@ -117,7 +119,16 @@ class Placed(unittest.TestCase):
                 kernel.observe("{}", materials=mine)
                 self.assertEqual(kernel.call("health")["build"], "sha256:abc")
                 self.assertEqual(kernel.check(plate)["checks"][0]["status"], "passed")
+                router = {"process": {"mill": {"travel_mm": [300, 180, 45], "max_depth_to_diameter": 3}}}
+                kernel.check(plate, devices={"devices/router/definition.tsx": router})
+                made = kernel.dfm(plate, process="mill", limits=router["process"]["mill"], setup={"tools": [{"diameter_mm": 3.175}]}, part="plate")
+                self.assertEqual((made["verdict"], made["findings"][0]["where"][0]["faces"]), ("fail", [4]))
+                with self.assertRaises(ValueError):
+                    kernel.dfm(plate, process="laser", limits={})
             self.assertEqual(seen[8][0], "/v1/check")
+            self.assertEqual(seen[9][2]["params"], {"devices": {"devices/router/definition.tsx": router}})
+            self.assertEqual((seen[10][0], seen[10][2]["params"]), ("/v1/dfm", {"process": "mill", "limits": router["process"]["mill"], "setup": {"tools": [{"diameter_mm": 3.175}]}, "part": "plate"}))
+            self.assertEqual(len(seen), 11, "a process the checks do not know is refused before anything is sent")
             self.assertEqual(refused.exception.status, 422)
             self.assertIn("no such body", str(refused.exception))
             self.assertEqual(partial.exception.failures, FAILED["failures"])

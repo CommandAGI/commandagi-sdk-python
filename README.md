@@ -222,6 +222,12 @@ graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"bod
   under the name its `externalPart` gives.
 - **A STEP file names its parts**: each body is a product of its part's name, an assembly the product they are
   components of.
+- **`dfm(doc, process="print" | "mill", limits=…, setup=…)`** says whether a machine can make the part: `limits` are a
+  device definition's `process["print"]` or `process["mill"]`, `setup={"tools": [{"diameter_mm": 3.175}]}` the mill's
+  tools. Each finding is `pass`, `fail` or `unknown` (never `pass` when a limit or a tool is missing) with its value,
+  limit and `where` (the body, the B-rep `faces`, a point); `verdict` sums them.
+- **`check(doc, devices=…)`**: a `check(kind="printability" | "mill", options={"device": ref})` reads its limits from
+  `devices`, `{ref: {"process": …}}`, the definitions you read; without them the check is skipped and says why.
 
 ## Reinforcement learning
 

@@ -417,13 +417,31 @@ class Kernel:
         ``points``. ``bodies`` lists each body's id, part name and volume."""
         return self._op("interference", doc, {"clearance": clearance, "bodies": bodies, "parts": parts})
 
-    def check(self, doc: Any, *, parts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def check(self, doc: Any, *, parts: Optional[Dict[str, Any]] = None, devices: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """The checks the document declares (``check(kind=…)``), run on one build, with its ``accept`` and ``permitted``
         entries applied: each finding with its ``check``, ``rule``, ``severity``, ``body`` (id, name, part number),
         ``world`` and body-local ``local`` location; each check's ``status`` (``skipped`` with its ``reason`` when it could
         not run, never ``passed``) and its ``limits``. ``problems`` counts the standing errors and the skipped checks. A
-        document that declares none gets the interference check."""
-        return self._op("check", doc, {"parts": parts})
+        document that declares none gets the interference check.
+
+        A manufacturability check (``printability``, ``mill``) that names a device definition (``options={"device":
+        ref}``) reads its limits from ``devices``: ``{ref: {"process": <the definition's process block>}}``, which you
+        read (the kernel has no files). A check whose device is not given is skipped with that reason."""
+        return self._op("check", doc, {"parts": parts, "devices": devices})
+
+    def dfm(self, doc: Any, *, process: str, limits: Dict[str, Any], setup: Optional[Dict[str, Any]] = None,
+            part: Optional[str] = None, bodies: Optional[List[str]] = None, parts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Can this process make this part: the manufacturability checks of the built bodies, judged by ``limits`` (a
+        device definition's ``process["print"]`` or ``process["mill"]``, each number with its ``source``). ``print``
+        (FDM): build volume, a closed surface, overhangs, bridges, walls, vertical holes. ``mill`` (3-axis from +Z;
+        ``setup={"tools": [{"diameter_mm": 3.175}], "stock_top_z"?: z}``): travel, a closed surface, reach, inside
+        corners, depth, walls. Each finding is ``pass``, ``fail`` or ``unknown`` (a limit not declared, no tool: never
+        ``pass``) with its ``value``, its ``limit`` and ``where`` (the body, the B-rep ``faces``, a point ``at``).
+        ``verdict`` is ``fail`` when any fails, else ``unknown`` when any is unknown, else ``pass``. The part is
+        checked as it stands in the model: Z is the build or spindle axis."""
+        if process not in ("print", "mill"):
+            raise ValueError(f'process is "print" or "mill", not {process!r}')
+        return self._op("dfm", doc, {"process": process, "limits": limits, "setup": setup, "part": part, "bodies": bodies, "parts": parts})
 
     def drawing(self, doc: Any, *, direction: Optional[List[float]] = None, up: Optional[List[float]] = None,
                 bodies: Optional[List[str]] = None, section: Optional[Dict[str, Any]] = None, parts: Optional[Dict[str, Any]] = None) -> Any:
