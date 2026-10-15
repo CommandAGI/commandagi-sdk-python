@@ -173,6 +173,20 @@ result = group(
         with self.assertRaisesRegex(ValueError, "prop mpn is not read"):
             run(sheet('    junction("J", sch_x=0, sch_y=0, mpn="X"),\n'), "s.sch.py")
 
+    def test_how_a_parts_pinout_and_pads_are_known_and_its_package_are_fields_off_the_grammar_refused(self):
+        checked = "datasheet https://www.ti.com/lit/ds/symlink/sn74lvc1t45.pdf p. 3, 2026-10-15"
+        pkg = "6 pins, pitch 0.95 mm, body 2.9 x 1.6 mm"
+        n = run(sheet(f'    part("U5", pins=["1", "2", "3", "4", "5", "6"], pinout_verified="{checked}", footprint_verified="memory", package_dimensions="{pkg}"),\n'), "s.sch.py")["nodes"]
+        self.assertEqual(n["U5"]["inputs"]["foreign"], [field_form("Pinout Verified", checked), field_form("Footprint Verified", "memory"), field_form("Package Dimensions", pkg)])
+        self.assertEqual(part_fields(n["U5"]["inputs"]), {"pinoutVerified": checked, "footprintVerified": "memory", "packageDimensions": pkg})
+        for bad in ("checked", "datasheet p. 3, 2026-10-15", "measured yesterday"):
+            with self.assertRaisesRegex(ValueError, "pinout_verified is text"):
+                run(sheet(f'    part("U5", pins=["1", "2", "3"], pinout_verified="{bad}"),\n'), "s.sch.py")
+        with self.assertRaisesRegex(ValueError, "package_dimensions is text"):
+            run(sheet('    part("U5", pins=["1", "2", "3"], package_dimensions="SOT-23"),\n'), "s.sch.py")
+        with self.assertRaisesRegex(ValueError, "say it with pinout_verified="):
+            run(sheet('    part("U5", pins=["1"], attrs={"Pinout Verified": "memory"}),\n'), "s.sch.py")
+
     def test_a_circuits_checks_and_accepts_are_kept_in_the_graphs_meta(self):
         g = run(sheet('''    resistor("R1", resistance="1k", sch_x=0, sch_y=0),
     check(id="erc", kind="erc", severity="warning"),

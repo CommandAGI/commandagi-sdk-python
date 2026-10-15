@@ -44,6 +44,13 @@ The calls (the first arguments are positional attributes; everything else is a k
                                                                              and attrs by their own names): the BOM and
                                                                              the board's footprint carry them;
                                                                              part_fields(inputs) reads them back
+    … pinout_verified=, footprint_verified=, package_dimensions=            on any part: how its pinout and its pads
+                                                                             are known ("memory", "datasheet <url> p.
+                                                                             <page>, <YYYY-MM-DD>", "measured
+                                                                             <YYYY-MM-DD>[, <how>]") and its datasheet
+                                                                             package ("<n> pins, pitch <mm> mm, body
+                                                                             <l> x <w> mm"): check(kind="pinout") and
+                                                                             check(kind="footprint") read them
 
 ``sch_x`` and ``sch_y`` are the sheet's own coordinates: millimetres, Y DOWN. ``sch_rotation`` is 0, 90, 180 or 270
 degrees; ``sch_mirror`` is "x" or "y". A part with neither is declared and not placed. A library part's pins and body
@@ -205,10 +212,21 @@ def _no_connect(el: Element) -> Dict[str, Any]:
 #: form the board editor writes), so the BOM, the KiCad board and a 3D body's join read one thing. The named
 #: arguments, by the property each writes (the TypeScript SDK's ``PART_FIELDS``); ``attrs`` holds any other field by its
 #: KiCad name.
-PART_FIELDS: Dict[str, str] = {"partNumber": "CommandAGI IPN", "manufacturer": "Manufacturer", "mpn": "MPN", "rating": "Rating"}
-_FIELD_EXAMPLES = {"partNumber": "MF-R-3K", "manufacturer": "Yageo", "mpn": "RC0805FR-073KL", "rating": "0.125 W"}
+PART_FIELDS: Dict[str, str] = {"partNumber": "CommandAGI IPN", "manufacturer": "Manufacturer", "mpn": "MPN", "rating": "Rating",
+                               "pinoutVerified": "Pinout Verified", "footprintVerified": "Footprint Verified",
+                               "packageDimensions": "Package Dimensions"}
+_FIELD_EXAMPLES = {"partNumber": "MF-R-3K", "manufacturer": "Yageo", "mpn": "RC0805FR-073KL", "rating": "0.125 W",
+                   "pinoutVerified": "datasheet https://www.ti.com/lit/ds/symlink/sn74lvc1t45.pdf p. 3, 2026-10-15",
+                   "footprintVerified": "measured 2026-10-15, calipers on the reel's part",
+                   "packageDimensions": "6 pins, pitch 0.95 mm, body 2.9 x 1.6 mm"}
 #: The keyword each field is written with here.
-_FIELD_ARGS = {"partNumber": "part_number", "manufacturer": "manufacturer", "mpn": "mpn", "rating": "rating"}
+_FIELD_ARGS = {"partNumber": "part_number", "manufacturer": "manufacturer", "mpn": "mpn", "rating": "rating",
+               "pinoutVerified": "pinout_verified", "footprintVerified": "footprint_verified", "packageDimensions": "package_dimensions"}
+#: How a pinout or a footprint is known, and a datasheet's package (the TypeScript SDK's ``VERIFIED``, ``PACKAGE``):
+#: the circuit's ``check(kind="pinout")`` and ``check(kind="footprint")`` read them.
+_VERIFIED = re.compile(r"^(?:memory|datasheet https?://\S+ p\. \d+, \d{4}-\d{2}-\d{2}|measured \d{4}-\d{2}-\d{2}(?:, .+)?)$")
+_PACKAGE = re.compile(r"^\d+ pins, pitch \d+(?:\.\d+)? mm, body \d+(?:\.\d+)? x \d+(?:\.\d+)? mm$")
+_GRAMMAR = {"pinoutVerified": _VERIFIED, "footprintVerified": _VERIFIED, "packageDimensions": _PACKAGE}
 #: Fields a part holds otherwise: its reference, its value, its footprint.
 _OWN_FIELDS = ("Reference", "Value", "Footprint")
 _FIELD_PROPS = [*PART_FIELDS, "attrs"]
@@ -233,7 +251,7 @@ def _fields(el: Element) -> Dict[str, Any]:
         v = el.props.get(prop)
         if v is None:
             continue
-        if not isinstance(v, str) or not v.strip():
+        if not isinstance(v, str) or not v.strip() or (prop in _GRAMMAR and not _GRAMMAR[prop].match(v)):
             raise ValueError(f'{_where(el)}: {_FIELD_ARGS[prop]} is text ("{_FIELD_EXAMPLES[prop]}")')
         forms.append(_field_form(name, v))
     attrs = el.props.get("attrs")

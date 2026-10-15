@@ -57,7 +57,7 @@ def declare_circuit_checks(s: Scope, elements: List[Element]) -> List[Element]:
                 raise ValueError(f"{_where(el)}: id is letters, digits, _ . -")
             if any(c["id"] == id_ for c in checks + accepted):
                 raise ValueError(f"two checks or accepts are called {id_}")
-            kind = _text(el, "kind", "what is checked: erc, drc")
+            kind = _text(el, "kind", "what is checked: erc, drc, pinout, footprint")
             severity = el.props.get("severity")
             if severity is not None and severity not in ("error", "warning"):
                 raise ValueError(f"{_where(el)}: severity is error or warning")
