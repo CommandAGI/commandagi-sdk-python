@@ -223,7 +223,7 @@ class ThreeDTests(unittest.TestCase):
         refused('<joint id="j1">: anchor: is required', joint(id="j1", kind="fixed", a="base"))
         refused('<body id="base">: engineering/process: must be one of cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, '
                 'sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, '
-                'manual, purchased (got "magic"); engineering/suppliers/0/name: is required',
+                'manual, purchased, reference (got "magic"); engineering/suppliers/0/name: is required',
                 body(id="base", engineering={"process": "magic", "suppliers": [{"sku": "x"}]}))
         refused('<slot name="dynamics">: joints are written as joint(…) elements', slot(name="dynamics", value={"joints": []}))
         refused("two joint elements are called j1", joint(**{k: v for k, v in j1.items() if k != "refA"}), joint(**{k: v for k, v in j1.items() if k != "refA"}))

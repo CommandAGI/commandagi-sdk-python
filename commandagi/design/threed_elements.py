@@ -1209,7 +1209,7 @@ HoleStyle = Literal["simple", "counterbore", "countersink"]
 JointKind = Literal["fixed", "revolute", "prismatic", "cylindrical", "planar", "screw", "spherical", "universal"]
 
 #: How a part is made.
-ManufacturingProcess = Literal["cnc-milling", "cnc-turning", "laser-cutting", "waterjet-cutting", "sheet-metal-bending", "extrusion", "casting", "injection-moulding", "fdm-printing", "sla-printing", "sls-printing", "welding", "grinding", "manual", "purchased"]
+ManufacturingProcess = Literal["cnc-milling", "cnc-turning", "laser-cutting", "waterjet-cutting", "sheet-metal-bending", "extrusion", "casting", "injection-moulding", "fdm-printing", "sla-printing", "sls-printing", "welding", "grinding", "manual", "purchased", "reference"]
 
 #: Mate kinds the assembly solver understands — a real 6-DOF set (translational + rotational).
 MateKind = Literal["coincident", "offset", "parallel", "perpendicular", "distance", "angle", "concentric"]
