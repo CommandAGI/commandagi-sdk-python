@@ -111,7 +111,7 @@ Transport = Callable[[str, Optional[Dict[str, Any]]], Tuple[int, Any]]
 
 def kernel_places(name: str, value: Any) -> List[str]:
     """The places to try, in order, from the setting's value (a list, or the same list as one text with commas).
-    None or empty: the page, this computer, then the cloud."""
+    None or empty: the 3D kernel's page, this computer, then the cloud (the fea kernel has no page)."""
     if name not in KERNEL_NAMES:
         raise ValueError(f'no kernel "{name}": one of {", ".join(KERNEL_NAMES)}')
     if value is None or value == "":
