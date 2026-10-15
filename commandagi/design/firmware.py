@@ -27,6 +27,14 @@ principal's own recorded command::
         canary=10, waves=[50, 100], settle_ms=60000,
     )
 
+A firmware's project folder holds ``firmware.py``, the same element without a built image: what the firmware gives,
+its channels as a definition writes them, and the revisions it supports. A definition names that folder (or a release
+by ``sha256:<hex>``) as its ``firmware``; ``commandagi check <definition>`` holds the two to each other::
+
+    from commandagi.design.firmware import channel, firmware, supports
+
+    result = firmware(supports(revision="A"), channel(id="cam", dir="out", medium="video", format="video"), name="ESP32 camera")
+
 ``target(unit=…)``: the units it updates, in that world; none: every unit of the world whose definition is the
 release's device. A record is an element and its fields are its attributes (snake_case keywords of the native names:
 ``security_version`` is ``securityVersion``).
@@ -40,15 +48,17 @@ from typing import Any, Dict, List
 from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
 
-FIRMWARE_FIELDS = ["version", "image", "sha256", "size", "sbom", "device", "securityVersion", "title", "note"]
+FIRMWARE_FIELDS = ["name", "version", "image", "sha256", "size", "sbom", "device", "securityVersion", "title", "note"]
+#: The fields a release states, all of them (a firmware's declaration in its project states none of them).
+FIRMWARE_RELEASE_FIELDS = ["version", "image", "sha256", "sbom", "device"]
 ROLLOUT_FIELDS = ["firmware", "world", "channel", "canary", "waves", "settleMs", "title", "note"]
 HEALTH_FIELDS = ["id", "channel", "command", "read", "min", "max", "equals", "unit", "timeoutMs"]
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
-SIGNATURES: Dict[str, Dict[str, Any]] = {"firmware": {"holds": "children"}, "supports": {}, "rollout": {"holds": "children"},
+SIGNATURES: Dict[str, Dict[str, Any]] = {"firmware": {"holds": "children"}, "supports": {}, "channel": {}, "rollout": {"holds": "children"},
                                          "health": {}, "target": {}}
 
-__all__ = ["FIRMWARE_FIELDS", "ROLLOUT_FIELDS", "HEALTH_FIELDS", "SIGNATURES", "FIRMWARE_VOCABULARY", "ROLLOUT_VOCABULARY", "FIRMWARE",
+__all__ = ["FIRMWARE_FIELDS", "FIRMWARE_RELEASE_FIELDS", "ROLLOUT_FIELDS", "HEALTH_FIELDS", "SIGNATURES", "FIRMWARE_VOCABULARY", "ROLLOUT_VOCABULARY", "FIRMWARE",
            *define(globals(), "firmware", SIGNATURES)]
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -73,18 +83,27 @@ def _leaf(tag: str, attrs: Dict[str, Any]) -> DocTree:
 
 def _firmware(t: DocTree) -> Dict[str, Any]:
     doc = dict(t["attrs"])
-    sha = doc.get("sha256")
-    if not isinstance(sha, str) or not _SHA256.match(sha):
-        raise ValueError(f"<firmware> sha256 is the image's SHA-256 in 64 lowercase hex digits, not {json.dumps(sha, ensure_ascii=False)}")
-    supports = _list_of(t, "supports")
+    if any(not _nothing(doc.get(k)) for k in FIRMWARE_RELEASE_FIELDS):
+        missing = [k for k in FIRMWARE_RELEASE_FIELDS if _nothing(doc.get(k))]
+        if missing:
+            raise ValueError(f"<firmware> needs {', '.join(missing)}: a release states all of {', '.join(FIRMWARE_RELEASE_FIELDS)}")
+        sha = doc.get("sha256")
+        if not isinstance(sha, str) or not _SHA256.match(sha):
+            raise ValueError(f"<firmware> sha256 is the image's SHA-256 in 64 lowercase hex digits, not {json.dumps(sha, ensure_ascii=False)}")
+    elif _nothing(doc.get("name")):
+        raise ValueError("<firmware>: a firmware's declaration states its name; a release states version, image, sha256, sbom and device")
+    supports, channels = _list_of(t, "supports"), _list_of(t, "channel")
     if supports:
         doc["supports"] = supports
+    if channels:
+        doc["channels"] = channels
     return doc
 
 
 def _firmware_tree(d: Dict[str, Any]) -> DocTree:
     return {"tag": "firmware", "attrs": _attrs_of(d, FIRMWARE_FIELDS),
-            "children": [_leaf("supports", {"revision": s["revision"]}) for s in d.get("supports") or []]}
+            "children": [_leaf("supports", {"revision": s["revision"]}) for s in d.get("supports") or []]
+            + [_leaf("channel", dict(c)) for c in d.get("channels") or []]}
 
 
 def _rollout(t: DocTree) -> Dict[str, Any]:
@@ -103,9 +122,10 @@ def _rollout_tree(d: Dict[str, Any]) -> DocTree:
             + [_leaf("target", {"unit": x["unit"]}) for x in d.get("targets") or []]}
 
 
-FIRMWARE_VOCABULARY = Vocabulary("firmware", "a firmware release", "firmware", {
-    "firmware": {"parents": [], "required": ["version", "image", "sha256", "sbom", "device"], "attrs": FIRMWARE_FIELDS},
+FIRMWARE_VOCABULARY = Vocabulary("firmware", "a firmware", "firmware", {
+    "firmware": {"parents": [], "attrs": FIRMWARE_FIELDS},
     "supports": {"parents": ["firmware"], "key": "revision", "required": ["revision"], "attrs": ["revision"]},
+    "channel": {"parents": ["firmware"], "key": "id", "required": ["id"]},
 }, _firmware, _firmware_tree)
 
 ROLLOUT_VOCABULARY = Vocabulary("rollout", "a firmware rollout", "rollout", {
@@ -117,5 +137,5 @@ ROLLOUT_VOCABULARY = Vocabulary("rollout", "a firmware rollout", "rollout", {
 for _v in (FIRMWARE_VOCABULARY, ROLLOUT_VOCABULARY):
     register_vocabulary(_v, "firmware")
 
-#: The vocabularies of firmware releases and rollouts, by format.
+#: The vocabularies of firmware (a declaration or a release) and rollouts, by format.
 FIRMWARE = {"firmware": FIRMWARE_VOCABULARY, "rollout": ROLLOUT_VOCABULARY}

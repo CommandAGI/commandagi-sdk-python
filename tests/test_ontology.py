@@ -7,7 +7,8 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.element import declarer_of
-from commandagi.design.ontology import (body, camera, channel, dashboard, dateRange, device, firmware, geoproject, node, opgraph, pane, region,
+from commandagi.design import firmware as fw
+from commandagi.design.ontology import (body, camera, channel, dashboard, dateRange, device, geoproject, node, opgraph, pane, region,
                                         scene, split, unit, wire, world)
 
 
@@ -42,9 +43,9 @@ class OntologyTests(unittest.TestCase):
     def test_a_definition_names_its_firmware_and_a_firmware_declares_its_channels(self):
         d = declared(device(channel(id="cam", dir="out", medium="video", format="video"), name="Cam", firmware="../../firmware/cam", revision="rev-a"))["document"]
         self.assertEqual({k: d["document"][k] for k in ("firmware", "revision")}, {"firmware": "../../firmware/cam", "revision": "rev-a"})
-        f = declared(firmware(channel(id="cam", dir="out", medium="video", format="video"), name="cam", hardware=["rev-a"]))["document"]
+        f = declared(fw.firmware(fw.supports(revision="rev-a"), fw.channel(id="cam", dir="out", medium="video", format="video"), name="cam"))["document"]
         self.assertEqual(f["format"], "firmware")
-        self.assertEqual(f["document"], {"name": "cam", "hardware": ["rev-a"], "channels": [{"id": "cam", "dir": "out", "medium": "video", "format": "video"}]})
+        self.assertEqual(f["document"], {"name": "cam", "supports": [{"revision": "rev-a"}], "channels": [{"id": "cam", "dir": "out", "medium": "video", "format": "video"}]})
 
     def test_a_definition_a_dashboard_and_a_geo_project(self):
         d = declared(device(channel(id="joints", dir="duplex", medium="records", format="servo-bus", transport="serial", min_interval_ms=20),
