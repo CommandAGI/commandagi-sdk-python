@@ -95,7 +95,7 @@ def _doc_text(doc: Any) -> str:
 # copy) run. Python cannot run it, so `kernel_places` and `call_kernel` are its port, rule for rule. A change there is
 # a change here.
 
-KERNEL_NAMES = ("3d",)
+KERNEL_NAMES = ("3d", "fea")
 KERNEL_PLACES = ("local", "cloud")
 
 
