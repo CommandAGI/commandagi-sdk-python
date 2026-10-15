@@ -281,6 +281,27 @@ def _check_value(el: Element, definition: str, value: Any, at: str = "") -> Any:
     return filled
 
 
+def _sheet_view_problems(views: List[Dict[str, Any]]) -> List[str]:
+    """What is wrong with a sheet's section and detail views, one sentence each, as the 3D core's ``sheetViewProblems``
+    says it (packages/domain/3d-core/drawing-sheet.ts); the TypeScript and Rust SDKs say the same sentences."""
+    out: List[str] = []
+    for v in views:
+        if v["view"] == "section" and not v.get("section"):
+            out.append(f"view {v['id']} is a section view with no section: give its cutting plane (point and normal)")
+        if v["view"] != "detail":
+            continue
+        detail = v.get("detail")
+        if not detail:
+            out.append(f"view {v['id']} is a detail view with no detail: give the view it enlarges, its centre and its radius")
+            continue
+        of = next((w for w in views if w["id"] == detail["of"]), None)
+        if of is None:
+            out.append(f"view {v['id']} is a detail of {detail['of']}, which is no view of this sheet")
+        elif of["view"] == "detail":
+            out.append(f"view {v['id']} is a detail of {detail['of']}, which is a detail itself")
+    return out
+
+
 def _builtin_planes_of(root: Element) -> List[str]:
     """The built-in planes a root says the document has (``builtinPlanes``); absent: all three."""
     v = root.props.get("builtinPlanes")
@@ -362,7 +383,12 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             held = lists.setdefault(el.tag, {"items": [], "sources": {}})
             if any(x.get("id") == i for x in held["items"]):
                 raise ValueError(f"two {el.tag} elements are called {i}")
-            held["items"].append(_check_value(el, THREED_LISTS[el.tag]["def"], _fields(el)))
+            item = _check_value(el, THREED_LISTS[el.tag]["def"], _fields(el))
+            if el.tag == "sheet":
+                problems = _sheet_view_problems(item["views"])
+                if problems:
+                    raise ValueError(f"{_where(el)}: {'; '.join(problems)}")
+            held["items"].append(item)
             if el.source is not None:
                 held["sources"][f"{el.tag}:{i}"] = el.source
         elif el.tag == "slot":

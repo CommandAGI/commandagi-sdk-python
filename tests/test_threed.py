@@ -232,6 +232,22 @@ class ThreeDTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r'<sheet id="s">: views: '):
             declare_threed(part(sheet(id="s", views=[]), name="P"))
 
+    def test_a_sheets_section_view_has_its_cutting_plane_and_a_detail_view_enlarges_another_view(self):
+        # sdk/typescript threed.test.ts accepts and refuses the same sheets with the same sentences.
+        views = [
+            {"id": "front", "view": "front"},
+            {"id": "a", "view": "section", "section": {"point": [0, 0, 3], "normal": [0, 1, 0]}},
+            {"id": "b", "view": "detail", "detail": {"of": "front", "center": [-20, 0, 6], "radius": 5, "label": "C"}},
+        ]
+        n = declare_threed(part(sheet(id="s", views=views), name="P"))["nodes"]
+        self.assertEqual(n["drawings"]["inputs"]["value"][0]["views"], views)
+        with self.assertRaises(ValueError) as caught:
+            declare_threed(part(sheet(id="s", views=[{"id": "front", "view": "front"}, {"id": "a", "view": "section"}]), name="P"))
+        self.assertEqual(str(caught.exception), '<sheet id="s">: view a is a section view with no section: give its cutting plane (point and normal)')
+        with self.assertRaises(ValueError) as caught:
+            declare_threed(part(sheet(id="s", views=[{"id": "b", "view": "detail", "detail": {"of": "b", "center": [0, 0, 0], "radius": 5}}]), name="P"))
+        self.assertEqual(str(caught.exception), '<sheet id="s">: view b is a detail of b, which is a detail itself')
+
     def test_a_world_body_written_by_tsx_reads_with_its_declared_fields(self):
         # The element an ingest writes in a .3d.tsx (sdk/typescript threed.test.ts reads the same one).
         def world_body(collider, restitution=0.1):

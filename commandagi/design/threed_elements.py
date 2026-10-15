@@ -215,6 +215,18 @@ _DraftFeatureOptional = TypedDict("_DraftFeatureOptional", {"angle": float, "pul
 class DraftFeature(_DraftFeatureRequired, _DraftFeatureOptional):
     pass
 
+#: A detail: everything a view of the sheet draws within a circle, enlarged.
+_DrawingDetailRequired = TypedDict("_DrawingDetailRequired", {"of": str, "center": 'Vec3', "radius": float})
+_DrawingDetailOptional = TypedDict("_DrawingDetailOptional", {"label": str}, total=False)
+class DrawingDetail(_DrawingDetailRequired, _DrawingDetailOptional):
+    pass
+
+#: A section's cutting plane. The viewer stands on the +normal side; the material on that side is removed. The view shows the cut face, hatched, and the material behind it. Up is +Y; when the normal is within 25° of ±Y, up is as in the top view (for +Y) or the bottom view (for −Y).
+_DrawingSectionRequired = TypedDict("_DrawingSectionRequired", {"point": 'Vec3', "normal": 'Vec3'})
+_DrawingSectionOptional = TypedDict("_DrawingSectionOptional", {"label": str}, total=False)
+class DrawingSection(_DrawingSectionRequired, _DrawingSectionOptional):
+    pass
+
 #: An engineering drawing sheet of the document: views, dimensions and a title block. `<sheet>` in code.
 _DrawingSheetRequired = TypedDict("_DrawingSheetRequired", {"id": str, "views": List['DrawingViewSpec']})
 _DrawingSheetOptional = TypedDict("_DrawingSheetOptional", {"name": str, "size": Literal["A4", "A3", "A2", "A1", "A0"], "scale": float, "projection": Literal["first-angle", "third-angle"], "bodies": List[str], "hiddenLines": bool, "holeCallouts": bool, "overallDimensions": bool, "title": 'DrawingTitle'}, total=False)
@@ -229,7 +241,7 @@ class DrawingTitle(_DrawingTitleRequired, _DrawingTitleOptional):
 
 #: One view on a sheet.
 _DrawingViewSpecRequired = TypedDict("_DrawingViewSpecRequired", {"id": str, "view": 'DrawingViewName'})
-_DrawingViewSpecOptional = TypedDict("_DrawingViewSpecOptional", {"at": Tuple[float, float], "scale": float, "hiddenLines": bool, "dimensions": bool}, total=False)
+_DrawingViewSpecOptional = TypedDict("_DrawingViewSpecOptional", {"at": Tuple[float, float], "scale": float, "hiddenLines": bool, "dimensions": bool, "section": 'DrawingSection', "detail": 'DrawingDetail'}, total=False)
 class DrawingViewSpec(_DrawingViewSpecRequired, _DrawingViewSpecOptional):
     pass
 
@@ -1257,8 +1269,8 @@ BooleanMode = Literal["new", "add", "cut", "intersect"]
 
 ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", "angle", "horizontal", "vertical", "tangent", "equal", "pointOnLine", "midpoint", "pointOnCircle", "symmetric", "horizontalDistance", "verticalDistance", "radius"]
 
-#: A standard view, named by the side of the model the viewer stands on.
-DrawingViewName = Literal["iso", "front", "top", "right", "left", "bottom", "back"]
+#: A view: a standard view, named by the side of the model the viewer stands on; a section, cut by a plane; or a detail, an enlarged part of another view.
+DrawingViewName = Literal["iso", "front", "top", "right", "left", "bottom", "back", "section", "detail"]
 
 #: How a clearance hole fits its screw (ISO 273: close is fine, normal is medium, loose is coarse).
 FastenerFit = Literal["close", "normal", "loose"]
