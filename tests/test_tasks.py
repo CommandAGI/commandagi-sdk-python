@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.tasks import asks, project, sketch, subtask, task, time_of, view
+from commandagi.design.tasks import asks, change, project, sketch, subtask, task, time_of, view
 
 OCT_20 = int(datetime(2026, 10, 20, tzinfo=timezone.utc).timestamp() * 1000)
 
@@ -45,6 +45,14 @@ class TaskTests(unittest.TestCase):
             declare_document(task(sketch(ref="a"), sketch(ref="b"), id="a"))
         with self.assertRaisesRegex(ValueError, "reach is not read"):
             declare_document(task(asks(world="w/world.tsx", reach=3), id="a"))
+
+    def test_a_change_proposal(self):
+        base = "c" * 64
+        d = declare_document(task(change(file="../cad/Plate.3d.py", base=base, proposed="Thinner plate/Plate.3d.py"),
+                                  id="thinner", status="proposed"))
+        self.assertEqual(d["document"]["changes"], [{"file": "../cad/Plate.3d.py", "base": base, "proposed": "Thinner plate/Plate.3d.py"}])
+        with self.assertRaisesRegex(ValueError, "base is the content id"):
+            declare_document(task(change(file="a.3d.py", base="HEAD", proposed="b.3d.py"), id="a"))
 
     def test_times(self):
         self.assertEqual(time_of("2026-10-20", "t"), OCT_20)

@@ -5,7 +5,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.records import contract, event, instance, party
+from commandagi.design.records import check, contract, event, file, instance, output, party, release
 
 TERMS = {"subject": {"kind": "data_stream", "resourceType": "device", "resourceId": "dev-1"}, "title": "Bench camera",
          "description": "", "price": {"type": "metered", "rate": 1, "unit": "minute"}, "schedule": None, "takeRateBps": 1000,
@@ -36,6 +36,25 @@ class RecordTests(unittest.TestCase):
             {"seq": 1, "kind": "transfer", "at": 2, "prev": "h0", "by": "org-acme", "to": "u-2"}]})
         with self.assertRaisesRegex(ValueError, "oldest first"):
             declare_document(instance(event(seq=1, kind="service", at=1, by="x"), serial="S", product_id="p"))
+
+    def test_a_release(self):
+        a, b = "a" * 64, "b" * 64
+        d = declare_document(release(
+            file(path="cad/Plate.3d.py", digest=a),
+            check(file="cad/Plate.3d.py", id="interference", kind="interference", status="passed"),
+            output(path="outputs/Plate.step", digest=b, from_="cad/Plate.3d.py", kind="step"),
+            id="plate-A", rev="A", of="../..", created_at=1792000000000, note="README.md"))
+        self.assertEqual(d["document"], {
+            "id": "plate-A", "rev": "A", "of": "../..", "createdAt": 1792000000000, "note": "README.md",
+            "files": [{"path": "cad/Plate.3d.py", "digest": a}],
+            "checks": [{"file": "cad/Plate.3d.py", "id": "interference", "kind": "interference", "status": "passed"}],
+            "outputs": [{"path": "outputs/Plate.step", "digest": b, "from": "cad/Plate.3d.py", "kind": "step"}]})
+        with self.assertRaisesRegex(ValueError, "digest is its content's SHA-256"):
+            declare_document(release(file(path="x", digest="abc"), id="r", rev="A", of="."))
+        with self.assertRaisesRegex(ValueError, "status is passed, failed, skipped, accepted"):
+            declare_document(release(check(file="x", id="i", kind="k", status="ok"), id="r", rev="A", of="."))
+        unit = declare_document(instance(serial="S", product_id="p", release="../releases/A/A.release.py"))
+        self.assertEqual(unit["document"]["release"], "../releases/A/A.release.py")
 
     def test_a_run_names_each_record_by_its_call(self):
         out = run_module(

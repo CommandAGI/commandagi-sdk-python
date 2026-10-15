@@ -24,6 +24,9 @@ A proposal is a task with status ``proposed``: ``sketch(ref=…)`` names the fil
         asks(world="../worlds/shop/world.tsx", units=["cnc-1"], channels=["gcode"], verbs=["open", "arm", "run"], hours=4),
         id="cut", title="Cut the bracket", status="proposed", assignees=["agent:claude"], expires="2026-10-11T18:00:00Z",
     )
+
+A change proposal carries the files it changes: each ``change(file=…, base=…, proposed=…)`` names the design file
+(a ref), the content id (SHA-256, hex) of the version the edit was made from, and the edited copy (a ref).
 """
 from __future__ import annotations
 
@@ -39,6 +42,7 @@ TASK_FIELDS = ["id", "title", "status", "priority", "glyph", "assignees", "proje
                "updatedAt"]
 ASK_FIELDS = ["world", "units", "channels", "verbs", "folder", "files", "venues", "symbols", "maxQty", "maxNotional", "perDay",
               "hours", "note"]
+CHANGE_FIELDS = ["file", "base", "proposed"]
 PROJECT_FIELDS = ["id", "name", "glyph", "defaultViewId", "subprojects", "archived", "readme", "createdAt", "updatedAt"]
 VIEW_FIELDS = ["id", "name", "mode", "groupBy", "filter", "laneOrder"]
 TIME_FIELDS = ["startAt", "dueAt", "closedAt", "expires", "approvedAt", "createdAt", "updatedAt"]
@@ -48,12 +52,13 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "task": {"holds": "children"},
     "sketch": {},
     "asks": {},
+    "change": {},
     "subtask": {},
     "project": {"holds": "children"},
     "view": {},
 }
 
-__all__ = ["TASK_FIELDS", "ASK_FIELDS", "PROJECT_FIELDS", "VIEW_FIELDS", "TIME_FIELDS", "SIGNATURES", "time_of", "TASK_VOCABULARY",
+__all__ = ["TASK_FIELDS", "ASK_FIELDS", "CHANGE_FIELDS", "PROJECT_FIELDS", "VIEW_FIELDS", "TIME_FIELDS", "SIGNATURES", "time_of", "TASK_VOCABULARY",
            "PROJECT_VOCABULARY", *define(globals(), "tasks", SIGNATURES)]
 
 _TIME = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2}))?$")
@@ -93,8 +98,16 @@ def _task(t: DocTree) -> Dict[str, Any]:
         if not isinstance(ref, str) or not ref:
             raise ValueError(f"<sketch> ref is a path to the file that shows the work, not {ref!r}")
     asks = [dict(c["attrs"]) for c in t["children"] if c["tag"] == "asks"]
+    changes = [dict(c["attrs"]) for c in t["children"] if c["tag"] == "change"]
+    for c in changes:
+        for k in ("file", "proposed"):
+            if not isinstance(c.get(k), str) or not c.get(k):
+                raise ValueError(f"<change> {k} is a path from this file, not {c.get(k)!r}")
+        base = c.get("base")
+        if not isinstance(base, str) or len(base) != 64 or any(ch not in "0123456789abcdef" for ch in base):
+            raise ValueError(f'<change file="{c.get("file")}"> base is the content id (SHA-256, hex) of the version the edit was made from, not {base!r}')
     return {**_fields(t), **({"sketch": sketches[0]} if sketches else {}), **({"asks": asks} if asks else {}),
-            **({"subtasks": subtasks} if subtasks else {})}
+            **({"changes": changes} if changes else {}), **({"subtasks": subtasks} if subtasks else {})}
 
 
 def _project(t: DocTree) -> Dict[str, Any]:
@@ -110,6 +123,7 @@ TASK_VOCABULARY = Vocabulary("task", "a task", "task", {
     "task": {"parents": [], "required": ["id"], "attrs": TASK_FIELDS},
     "sketch": {"parents": ["task"], "single": True, "required": ["ref"], "attrs": ["ref"]},
     "asks": {"parents": ["task"], "attrs": ASK_FIELDS},
+    "change": {"parents": ["task"], "key": "file", "required": ["file", "base", "proposed"], "attrs": CHANGE_FIELDS},
     "subtask": {"parents": ["task"], "key": "ref", "required": ["ref"], "attrs": ["ref"]},
 }, _task, _never)
 

@@ -1,4 +1,5 @@
-"""Signed records, declared in Python: a market contract (``.contract.py``) and a product instance (``.instance.py``), the
+"""Records, declared in Python: a market contract (``.contract.py``) and a product instance (``.instance.py``), which are
+signed, and a hardware release (``.release.py``: ``release(file(…), check(…), output(…), id=…, rev=…, of=…)``), the
 same documents and the same elements as the TypeScript SDK's JSX (``commandagi/design`` ``records.ts``)::
 
     from commandagi.design.records import contract, event, instance, party
@@ -30,8 +31,13 @@ from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
 
 CONTRACT_FIELDS = ["id", "terms", "createdAt"]
-INSTANCE_FIELDS = ["serial", "productId", "model"]
+INSTANCE_FIELDS = ["serial", "productId", "model", "release"]
 INSTANCE_EVENT_FIELDS = ["seq", "kind", "at", "prev", "by", "to", "contractRef", "attestationRef", "data", "sig"]
+RELEASE_FIELDS = ["id", "rev", "of", "product", "createdAt", "by", "note", "previous"]
+RELEASE_FILE_FIELDS = ["path", "digest"]
+RELEASE_CHECK_FIELDS = ["file", "id", "kind", "status", "accepted", "reason"]
+RELEASE_OUTPUT_FIELDS = ["path", "digest", "from", "kind"]
+RELEASE_CHECK_STATUSES = ["passed", "failed", "skipped", "accepted"]
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
@@ -39,10 +45,15 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "party": {},
     "instance": {"holds": "children"},
     "event": {},
+    "release": {"holds": "children"},
+    "file": {},
+    "check": {},
+    "output": {},
 }
 
-__all__ = ["CONTRACT_FIELDS", "INSTANCE_FIELDS", "INSTANCE_EVENT_FIELDS", "SIGNATURES", "CONTRACT_VOCABULARY",
-           "INSTANCE_VOCABULARY", *define(globals(), "records", SIGNATURES)]
+__all__ = ["CONTRACT_FIELDS", "INSTANCE_FIELDS", "INSTANCE_EVENT_FIELDS", "RELEASE_FIELDS", "RELEASE_FILE_FIELDS",
+           "RELEASE_CHECK_FIELDS", "RELEASE_OUTPUT_FIELDS", "RELEASE_CHECK_STATUSES", "SIGNATURES", "CONTRACT_VOCABULARY",
+           "INSTANCE_VOCABULARY", "RELEASE_VOCABULARY", *define(globals(), "records", SIGNATURES)]
 
 
 def _own(o: Dict[str, Any], keys: Any = None) -> Dict[str, Any]:
@@ -68,6 +79,22 @@ def _instance(t: DocTree) -> Dict[str, Any]:
     return {**_own(t["attrs"], INSTANCE_FIELDS), "events": events}
 
 
+def _release(t: DocTree) -> Dict[str, Any]:
+    at = f'<release rev="{t["attrs"].get("rev")}">'
+    listed = {tag: [dict(c["attrs"]) for c in t["children"] if c["tag"] == tag] for tag in ("file", "check", "output")}
+    for f in listed["file"] + listed["output"]:
+        digest = f.get("digest")
+        if not isinstance(digest, str) or len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
+            raise ValueError(f"{at}: {f.get('path')}'s digest is its content's SHA-256 in hex (64 characters), not {digest!r}")
+    for c in listed["check"]:
+        if c.get("status") not in RELEASE_CHECK_STATUSES:
+            raise ValueError(f"{at}: check {c.get('id')} of {c.get('file')}: status is {', '.join(RELEASE_CHECK_STATUSES)}, not {c.get('status')!r}")
+    created = t["attrs"].get("createdAt")
+    if created is not None and (isinstance(created, bool) or not isinstance(created, int)):
+        raise ValueError(f"{at}: createdAt is epoch milliseconds, not {created!r}")
+    return {**_own(t["attrs"], RELEASE_FIELDS), "files": listed["file"], "checks": listed["check"], "outputs": listed["output"]}
+
+
 def _never(_: Any) -> DocTree:
     raise NotImplementedError("the editor makes the tree from a document (the TypeScript SDK's toTree)")
 
@@ -83,5 +110,12 @@ INSTANCE_VOCABULARY = Vocabulary("instance", "a product instance", "instance", {
     "event": {"parents": ["instance"], "key": "seq", "required": ["seq", "kind", "at", "by"], "attrs": INSTANCE_EVENT_FIELDS},
 }, _instance, _never)
 
-for _v in (CONTRACT_VOCABULARY, INSTANCE_VOCABULARY):
+RELEASE_VOCABULARY = Vocabulary("release", "a hardware release", "release", {
+    "release": {"parents": [], "required": ["id", "rev", "of"], "attrs": RELEASE_FIELDS},
+    "file": {"parents": ["release"], "key": "path", "required": ["path", "digest"], "attrs": RELEASE_FILE_FIELDS},
+    "check": {"parents": ["release"], "required": ["file", "id", "kind", "status"], "attrs": RELEASE_CHECK_FIELDS},
+    "output": {"parents": ["release"], "key": "path", "required": ["path", "digest"], "attrs": RELEASE_OUTPUT_FIELDS},
+}, _release, _never)
+
+for _v in (CONTRACT_VOCABULARY, INSTANCE_VOCABULARY, RELEASE_VOCABULARY):
     register_vocabulary(_v, "records")
