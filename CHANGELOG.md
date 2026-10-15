@@ -16,6 +16,11 @@ Added
   channel=…, canary=…, waves=[…])` with `health` and `target`), as the TypeScript SDK's `firmware.ts`. A `sha256` that
   is not 64 lowercase hex digits is refused.
 - A world's unit states its `serial` and its hardware `revision`.
+- Tolerances. `parameter(tolerance=…)` and `hole(tolerance=…)` take `{"upper", "lower"}` (mm), `{"class": "H7"}` (an
+  ISO 286 class or `ISO 492 bore|outside|width`) or `{"basic": True}`; a tolerance given two ways is refused.
+  `commandagi.design.tolerances`: `tolerance_limits(nominal, tol)` and `fit_of(hole, shaft)`, the classes read from
+  the shipped tables (`TOLERANCE_TABLES`). `check(kind="fit", hole=, shaft=, intent=)` and `check(kind="stackup",
+  chain=, limit=, method=, samples=, seed=)` are checks of a 3D document (`kernel.check`).
 
 ## 0.6.0 (2026-10-15)
 

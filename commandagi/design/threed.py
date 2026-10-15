@@ -20,7 +20,9 @@ TypeScript SDK's JSX (``commandagi/design`` ``threed.ts``)::
 
 The calls (each keyword is the field of the same name, in snake_case: ``x_axis`` is ``xAxis``):
     part(*elements, name=) | assembly(*elements, name=)   the document; an assembly opens in the assembly mode
-    parameter(name=, value=, unit=, comment=, min=, max=, step=, bindings=[{"target", "field"}])
+    parameter(name=, value=, unit=, comment=, min=, max=, step=, tolerance=, bindings=[{"target", "field"}])
+                                              ``tolerance``: {"upper", "lower"} | {"class": "k5"} | {"basic": True}
+                                              (``tolerances.py``), what a fit or stack-up check reads
     part(builtin_planes=[…])                  the built-in planes the document has (absent: all three; []: none)
     plane(id=, name=, origin=, normal=, x_axis=)                a datum plane
     FEATURE(id=, name=, …fields)              a feature: the function is its type (extrude, revolve, fillet, chamfer,
@@ -83,6 +85,7 @@ from .element import Element, child_elements, declares, define
 from .ir import slug
 from .schema import describe_issue, validate, with_defaults
 from .standards import sized_hole
+from .tolerances import tolerance_problem
 from .threed_schema import SCHEMA
 
 #: The feature types a 3D document holds, by tag: the roots of ``SCHEMA`` (``threed_schema.py``), generated from the
@@ -103,7 +106,7 @@ BUILTIN_PLANES: Dict[str, Dict[str, Any]] = {
 }
 #: The document's view fields a root element may hold (the graph's ``meta``), beside ``name``.
 _VIEW_ATTRS = ["semanticVisibility"]
-_PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step"]
+_PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step", "tolerance"]
 #: Document fields a slot may not hold: they have elements of their own, or are the graph itself.
 _NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility",
               "drawings", "checks", "accepted", "permitted", "fasteners"}
@@ -316,6 +319,10 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
                     raise ValueError(f"{_where(el)}: prop {k} is not read on a parameter")
             if not _is_number(el.props.get("value")):
                 raise ValueError(f"{_where(el)}: value is a number")
+            if el.props.get("tolerance") is not None:
+                problem = tolerance_problem(el.props["tolerance"])
+                if problem:
+                    raise ValueError(f"{_where(el)}: tolerance: {problem}")
             claim(pname, f'parameter "{pname}"')
             f = _fields(el, ("name", "bindings"))
             bindings = [] if el.props.get("bindings") is None else _plain(el.props["bindings"], f"{_where(el)} bindings")
