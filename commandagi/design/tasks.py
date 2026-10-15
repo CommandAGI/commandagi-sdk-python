@@ -20,7 +20,7 @@ A proposal is a task with status ``proposed``: ``sketch(ref=…)`` names the fil
 ``note``)::
 
     result = task(
-        sketch(ref="../worlds/shop-sim/runs/cut/run.json"),
+        sketch(ref="../worlds/shop/runs/cut/run.json"),
         asks(world="../worlds/shop/world.tsx", units=["cnc-1"], channels=["gcode"], verbs=["open", "arm", "run"], hours=4),
         id="cut", title="Cut the bracket", status="proposed", assignees=["agent:claude"], expires="2026-10-11T18:00:00Z",
     )

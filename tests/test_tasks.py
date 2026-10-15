@@ -30,7 +30,7 @@ class TaskTests(unittest.TestCase):
 
     def test_a_proposal(self):
         d = declare_document(task(
-            sketch(ref="../worlds/shop-sim/runs/cut/run.json"),
+            sketch(ref="../worlds/shop/runs/cut/run.json"),
             asks(world="../worlds/shop/world.tsx", units=["cnc-1"], channels=["gcode"], verbs=["open", "arm", "run"], hours=4),
             asks(folder="..", venues=["sim"], max_qty=2, max_notional=500, per_day=3, note="paper first"),
             id="cut", title="Cut the bracket", status="proposed", assignees=["agent:claude"], expires="2026-10-20",
@@ -38,7 +38,7 @@ class TaskTests(unittest.TestCase):
         self.assertEqual(d["document"], {
             "id": "cut", "title": "Cut the bracket", "status": "proposed", "assignees": ["agent:claude"], "expires": OCT_20,
             "approvedBy": "person:ada", "approvedAt": OCT_20 + (14 * 60 + 30) * 60000, "grants": ["g-0123456789ab"],
-            "sketch": "../worlds/shop-sim/runs/cut/run.json",
+            "sketch": "../worlds/shop/runs/cut/run.json",
             "asks": [{"world": "../worlds/shop/world.tsx", "units": ["cnc-1"], "channels": ["gcode"], "verbs": ["open", "arm", "run"], "hours": 4},
                      {"folder": "..", "venues": ["sim"], "maxQty": 2, "maxNotional": 500, "perDay": 3, "note": "paper first"}]})
         with self.assertRaisesRegex(ValueError, "<task> has one <sketch>"):
