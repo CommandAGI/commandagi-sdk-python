@@ -57,6 +57,7 @@ import math
 import re
 from typing import Any, Dict, List, Optional
 
+from .circuit_checks import declare_circuit_checks
 from .element import Element, child_elements, declares, define
 from .ir import Declaration, Scope, slug, using
 
@@ -83,6 +84,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "board": _CHILDREN,
     "stack": {}, "graphic": {}, "text": {}, "dimension": {}, "kicad": {}, "net": {},
     "component": {}, "trace": {}, "arc": {}, "via": {}, "pour": {},
+    "check": {}, "accept": {},
 }
 
 __all__ = ["BOARD_PART", "CONDUCTOR", "BOARD_FACT", "BOARD_FOOTPRINTS", "BOARD_LAYERS", "SIGNATURES", "trace_point_id",
@@ -212,7 +214,7 @@ def declare_board_file(root: Element, name: Optional[str] = None) -> Declaration
 
 
 def _declare_board(s: Scope, root: Element) -> None:
-    children = child_elements(root)
+    children = declare_circuit_checks(s, list(child_elements(root)))
     w, h = _positive(root, "width"), _positive(root, "height")
     core, copper, thickness = _positive(root, "core"), _positive(root, "copper"), _positive(root, "thickness")
     layers = _plain(root, "layers",

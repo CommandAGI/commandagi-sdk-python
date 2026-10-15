@@ -173,6 +173,17 @@ result = group(
         with self.assertRaisesRegex(ValueError, "prop mpn is not read"):
             run(sheet('    junction("J", sch_x=0, sch_y=0, mpn="X"),\n'), "s.sch.py")
 
+    def test_a_circuits_checks_and_accepts_are_kept_in_the_graphs_meta(self):
+        g = run(sheet('''    resistor("R1", resistance="1k", sch_x=0, sch_y=0),
+    check(id="erc", kind="erc", severity="warning"),
+    accept(id="open", check="erc", rule="pin_not_connected", refs=["R1"], reason="a test point"),
+'''), "s.sch.py")
+        self.assertEqual([{k: v for k, v in c.items() if k != "source"} for c in g["meta"]["checks"]], [{"id": "erc", "kind": "erc", "severity": "warning"}])
+        self.assertEqual(g["meta"]["accepted"][0]["refs"], ["R1"])
+        self.assertTrue(all(n["type"] not in ("check", "accept") for n in g["nodes"].values()))
+        with self.assertRaisesRegex(ValueError, "reason"):
+            run(sheet('    accept(id="a", check="erc", rule="x"),\n'), "s.sch.py")
+
 
 def field_form(name, value):
     """A part's field as the part carries it: KiCad's ``property`` form, as the board editor writes one."""

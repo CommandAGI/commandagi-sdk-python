@@ -58,6 +58,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional
 
+from .circuit_checks import declare_circuit_checks
 from .eda import circuit, part_type_for
 from .element import Element, child_elements, declares, define
 from .ir import Scope, channels, current_scope, slug
@@ -83,6 +84,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "trace": {"args": ["from", "to"]},
     "netlabel": {"args": ["net", "connection"]},
     "unit": {"args": ["part", "unit"]},
+    "check": {}, "accept": {},
 }
 
 __all__ = ["SCH_WIRE", "SCH_JUNCTION", "SCH_LABEL", "NET", "ATTACHMENT", "SHEET_PARTS", "SIGNATURES", "LIBRARY_PIN_PORT",
@@ -338,7 +340,7 @@ def declare_sheet(children: List[Element]) -> None:
     junctions: Dict[str, str] = {}
     later: List[Element] = []
     wires = 0
-    for el in children:
+    for el in declare_circuit_checks(s, list(children)):
         ideal = SHEET_PARTS.get(el.tag)
         if ideal:
             _refuse_unknown(el, ["name", "spice", "noConnect", *_PLACE, *([ideal["value"]] if ideal["value"] else []),

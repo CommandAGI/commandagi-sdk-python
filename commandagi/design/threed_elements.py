@@ -10,6 +10,12 @@ try:
 except ImportError:  # pragma: no cover
     from typing_extensions import Literal, TypedDict  # type: ignore
 
+#: A FINDING ACCEPTED ON PURPOSE: `<accept check body region reason />`. It suppresses the findings of that check on that body whose location, in the body's own frame, lies in `region`. A region larger than 5 % of the body's box or than 100 000 mm³ is refused: it suppresses nothing and is itself an error. A suppressed finding stays in the report with the accept that suppressed it.
+_AcceptedFindingRequired = TypedDict("_AcceptedFindingRequired", {"id": str, "check": str, "body": str, "region": 'CheckRegion', "reason": str})
+_AcceptedFindingOptional = TypedDict("_AcceptedFindingOptional", {}, total=False)
+class AcceptedFinding(_AcceptedFindingRequired, _AcceptedFindingOptional):
+    pass
+
 __AxisRef1Required = TypedDict("__AxisRef1Required", {"type": Literal["datumAxis"], "axis": Literal["X", "Y", "Z"]})
 __AxisRef1Optional = TypedDict("__AxisRef1Optional", {}, total=False)
 class _AxisRef1(__AxisRef1Required, __AxisRef1Optional):
@@ -56,6 +62,12 @@ class ChartEdge(_ChartEdgeRequired, _ChartEdgeOptional):
 _ChartPlacementRequired = TypedDict("_ChartPlacementRequired", {"origin": 'Vec2', "angle": float})
 _ChartPlacementOptional = TypedDict("_ChartPlacementOptional", {"mirror": bool}, total=False)
 class ChartPlacement(_ChartPlacementRequired, _ChartPlacementOptional):
+    pass
+
+#: A box in a body's own frame: what an `<accept>` or a `<permitted>` covers.
+_CheckRegionRequired = TypedDict("_CheckRegionRequired", {"min": 'Vec3', "max": 'Vec3'})
+_CheckRegionOptional = TypedDict("_CheckRegionOptional", {}, total=False)
+class CheckRegion(_CheckRegionRequired, _CheckRegionOptional):
     pass
 
 _CircularPatternFeatureRequired = TypedDict("_CircularPatternFeatureRequired", {"type": Literal["circularPattern"], "seedFeature": str, "axis": 'AxisRef', "id": str, "name": str})
@@ -146,6 +158,12 @@ _DeleteFaceFeatureOptional = TypedDict("_DeleteFaceFeatureOptional", {"suppresse
 class DeleteFaceFeature(_DeleteFaceFeatureRequired, _DeleteFaceFeatureOptional):
     pass
 
+#: A CHECK THE DOCUMENT MUST PASS: `<check kind … />`. The kinds built in are `interference`, `clearance`, `holes`, `fasteners`, `edges` and `symmetry`; another kind is a check that a registered function runs (a manufacturability check), and where none is registered the check is skipped with that reason, never passed.
+_DesignCheckRequired = TypedDict("_DesignCheckRequired", {"id": str, "kind": str})
+_DesignCheckOptional = TypedDict("_DesignCheckOptional", {"bodies": List[str], "severity": Literal["error", "warning"], "min": float, "minVolume": float, "angle": float, "breakWidth": float, "maxRadius": float, "plane": Literal["yz", "xz", "xy"], "tolerance": float, "options": Dict[str, Any]}, total=False)
+class DesignCheck(_DesignCheckRequired, _DesignCheckOptional):
+    pass
+
 #: How far a patch is from flattenable, and by how much.
 _DevelopabilityVerdictRequired = TypedDict("_DevelopabilityVerdictRequired", {"developable": bool, "totalAbsoluteCurvature": float, "tolerance": float, "maxAbsCurvature": float, "area": float})
 _DevelopabilityVerdictOptional = TypedDict("_DevelopabilityVerdictOptional", {"because": str}, total=False)
@@ -200,6 +218,12 @@ class ExternalPartRef(_ExternalPartRefRequired, _ExternalPartRefOptional):
 _ExtrudeFeatureRequired = TypedDict("_ExtrudeFeatureRequired", {"type": Literal["extrude"], "profile": 'ProfileRef', "id": str, "name": str})
 _ExtrudeFeatureOptional = TypedDict("_ExtrudeFeatureOptional", {"distance": float, "symmetric": bool, "reverse": bool, "distance2": float, "draftAngle": float, "through": bool, "upToFace": 'TopoTarget', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ExtrudeFeature(_ExtrudeFeatureRequired, _ExtrudeFeatureOptional):
+    pass
+
+#: A FASTENER STACK: `<fastener part length at axis clamped receiver washer nut grip />`. It places a screw of the fastener library (by its part id, `iso-4762-m6`: the library's `mechanical-fasteners` parts, built from the same tables), its washer and its nut, and it records what the screw does: it clamps these parts into this receiver. The fasteners check reads the record.
+_FastenerStackRequired = TypedDict("_FastenerStackRequired", {"id": str, "part": str, "length": float, "at": 'Vec3', "clamped": List[str]})
+_FastenerStackOptional = TypedDict("_FastenerStackOptional", {"axis": 'Vec3', "receiver": str, "washer": str, "nut": str, "grip": float, "fit": 'FastenerFit', "minEngagement": float}, total=False)
+class FastenerStack(_FastenerStackRequired, _FastenerStackOptional):
     pass
 
 _FilletFeatureRequired = TypedDict("_FilletFeatureRequired", {"type": Literal["fillet"], "edges": List['TopoTarget'], "id": str, "name": str})
@@ -425,6 +449,12 @@ class PathPatternFeature(_PathPatternFeatureRequired, _PathPatternFeatureOptiona
 _PcbTraceFeatureRequired = TypedDict("_PcbTraceFeatureRequired", {"type": Literal["pcbTrace"], "path": 'ConductorPathRef', "layer": 'CopperLayerRef', "rule": 'RoutingRule', "width": float, "conductor": 'ConductorElectrical', "id": str, "name": str})
 _PcbTraceFeatureOptional = TypedDict("_PcbTraceFeatureOptional", {"centreline": Literal["arc-through-three-points"], "bias": 'RouteBias', "join": 'OffsetJoin', "cap": 'OffsetCap', "material": 'MaterialDef', "bindings": List['TerminalBinding'], "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class PcbTraceFeature(_PcbTraceFeatureRequired, _PcbTraceFeatureOptional):
+    pass
+
+#: A FINDING A PROCESS OR A PURPOSE PERMITS: `<permitted check body process edgeDir region reason />`. A square edge of a laser-cut sheet, a hole that is there for a cable. It permits the findings of that check on the bodies it names, made by that process, along that direction and in that region (each given test must hold). A permitted finding stays in the report with the entry that permitted it.
+_PermittedFindingRequired = TypedDict("_PermittedFindingRequired", {"id": str, "check": str, "body": str, "reason": str})
+_PermittedFindingOptional = TypedDict("_PermittedFindingOptional", {"process": str, "edgeDir": 'Vec3', "region": 'CheckRegion'}, total=False)
+class PermittedFinding(_PermittedFindingRequired, _PermittedFindingOptional):
     pass
 
 #: A rigid placement of a part in assembly space: a position, an orientation quaternion, and a uniform scale. Mirrors import but is self-contained (no pivot — the part is placed about its own origin) so the pure model has no kernel dependency.
@@ -1158,6 +1188,9 @@ ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", 
 
 #: A standard view, named by the side of the model the viewer stands on.
 DrawingViewName = Literal["iso", "front", "top", "right", "left", "bottom", "back"]
+
+#: How a clearance hole fits its screw (ISO 273: close is fine, normal is medium, loose is coarse).
+FastenerFit = Literal["close", "normal", "loose"]
 
 HoleStyle = Literal["simple", "counterbore", "countersink"]
 

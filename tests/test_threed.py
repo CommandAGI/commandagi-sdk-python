@@ -248,6 +248,24 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(str(caught.exception),
                          '<meshBody id="world/t">: worldCollider/nx: must be at least 2 (got 1); worldRestitution: must be at most 1 (got 2)')
 
+    def test_checks_accepts_permits_and_fasteners_are_the_documents_lists(self):
+        src = ("from commandagi.design.threed import *\n"
+               "result = assembly(\n"
+               "    box(id='base', name='Base', center=[0, 0, 5], size=[40, 40, 10], operation='new'),\n"
+               "    fastener(id='f1', part='iso-4762-m6', length=18, at=[0, 0, 20], clamped=['Lid'], receiver='Base', min_engagement=1.5),\n"
+               "    check(id='clash', kind='interference', min_volume=0.1),\n"
+               "    accept(id='weld', check='clash', body='Base', region={'min': [0, 0, 0], 'max': [1, 1, 1]}, reason='welded'),\n"
+               "    permitted(id='cut', check='edges', body='Panel*', process='laser-cutting', edge_dir=[0, 0, 1], reason='a laser cut'),\n"
+               "    name='Stack',\n"
+               ")\n")
+        n = run_module(src, "S.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["fasteners"]["inputs"]["value"][0]["minEngagement"], 1.5)
+        self.assertEqual(n["checks"]["inputs"]["value"], [{"id": "clash", "kind": "interference", "minVolume": 0.1}])
+        self.assertEqual(n["accepted"]["inputs"]["value"][0]["reason"], "welded")
+        self.assertEqual(n["permitted"]["inputs"]["value"][0]["edgeDir"], [0, 0, 1])
+        with self.assertRaisesRegex(ValueError, "length"):
+            run_module(src.replace("length=18", "length=-1"), "S.3d.py")
+
 
 if __name__ == "__main__":
     unittest.main()

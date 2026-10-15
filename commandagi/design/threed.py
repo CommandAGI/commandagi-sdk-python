@@ -50,6 +50,12 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
                                               revolute, prismatic, cylindrical, planar, screw, spherical or universal
     mate(id=, kind=, a=, b=, axis=, …)        a mate between two components of an assembly (``assembly.mates``)
     sheet(id=, size=, scale=, projection=, views=[…], …)    an engineering drawing sheet of the document (``drawings``)
+    check(id=, kind=, bodies=, severity=, …)  a check the design must pass (``checks``): interference, clearance,
+                                              holes, fasteners, edges, symmetry, or a registered kind
+    accept(id=, check=, body=, region=, reason=)   a finding accepted on purpose, in a bounded region of one body
+    permitted(id=, check=, body=, process=, edgeDir=, region=, reason=)   findings a process or a purpose permits
+    fastener(id=, part=, length=, at=, axis=, clamped=, receiver=, washer=, nut=, grip=)   a fastener stack: a
+                                              library screw, its washer and nut, and what it clamps into what
     slot(name=, value=)                       any other field of the document, whole
 
 The reader declares the document's graph exactly: a feature is a node of its type with its fields as ports, a plane a
@@ -84,7 +90,7 @@ from .threed_schema import SCHEMA
 THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
-_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "mate", "sheet", "point", "constraint", "projection", "line", "circle",
+_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "mate", "sheet", "check", "accept", "permitted", "fastener", "point", "constraint", "projection", "line", "circle",
                  "arc", "spline", "ellipse", "ellipseArc", "input"}
 #: A sketch's segment kinds, by tag.
 SKETCH_SEGMENTS: List[str] = ["line", "circle", "arc", "spline", "ellipse", "ellipseArc"]
@@ -100,13 +106,17 @@ _VIEW_ATTRS = ["semanticVisibility"]
 _PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step"]
 #: Document fields a slot may not hold: they have elements of their own, or are the graph itself.
 _NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility",
-              "drawings"}
+              "drawings", "checks", "accepted", "permitted", "fasteners"}
 #: Elements that are the items of a list the document holds: the tag, the document field (its node), the port of that
 #: node that holds the list, and the definition each item is checked against (``SCHEMA["$defs"]``).
 THREED_LISTS: Dict[str, Dict[str, str]] = {
     "joint": {"node": "dynamics", "port": "joints", "def": "DynamicsJoint"},
     "mate": {"node": "assembly", "port": "mates", "def": "Mate"},
     "sheet": {"node": "drawings", "port": "value", "def": "DrawingSheet"},
+    "check": {"node": "checks", "port": "value", "def": "DesignCheck"},
+    "accept": {"node": "accepted", "port": "value", "def": "AcceptedFinding"},
+    "permitted": {"node": "permitted", "port": "value", "def": "PermittedFinding"},
+    "fastener": {"node": "fasteners", "port": "value", "def": "FastenerStack"},
 }
 #: Slots whose value is an object: each field is a port of the slot's node; any other slot holds its value whole.
 _OBJECT_SLOTS = {"environment", "assembly", "sceneConstraints", "dynamics", "animation", "optimization", "standardParts"}
@@ -115,7 +125,7 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the 3D document: what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "part": _HOLDS, "assembly": _HOLDS, "parameter": {}, "plane": {}, "body": {}, "slot": {}, "feature": {},
-    "joint": {}, "mate": {}, "sheet": {},
+    "joint": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {},
     **{t: (_HOLDS if t == "sketch" else {}) for t in THREED_FEATURES},
     "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {},
 }
