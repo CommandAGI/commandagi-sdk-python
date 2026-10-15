@@ -45,6 +45,18 @@ The calls (children are positional; every attribute is a keyword):
     pour(name, layers, points, terminals, net, uuid, kicad)
                                       a copper pour: its boundary on its layers.
 
+The layout's constraints (the board's design intent: the placer, the router, the layout score and the checks read
+them; the editor and the layout operations write each one back):
+    netclass(name, nets, kind, width, clearance, via_diameter, via_drill, current, criticality, max_length, max_vias, impedance)
+                                      the rules of the nets named ("FIN*" matches by prefix).
+    diffpair(name, positive, negative, gap, width, impedance, max_skew)
+    group(name, parts, region, near, max_distance, conviction, side)
+                                      parts placed together: in the box ``region`` [x0, y0, x1, y1], within
+                                      ``max_distance`` of ``near`` (".J1 > .pin5"); conviction 1 holds them fixed.
+    keepout(name, points, layers, no) a region where ``no`` ("track", "via", "component", "pour") may be.
+    thermal(name, parts, watts, spacing, away_from, distance)
+    objective(weights)                the weight of each term of the layout score.
+
 Coordinates are the board's own: millimetres, Y DOWN, from the outline's corner. An end is bound by what it says,
 never by where it is drawn: ".R1 > .pin2" (a pin of a component, by its number), ".V1" (a via, by name), ".T1 > .end"
 (a point of another trace or arc: .start, .end or its index). Anything else is refused by name, never guessed. Each
@@ -85,6 +97,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "stack": {}, "graphic": {}, "text": {}, "dimension": {}, "kicad": {}, "net": {},
     "component": {}, "trace": {}, "arc": {}, "via": {}, "pour": {},
     "check": {}, "accept": {},
+    "netclass": {}, "diffpair": {}, "group": {}, "keepout": {}, "thermal": {}, "objective": {},
 }
 
 __all__ = ["BOARD_PART", "CONDUCTOR", "BOARD_FACT", "BOARD_FOOTPRINTS", "BOARD_LAYERS", "SIGNATURES", "trace_point_id",
@@ -196,7 +209,109 @@ def trace_point_id(index: int, count: int) -> str:
 
 
 _CONDUCTORS = {"trace", "arc", "via", "pour"}
-_FACTS = {"graphic", "text", "dimension", "kicad", "net"}
+_FACTS = {"graphic", "text", "dimension", "kicad", "net", "netclass", "diffpair", "group", "keepout", "thermal", "objective"}
+#: The layout's constraints, each a board fact (``fact`` is its tag), as the TypeScript SDK's.
+_CONSTRAINTS = ("netclass", "diffpair", "group", "keepout", "thermal", "objective")
+_NET_KINDS = ("signal", "power", "ground", "noisy", "sensitive", "highspeed")
+_KEEPOUT_KINDS = ("track", "via", "component", "pour")
+_NEAR = re.compile(r"^\s*\.[A-Za-z0-9_#\-]+(\s*>\s*\.[A-Za-z0-9_+\-]+)?\s*$")
+
+
+def _is_names(v: Any) -> bool:
+    return isinstance(v, (list, tuple)) and len(v) > 0 and all(isinstance(x, str) and x for x in v)
+
+
+def _is_box(v: Any) -> bool:
+    return isinstance(v, (list, tuple)) and len(v) == 4 and all(_is_num(x) for x in v) and v[0] < v[2] and v[1] < v[3]
+
+
+def _constraint_fact(el: Element) -> Dict[str, Any]:
+    """A constraint element's fact: what it takes, checked."""
+    out: Dict[str, Any] = {}
+
+    def put(k: str, v: Any) -> None:
+        if v is not None:
+            out[k] = v
+
+    def unit(prop: str) -> Optional[float]:
+        v = _num(el, prop)
+        if v is not None and not 0 <= v <= 1:
+            raise ValueError(f"{_where(el)}: {prop} is from 0 to 1")
+        return v
+
+    def names(prop: str, required: bool) -> Any:
+        v = _plain(el, prop, _is_names, "a list of names")
+        if v is None and required:
+            raise ValueError(f"{_where(el)} needs {prop}")
+        return v
+
+    if el.tag == "netclass":
+        _refuse_unknown(el, ["name", "nets", "kind", "width", "clearance", "viaDiameter", "viaDrill", "current", "criticality", "maxLength", "maxVias", "impedance"])
+        kind = _text(el, "kind")
+        if kind is not None and kind not in _NET_KINDS:
+            raise ValueError(f"{_where(el)}: kind is {', '.join(_NET_KINDS)}")
+        max_vias = _num(el, "maxVias")
+        if max_vias is not None and not (float(max_vias).is_integer() and max_vias >= 0):
+            raise ValueError(f"{_where(el)}: maxVias is a whole number, 0 or more")
+        put("name", _text(el, "name", True))
+        put("nets", names("nets", True))
+        put("kind", kind)
+        for k in ("width", "clearance", "viaDiameter", "viaDrill", "current", "maxLength", "impedance"):
+            put(k, _positive(el, k))
+        put("criticality", unit("criticality"))
+        put("maxVias", max_vias)
+        if out.get("viaDiameter") is not None and out.get("viaDrill") is not None and out["viaDiameter"] <= out["viaDrill"]:
+            raise ValueError(f"{_where(el)}: viaDiameter is more than viaDrill")
+    elif el.tag == "diffpair":
+        _refuse_unknown(el, ["name", "positive", "negative", "gap", "width", "impedance", "maxSkew"])
+        put("name", _text(el, "name", True))
+        put("positive", _text(el, "positive", True))
+        put("negative", _text(el, "negative", True))
+        if out["positive"] == out["negative"]:
+            raise ValueError(f"{_where(el)}: positive and negative are two nets")
+        for k in ("gap", "width", "impedance", "maxSkew"):
+            put(k, _positive(el, k))
+    elif el.tag == "group":
+        _refuse_unknown(el, ["name", "parts", "region", "near", "maxDistance", "conviction", "side"])
+        put("name", _text(el, "name", True))
+        put("parts", names("parts", True))
+        put("region", _plain(el, "region", _is_box, "[x0, y0, x1, y1] in mm, x0 < x1 and y0 < y1"))
+        near = _text(el, "near")
+        if near is not None and not _NEAR.match(near):
+            raise ValueError(f'{_where(el)}: near is a part (".J1") or a pin (".J1 > .pin5")')
+        put("near", near)
+        put("maxDistance", _positive(el, "maxDistance"))
+        put("conviction", unit("conviction"))
+        if out.get("maxDistance") is not None and near is None:
+            raise ValueError(f"{_where(el)}: maxDistance needs near")
+        side = el.props.get("side")
+        if side is not None and side not in ("top", "bottom"):
+            raise ValueError(f'{_where(el)}: side is "top" or "bottom"')
+        put("side", side)
+    elif el.tag == "keepout":
+        _refuse_unknown(el, ["name", "points", "layers", "no"])
+        put("name", _text(el, "name"))
+        put("points", [[p["x"], p["y"]] for p in _point_list(el, "points", 3)])
+        if el.props.get("layers") is not None:
+            put("layers", _copper_layers(el))
+        put("no", _plain(el, "no", lambda v: _is_names(v) and all(k in _KEEPOUT_KINDS for k in v), f"a list of {', '.join(_KEEPOUT_KINDS)}"))
+    elif el.tag == "thermal":
+        _refuse_unknown(el, ["name", "parts", "watts", "spacing", "awayFrom", "distance"])
+        put("name", _text(el, "name", True))
+        put("parts", names("parts", True))
+        put("watts", _positive(el, "watts", True))
+        put("spacing", _positive(el, "spacing"))
+        put("awayFrom", names("awayFrom", False))
+        put("distance", _positive(el, "distance"))
+        if ("awayFrom" in out) != ("distance" in out):
+            raise ValueError(f"{_where(el)}: give awayFrom and distance together")
+    elif el.tag == "objective":
+        _refuse_unknown(el, ["weights"])
+        weights = _plain(el, "weights", lambda v: _is_object(v) and all(_is_num(x) and x >= 0 for x in v.values()), "an object of term → weight (0 or more)")
+        if weights is None:
+            raise ValueError(f"{_where(el)} needs weights")
+        put("weights", weights)
+    return out
 _PIN = re.compile(r"^\s*\.([A-Za-z0-9_#\-]+)\s*>\s*\.([A-Za-z0-9_+\-]+)\s*$")
 
 
@@ -290,6 +405,7 @@ def _declare_board(s: Scope, root: Element) -> None:
     components: set = set()
     conductors: Dict[str, Dict[str, Any]] = {}
     nets: set = set()
+    constraint_names: set = set()
     kicad_forms = 0
     for el in children:
         nm = el.props.get("name")
@@ -317,6 +433,12 @@ def _declare_board(s: Scope, root: Element) -> None:
             kicad_forms += 1
             if kicad_forms > 1:
                 raise ValueError("a board has one <kicad>")
+        elif el.tag in _CONSTRAINTS:
+            key = "objective" if el.tag == "objective" else f"{el.tag}:{nm}" if isinstance(nm, str) else None
+            if key is not None and key in constraint_names:
+                raise ValueError("a board has one <objective>" if el.tag == "objective" else f"two <{el.tag}> elements are called {nm}")
+            if key is not None:
+                constraint_names.add(key)
         elif el.tag != "stack" and el.tag not in _FACTS:
             raise ValueError(f"<{el.tag}> is not read on a board (see commandagi.design.pcb)")
     id_of: Dict[int, str] = {id(c["el"]): c["id"] for c in conductors.values()}
@@ -555,6 +677,8 @@ def _declare_board(s: Scope, root: Element) -> None:
             if not float(code).is_integer() or code < 0:
                 raise ValueError(f"{_where(el)}: code is a KiCad net code (0 or more)")
             s.add(BOARD_FACT, {"fact": "net", "name": el.props["name"], "code": code}, label="Net", meta=_meta(el))
+        elif el.tag in _CONSTRAINTS:
+            s.add(BOARD_FACT, {"fact": el.tag, **_constraint_fact(el)}, label=el.tag, meta=_meta(el))
 
 
 def _declare(root: Element, stem: str) -> Dict[str, Any]:

@@ -3,7 +3,8 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.pcb import arc, board, component, declare_board_file, dimension, graphic, kicad, net, pour, stack, text, trace, via
+from commandagi.design.pcb import (arc, board, component, declare_board_file, diffpair, dimension, graphic, group, keepout, kicad, net, netclass,
+                                   objective, pour, stack, text, thermal, trace, via)
 
 
 def declared(*children, **attrs):
@@ -117,6 +118,34 @@ class BoardTests(unittest.TestCase):
             component(trace(layer="F.Cu"))
         with self.assertRaisesRegex(TypeError, "pcb_x"):
             component(name="R1", pcbX=3)
+
+    def test_the_layouts_constraints_are_board_facts(self):
+        g = declared(
+            netclass(name="supply", nets=["P24", "FIN*"], kind="power", width=0.5, clearance=0.25, current=0.5, criticality=0.8, max_vias=2),
+            diffpair(name="usb", positive="D+", negative="D-", gap=0.15, max_skew=0.5),
+            group(name="in1", parts=["R1", "U1"], region=[10, 30, 30, 50], near=".J1 > .pin5", max_distance=4, conviction=0.5),
+            keepout(name="label", points=[[80, 20], [96, 20], [96, 28]], no=["track", "via"]),
+            thermal(name="fets", parts=["Q1", "Q2"], watts=0.3, spacing=4, away_from=["U1"], distance=6),
+            objective(weights={"wirelength": 1, "vias": 3}),
+            width=100, height=60,
+        )
+        facts = [n["inputs"] for n in g["nodes"].values() if n["type"] == "eda.boardfact"]
+        self.assertEqual(facts, [
+            {"fact": "netclass", "name": "supply", "nets": ["P24", "FIN*"], "kind": "power", "width": 0.5, "clearance": 0.25, "current": 0.5, "criticality": 0.8, "maxVias": 2},
+            {"fact": "diffpair", "name": "usb", "positive": "D+", "negative": "D-", "gap": 0.15, "maxSkew": 0.5},
+            {"fact": "group", "name": "in1", "parts": ["R1", "U1"], "region": [10, 30, 30, 50], "near": ".J1 > .pin5", "maxDistance": 4, "conviction": 0.5},
+            {"fact": "keepout", "name": "label", "points": [[80, 20], [96, 20], [96, 28]], "no": ["track", "via"]},
+            {"fact": "thermal", "name": "fets", "parts": ["Q1", "Q2"], "watts": 0.3, "spacing": 4, "awayFrom": ["U1"], "distance": 6},
+            {"fact": "objective", "weights": {"wirelength": 1, "vias": 3}},
+        ])
+        with self.assertRaisesRegex(ValueError, "kind is signal, power"):
+            declared(netclass(name="a", nets=["X"], kind="loud"))
+        with self.assertRaisesRegex(ValueError, "maxDistance needs near"):
+            declared(group(name="g", parts=["R1"], max_distance=3))
+        with self.assertRaisesRegex(ValueError, "give awayFrom and distance together"):
+            declared(thermal(name="t", parts=["Q1"], watts=1, away_from=["U1"]))
+        with self.assertRaisesRegex(ValueError, "one <objective>"):
+            declared(objective(weights={"vias": 1}), objective(weights={"vias": 2}))
 
 
 if __name__ == "__main__":
