@@ -39,6 +39,22 @@ class StudyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"<force> stands in <loadCase>, not in <study>"):
             declare_document(s.study(s.force(id="f", faces=FACE, total=[0, 0, 1]), kind="structural", part="a.3d.tsx"))
 
+    def test_a_flow_study_is_the_fluid_the_inlet_and_the_outlet(self):
+        inlet, outlet = {"kind": "face", "select": {"normal": [-1, 0, 0]}}, {"kind": "face", "select": {"normal": [1, 0, 0]}}
+        d = declare_document(s.study(
+            s.fluid(nu=1e-6), s.inlet(faces=inlet, velocity=0.5), s.outlet(faces=outlet),
+            s.flowMesh(cells=[20, 3, 3], levels=[1, 2, 4]), s.criterion(id="drop", quantity="pressureDrop", limit=2),
+            kind="flow", part="Channel.3d.tsx", units="m-kg-s",
+        ))
+        self.assertEqual(d["document"], {
+            "kind": "flow", "part": "Channel.3d.tsx", "units": "m-kg-s", "fluid": {"nu": 1e-6},
+            "inlet": {"faces": inlet, "velocity": 0.5}, "outlet": {"faces": outlet},
+            "flowMesh": {"cells": [20, 3, 3], "levels": [1, 2, 4]},
+            "criteria": [{"id": "drop", "quantity": "pressureDrop", "limit": 2}],
+        })
+        with self.assertRaisesRegex(ValueError, r"<mesh> belongs to a structural study, not to a flow one"):
+            declare_document(s.study(s.mesh(size=2), kind="flow", part="a.3d.tsx"))
+
 
 if __name__ == "__main__":
     unittest.main()
