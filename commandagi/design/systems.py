@@ -18,12 +18,15 @@ two parts (``.interface.py``), the same documents and the same elements as the T
         load(id="motors", part="M1 M2", rail="vbat", mode="drive", current=1.2, source="motor datasheet"),
         bom(ref="bom.csv"),
         budget(id="drive-power", quantity="power", rail="vbat", mode="drive", limit=15, unit="W", margin=0.2),
+        budget(id="cost-100", quantity="cost", per=100, currency="USD", limit=40, design="Rover.3d.py"),
         name="Rover",
     )
 
 The rule of the ontology's files: a record is an element and its fields are the element's attributes (snake_case
 keywords: ``verified_by`` is ``verifiedBy``). A requirement is named by a ref, never by an id alone
-(``Rover.req.py#mass``). Nothing adds a default. The checks are the host's (``commandagi check``, ``commandagi trace``).
+(``Rover.req.py#mass``). Nothing adds a default. A ``bom`` gives masses; a cost budget reads the logistics roll-up of
+the design it names (``design``: a 3D document, a schematic or a board with a cost check), the one source of cost, so
+no contribution is a cost. The checks are the host's (``commandagi check``, ``commandagi trace``).
 """
 from __future__ import annotations
 
@@ -45,8 +48,9 @@ MODE_FIELDS = ["id", "description"]
 RAIL_FIELDS = ["id", "voltage", "description", "source"]
 CONVERTER_FIELDS = ["id", "input", "output", "efficiency", "source"]
 LOAD_FIELDS = ["id", "part", "rail", "mode", "current", "power", "voltage", "source"]
-CONTRIBUTION_FIELDS = ["id", "quantity", "part", "value", "unit", "qty", "mode", "rail", "currency", "per", "source"]
-BUDGET_FIELDS = ["id", "quantity", "limit", "unit", "mode", "rail", "per", "currency", "resistance", "margin", "source", "description"]
+CONTRIBUTION_FIELDS = ["id", "quantity", "part", "value", "unit", "qty", "mode", "rail", "source"]
+BUDGET_FIELDS = ["id", "quantity", "limit", "unit", "mode", "rail", "per", "currency", "design", "resistance", "margin", "source",
+                 "description"]
 PIN_FIELDS = ["number", "signal", "dir", "voltage", "gpio", "at", "required", "description"]
 HOLE_FIELDS = ["id", "at", "diameter", "description"]
 MESSAGE_FIELDS = ["id", "text", "code", "define", "dir", "description"]
@@ -136,6 +140,9 @@ def _system(t: DocTree) -> Dict[str, Any]:
         if tag == "contribution":
             _check(a.get("quantity") in BUDGET_QUANTITIES,
                    f"{at}: quantity must be one of {', '.join(BUDGET_QUANTITIES)} (got {json.dumps(a.get('quantity'))})")
+            _check(a.get("quantity") != "cost",
+                   f"{at}: a cost is stated in the design's logistics (a part's suppliers, a made part's rate), which a cost "
+                   "budget's design rolls up, not as a contribution")
             _check(_num(a.get("value")), f"{at}: value is a number")
             _check(isinstance(a.get("source"), str) and a["source"].strip(),
                    f'{at}: source says where the number was read (a datasheet, a measurement, "estimate: …")')
@@ -147,6 +154,9 @@ def _system(t: DocTree) -> Dict[str, Any]:
             _check("margin" not in a or (_num(m) and 0 <= m < 1), f"{at}: margin is a fraction of the limit kept free, in [0, 1)")
             if a.get("quantity") == "power":
                 _check(isinstance(a.get("rail"), str) and isinstance(a.get("mode"), str), f"{at}: a power budget names its rail and its mode")
+            if a.get("quantity") == "cost":
+                _check(isinstance(a.get("design"), str) and a["design"].strip(),
+                       f'{at}: a cost budget names the design whose logistics roll-up it reads (design="cad/Assembly.3d.py")')
             if a.get("quantity") == "thermal":
                 _check(isinstance(a.get("mode"), str) and _num(a.get("resistance")),
                        f"{at}: a thermal budget names its mode and the thermal resistance to the ambient (resistance, K/W)")
