@@ -103,6 +103,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.business` | a company, an RFC, a case |
 | `commandagi.design.tasks` | a task, a project |
 | `commandagi.design.monitors` | a monitor (`monitor.py`, in the folder of the thing it follows) |
+| `commandagi.design.agents` | an agent harness (`harness.py`; `realtime`: what its model takes and gives live), an agent (`agent.py`: a base or a fork) |
 | `commandagi.design.records` | a contract, a product instance |
 | `commandagi.design.postal` | a letter, a postcard |
 | `commandagi.design.pdf` | a PDF assembled from pages, comments, stamps, signatures, redactions, fields and bookmarks |
