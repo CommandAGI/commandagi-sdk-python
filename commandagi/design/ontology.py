@@ -55,8 +55,9 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 }
 
 NODE_GRAPH_ID = "nodegraph"
-#: The fields of a unit in a world's file (packages/domain/world/worlds.js).
-UNIT_FIELDS = ["uid", "name", "device", "domain", "size_mm", "support", "channels", "manualUrl", "position", "rotation"]
+#: The fields of a unit in a world's file (packages/domain/world/worlds.js). ``serial``: the serial number of the one physical
+#: thing a unit is; ``revision``: its hardware revision (a firmware release says which it supports).
+UNIT_FIELDS = ["uid", "name", "device", "serial", "revision", "domain", "size_mm", "support", "channels", "manualUrl", "position", "rotation"]
 #: ``links``: the parts of the world's model that a run moves (packages/domain/world/pose.js modelPose), a definition's
 #: link grammar with the unit named in each joint and emit; ``node`` is the id of the model's feature that makes the part.
 WORLD_FIELDS = ["name", "kind", "description", "from", "model", "links"]

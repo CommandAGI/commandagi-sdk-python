@@ -94,6 +94,8 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.threed` | a 3D part or assembly |
 | `commandagi.design.fab` | a machining setup (`cam`), a slicing setup (`slicing`) |
 | `commandagi.design.study` | a study of a part (`study`: material, fixtures, load cases, mesh, criteria, revise; docs/formats.md § studies) |
+| `commandagi.design.testplans` | a test plan (`testplan`: conditions, fixtures, steps) |
+| `commandagi.design.firmware` | a firmware release (`firmware`: supported revisions), a rollout (`rollout`: health checks, targets) |
 | `commandagi.design.office` | a workbook, a page, a deck |
 | `commandagi.design.twod` | a drawing, a painting, a photo, a nest |
 | `commandagi.design.media` | a video (clips, `composition(src="Intro.vid.py")`: another video drawn live from its own code, `artboard(src="Poster.draw.py")`: a drawing's page drawn live), a song |

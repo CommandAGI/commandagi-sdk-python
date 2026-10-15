@@ -4,6 +4,19 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- Test plans (`commandagi.design.testplans`): a `<name>.testplan.py` holds the steps that test one serial-numbered
+  unit, never the results: `testplan(title=…, device=…)` with `condition`, `fixture` and `step`, the same elements as
+  the TypeScript SDK's `testplans.ts`.
+- Firmware (`commandagi.design.firmware`): a release (`<name>.firmware.py`: `firmware(version=…, image=…, sha256=…,
+  sbom=…, device=…)` with `supports(revision=…)`) and a rollout (`<name>.rollout.py`: `rollout(firmware=…, world=…,
+  channel=…, canary=…, waves=[…])` with `health` and `target`), as the TypeScript SDK's `firmware.ts`. A `sha256` that
+  is not 64 lowercase hex digits is refused.
+- A world's unit states its `serial` and its hardware `revision`.
+
 ## 0.6.0 (2026-10-15)
 
 Read **Removed** first: a script that calls `eda.autoroute` stops with `unknown tool` on the platform today, with 0.5.1
