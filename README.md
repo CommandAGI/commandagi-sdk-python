@@ -28,6 +28,13 @@ with cagi.launch("simulation/warehouse") as world:
 cagi.call("list_snapshots")
 ```
 
+A call waits 120 s for its answer. `CommandAGI(timeout=600)` sets it for every call (None: no limit), and
+`cagi.call("pcb_autoroute", {...}, timeout=900)` for one call. A call with no answer in time raises
+`CommandAGIError`; the platform may still finish the operation.
+
+A Python document can go where only TSX is read: `commandagi.design.to_tsx(result)` writes its root element as the
+TypeScript SDK's code file, which declares the same document.
+
 ## One surface, generated
 
 This SDK, the TypeScript SDK (`npm i commandagi`) and the `commandagi` CLI all come from **one
@@ -234,7 +241,7 @@ graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"bod
 ## Versions
 
 - A release is the tag `v<version>` in this repository and the same version on PyPI. Pin an exact version:
-  `commandagi==0.5.0`. A range (`^`, `~=`, `>=`) takes the next release without asking you.
+  `commandagi==0.5.1`. A range (`^`, `~=`, `>=`) takes the next release without asking you.
 - The three SDKs (Python, TypeScript, Rust) carry one version number. A vocabulary at version X in one language is
   the vocabulary at version X in the others.
 - A version promises nothing about the next one. CommandAGI keeps no compatibility layers: a release may rename or

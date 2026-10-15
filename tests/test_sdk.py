@@ -135,6 +135,50 @@ class Sessions(unittest.TestCase):
         self.assertEqual(http.calls[-1], ("kill_process", {"pid": "thread:th_world"}))
 
 
+class Timeouts(unittest.TestCase):
+    """A call waits as long as the caller says (feedback #8: a fixed 120 s cut long autoroutes off)."""
+
+    def setUp(self):
+        import http.server
+        import threading
+
+        class Slow(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                import time
+
+                self.rfile.read(int(self.headers["content-length"]))
+                time.sleep(0.6)
+                body = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"content": [{"type": "text", "text": '{"ok": true}'}]}}).encode()
+                self.send_response(200)
+                self.send_header("content-type", "application/json")
+                self.send_header("content-length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Slow)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def test_the_clients_timeout_bounds_every_call(self):
+        cagi = CommandAGI(api_key="cagi_test", base_url=self.url, timeout=0.2)
+        with self.assertRaises(CommandAGIError) as caught:
+            cagi.call("pcb_autoroute", {})
+        self.assertEqual(caught.exception.tool, "pcb_autoroute")
+        self.assertIn("no answer within 0.2 s", str(caught.exception))
+
+    def test_a_calls_own_timeout_overrides_the_clients(self):
+        cagi = CommandAGI(api_key="cagi_test", base_url=self.url, timeout=0.2)
+        self.assertEqual(cagi.call("pcb_autoroute", {}, timeout=5), {"ok": True})
+        self.assertEqual(CommandAGI(api_key="cagi_test", base_url=self.url, timeout=None).call("whoami"), {"ok": True})
+
+
 def _snake(name):
     import re
 

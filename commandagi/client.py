@@ -49,6 +49,9 @@ class CommandAGIError(Exception):
         self.detail = detail
 
 
+_UNSET: Any = object()
+
+
 class CommandAGI(GeneratedClient):
     """Client for the CommandAGI platform. One surface for developers and agents alike — an API key's
     scopes are the only difference. ``call(tool, args)`` reaches any platform tool by name."""
@@ -59,34 +62,45 @@ class CommandAGI(GeneratedClient):
         base_url: Optional[str] = None,
         thread_id: Optional[str] = None,
         http: Optional[requests.Session] = None,
+        timeout: Optional[float] = 120.0,
     ) -> None:
+        """``timeout``: how many seconds a call waits for its answer (None: no limit). A long operation (an autoroute
+        of a large board) needs more than the default; ``call(..., timeout=...)`` sets it for one call."""
         self.api_key = api_key or os.environ.get(ENV_API_KEY)
         if not self.api_key:
             raise CommandAGIError("", f"pass api_key or set {ENV_API_KEY}")
         self.base_url = (base_url or os.environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL).rstrip("/")
         self.thread_id = thread_id or os.environ.get(ENV_THREAD_ID) or None
         self._http = http or requests.Session()
+        self.timeout = timeout
         self._ids = itertools.count(1)
         self._bind_namespaces()
 
     # ── transport ────────────────────────────────────────────────────────────────────────────────
-    def call(self, tool: str, args: Optional[Dict[str, Any]] = None) -> Any:
-        """Run ANY platform tool by name — the universal escape hatch. Returns its parsed JSON result."""
-        r = self._http.post(
-            self.base_url + "/mcp",
-            headers={
-                "authorization": f"Bearer {self.api_key}",
-                "content-type": "application/json",
-                "mcp-protocol-version": "2025-06-18",
-            },
-            data=json.dumps({
-                "jsonrpc": "2.0",
-                "id": next(self._ids),
-                "method": "tools/call",
-                "params": {"name": tool, "arguments": args or {}},
-            }),
-            timeout=120,
-        )
+    def call(self, tool: str, args: Optional[Dict[str, Any]] = None, *, timeout: Any = _UNSET) -> Any:
+        """Run ANY platform tool by name — the universal escape hatch. Returns its parsed JSON result.
+
+        ``timeout`` (seconds, or None for no limit) overrides the client's for this one call. A call with no answer
+        in time raises :class:`CommandAGIError`; the platform may still finish the operation."""
+        wait = self.timeout if timeout is _UNSET else timeout
+        try:
+            r = self._http.post(
+                self.base_url + "/mcp",
+                headers={
+                    "authorization": f"Bearer {self.api_key}",
+                    "content-type": "application/json",
+                    "mcp-protocol-version": "2025-06-18",
+                },
+                data=json.dumps({
+                    "jsonrpc": "2.0",
+                    "id": next(self._ids),
+                    "method": "tools/call",
+                    "params": {"name": tool, "arguments": args or {}},
+                }),
+                timeout=wait,
+            )
+        except requests.exceptions.Timeout:
+            raise CommandAGIError(tool, f"{tool}: no answer within {wait:g} s (pass timeout= to wait longer)")
         try:
             j = r.json()
         except ValueError:

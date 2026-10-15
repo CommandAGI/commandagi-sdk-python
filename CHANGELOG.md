@@ -4,6 +4,24 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## 0.5.1 (2026-10-15)
+
+Fixed
+
+- `Kernel`'s message when no place can run it names the right install: `npm install -g @commandagi/host`, then
+  `commandagi threed install`. 0.5.0 said `npm install -g commandagi`, a package with no command.
+- `call()` no longer stops every call after a fixed 120 s. `CommandAGI(timeout=…)` sets how long a call waits (None:
+  no limit; default 120 s), and `call(tool, args, timeout=…)` sets it for one call. A call with no answer in time
+  raises `CommandAGIError` that says so (`pcb_autoroute: no answer within 120 s`); the platform may still finish the
+  operation.
+
+Added
+
+- `commandagi.design.to_tsx(element)`: a Python document's root element as the TypeScript SDK's code file
+  (`export default () => (<group …>…</group>);`), for a place that reads only TSX. It declares the same document as
+  the Python (checked on the shipped examples: a 3D part, a schematic, a board, a drawing, a letter, a company, a
+  project).
+
 ## 0.5.0 (2026-10-14)
 
 The first release with the design layer. 0.5.0 was prepared on 2026-10-13 and not published; this entry holds all of it.

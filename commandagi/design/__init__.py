@@ -29,6 +29,7 @@ from . import cadquery as _cq
 from .solids import declare_solids
 from . import source as _source
 from .element import Element, declarer_of
+from .tsx import to_tsx
 # The document vocabularies, one module each (``from commandagi.design.twod import drawing, rect``). Importing them
 # registers what each root element declares.
 from . import business, fab, media, monitors, office, ontology, pcb, pdf, postal, records, schematic, standards, tasks, threed, twod  # noqa: F401
@@ -40,7 +41,7 @@ __all__ = [
     "cylinder", "extrude", "fillet", "hole", "instance", "intersect", "linear_pattern", "mirror", "part", "revolve",
     "sketch", "sphere", "subtract", "union",
     "PartRef", "board", "circuit", "component", "connect", "footprints", "net", "part_type_for",
-    "Element", "graph_of", "run_module",
+    "Element", "graph_of", "run_module", "to_tsx",
 ]
 
 
