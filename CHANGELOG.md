@@ -4,6 +4,15 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- A board's layout constraints, each a board fact: `netclass()`, `diffpair()`, `group()`, `keepout()`, `thermal()`,
+  `objective()` (`commandagi.design.pcb`; CommandAGI's `docs/eda-layout.md`), as the TypeScript SDK's elements.
+- `eda.layout`, `eda.layout_score`, `eda.check_layout`, `eda.constrain`, `eda.place_group`, `eda.route_nets`,
+  `eda.rip_up`: the layout tools (`pcb_layout`, `pcb_layout_score`, …).
+
 ## 0.5.1 (2026-10-15)
 
 Fixed
