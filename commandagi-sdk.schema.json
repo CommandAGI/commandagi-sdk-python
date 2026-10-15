@@ -1329,6 +1329,195 @@
             ],
             "bound": {},
             "withThread": false
+          },
+          {
+            "name": "layout",
+            "tool": "pcb_layout",
+            "doc": "Lay out the board by its constraints (<netclass>, <group>, <keepout> …): place the parts with no place, route every net with its class's rules, check, repair, score; again until clean or the budget (budgetMinutes) is spent. Writes the placements and copper into the board's code and says each attempt.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "layoutScore",
+            "tool": "pcb_layout_score",
+            "doc": "Every term of the board's layout objective (unrouted, DRC errors, overlaps, keep-outs, regions, wire length, vias …) with its weight, the weighted total, and each layout check's verdict.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "checkLayout",
+            "tool": "pcb_check_layout",
+            "doc": "The layout checks' findings (placed, routed, DRC with the net classes, courtyards, keep-outs, regions, near, width, length, vias, skew, heat, octolinear, detour, return path): what, where, on which part or net.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "constrain",
+            "tool": "pcb_constrain",
+            "doc": "Set or remove one constraint of the board ({ constraint: \"netclass\", name, attributes: { nets, width, … } }); written into the board's code as its element.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "placeGroup",
+            "tool": "pcb_place_group",
+            "doc": "Place the parts of one group ({ group } or { parts }) by the constraint model; the copper of their nets is ripped up, to be routed again.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "routeNets",
+            "tool": "pcb_route_nets",
+            "doc": "Route the nets named ({ nets }; all when none) with their net classes' rules; their copper is ripped up first. Names each connection it could not route.",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "ripUp",
+            "tool": "pcb_rip_up",
+            "doc": "Remove the tracks and vias of the nets named ({ nets }).",
+            "params": [
+              {
+                "name": "fileId",
+                "key": "fileId",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false
           }
         ]
       }
