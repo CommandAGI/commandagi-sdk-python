@@ -4,6 +4,17 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## 0.6.2 (2026-10-16)
+
+No change in this SDK's code. The release carries `@commandagi/host` 0.6.2, which `commandagi check` and the local 3D
+service run:
+
+- A STEP export writes a body's part number: `<body engineering={{ partNumber: "PN-1001" }}>` is the id of the
+  body's `PRODUCT` (`PRODUCT('PN-1001','Plate',…)`, as AP242 and AP214 hold it), and the export's `products` list it.
+- The `sourcing` check reports `part-number-collision`: two parts under one part number that differ in process,
+  material, finish, description, designation, manufacturer or MPN. Before, the cost roll-up merged them silently and
+  priced the second as the first. Shape is not compared.
+
 ## 0.6.1 (2026-10-15)
 
 Added
