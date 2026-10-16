@@ -4,7 +4,7 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
-## Unreleased
+## 0.6.1 (2026-10-15)
 
 Added
 
@@ -25,6 +25,23 @@ Added
   `commandagi.design.tolerances`: `tolerance_limits(nominal, tol)` and `fit_of(hole, shaft)`, the classes read from
   the shipped tables (`TOLERANCE_TABLES`). `check(kind="fit", hole=, shaft=, intent=)` and `check(kind="stackup",
   chain=, limit=, method=, samples=, seed=)` are checks of a 3D document (`kernel.check`).
+- A hardware release and a change (`release()`, `change()`): the record of what a release of a design holds, a change
+  proposal's change, and the release a unit or an instance was built from. A definition names its firmware and
+  revision; `firmware()` also declares the channels a firmware gives.
+- Logistics (`part_fields.py`): a schematic part's `suppliers`, `alternates`, `datasheet`, `lifecycle`, `compliance`
+  and `shipping`, each KiCad properties of the part, on schematic parts and `component()`; `check(options=)`; a
+  board's `fab()`; a 3D document's `item()` and `assemble()`. A body with `process="reference"` (a fit proxy) is out
+  of the BOM and the logistics checks.
+- Systems (`commandagi.design.systems`): requirements, a system's budgets (a cost budget names the design whose
+  logistics roll-up it reads, `design=`) and an interface, as the TypeScript SDK's.
+- A flow study (`study(kind="flow")`: `fluid`, `inlet`, `outlet`, `flow_mesh`; units m-kg-s).
+- `kernel.dfm`: the manufacturability checks of a part; `kernel.check` takes devices. The slicer kernel (places:
+  local, then cloud).
+- `eda.export_kicad` (`pcb_export_kicad`): the board as a KiCad project.
+- Drawing sheets: section and detail views in the schema; a sheet with a section view and no section, or a bad
+  detail, is refused.
+- A part's pinout and pads are checked: `pinout_verified`, `footprint_verified` and `package_dimensions` are part
+  fields. A material grade states its Poisson's ratio where its source states one.
 
 ## 0.6.0 (2026-10-15)
 
