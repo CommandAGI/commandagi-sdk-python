@@ -32,7 +32,7 @@ from .element import Element, declarer_of
 from .tsx import to_tsx
 # The document vocabularies, one module each (``from commandagi.design.twod import drawing, rect``). Importing them
 # registers what each root element declares.
-from . import agents, business, fab, firmware, media, monitors, office, ontology, pcb, pdf, postal, records, schematic, standards, study, systems, tasks, testplans, threed, tolerances, twod  # noqa: F401
+from . import agents, business, fab, firmware, media, monitors, office, ontology, pcb, pdf, postal, records, schematic, standards, study, systems, flows, tasks, testplans, threed, tolerances, twod  # noqa: F401
 
 __all__ = [
     "Declaration", "NodeRef", "Out", "Scope", "channels", "check_ir", "is_ir_graph",
