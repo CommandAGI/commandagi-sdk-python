@@ -10,9 +10,9 @@ try:
 except ImportError:  # pragma: no cover
     from typing_extensions import Literal, TypedDict  # type: ignore
 
-#: A FINDING ACCEPTED ON PURPOSE: `<accept check body region reason />`. It suppresses the findings of that check on that body whose location, in the body's own frame, lies in `region`. A region larger than 5 % of the body's box or than 100 000 mm³ is refused: it suppresses nothing and is itself an error. A suppressed finding stays in the report with the accept that suppressed it. An accept with no region covers only findings with no place (a logistics finding: `<accept check="sourcing" body="Label" rule="no-supplier" reason="…" />`).
+#: A FINDING ACCEPTED ON PURPOSE: `<accept check body region reason />`. It suppresses the findings of that check on that body whose location, in the body's own frame, lies in `region`. A region within 5 % of the body's box and 100 000 mm³ covers every finding in it; a larger one covers only a finding whose own extent (a clash's box, else its point), grown by 5 mm, holds the whole region, and one that covers none is refused: it is itself an error. With `other` and no region it covers the findings between two bodies (a part modelled as its envelope inside another: `<accept check="clash" body="Spindle" other="Clamp ring" reason="…" />`). With neither, it covers only findings with no place (a logistics finding: `<accept check="sourcing" body="Label" rule="no-supplier" reason="…" />`). A suppressed finding stays in the report with the accept that suppressed it and severity `suppressed`.
 _AcceptedFindingRequired = TypedDict("_AcceptedFindingRequired", {"id": str, "check": str, "body": str, "reason": str})
-_AcceptedFindingOptional = TypedDict("_AcceptedFindingOptional", {"rule": str, "region": 'CheckRegion'}, total=False)
+_AcceptedFindingOptional = TypedDict("_AcceptedFindingOptional", {"rule": str, "region": 'CheckRegion', "other": str}, total=False)
 class AcceptedFinding(_AcceptedFindingRequired, _AcceptedFindingOptional):
     pass
 
@@ -189,7 +189,7 @@ class _DesignCheck5(__DesignCheck5Required, __DesignCheck5Optional):
 
 #: A CHECK THE DOCUMENT MUST PASS: `<check kind … />`. The kinds built in are `interference`, `clearance`, `holes`, `fasteners`, `edges`, `symmetry`, and the tolerance kinds `tolerances`, `fit` and `stackup` (`./tolerances.ts`); another kind is a check that a registered function runs (a manufacturability check), and where none is registered the check is skipped with that reason, never passed.
 _DesignCheckRequired = TypedDict("_DesignCheckRequired", {"id": str, "kind": str})
-_DesignCheckOptional = TypedDict("_DesignCheckOptional", {"bodies": List[str], "severity": Literal["error", "warning"], "min": float, "minVolume": float, "angle": float, "breakWidth": float, "maxRadius": float, "plane": Literal["yz", "xz", "xy"], "tolerance": float, "hole": str, "shaft": str, "intent": Literal["clearance", "transition", "interference"], "chain": List[str], "limit": '_DesignCheck5', "method": Literal["worst-case", "rss", "monte-carlo"], "samples": int, "seed": int, "options": Dict[str, Any]}, total=False)
+_DesignCheckOptional = TypedDict("_DesignCheckOptional", {"bodies": List[str], "against": List[str], "severity": Literal["error", "warning"], "min": float, "minVolume": float, "angle": float, "breakWidth": float, "maxRadius": float, "plane": Literal["yz", "xz", "xy"], "tolerance": float, "hole": str, "shaft": str, "intent": Literal["clearance", "transition", "interference"], "pair": Tuple[str, str], "chain": List[str], "limit": '_DesignCheck5', "method": Literal["worst-case", "rss", "monte-carlo"], "samples": int, "seed": int, "options": Dict[str, Any]}, total=False)
 class DesignCheck(_DesignCheckRequired, _DesignCheckOptional):
     pass
 
@@ -341,7 +341,7 @@ class GraphFeature(_GraphFeatureRequired, _GraphFeatureOptional):
     pass
 
 _HoleFeatureRequired = TypedDict("_HoleFeatureRequired", {"type": Literal["hole"], "face": 'TopoTarget', "id": str, "name": str})
-_HoleFeatureOptional = TypedDict("_HoleFeatureOptional", {"positions": List['Vec3'], "sketch": str, "diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "headDiameter": float, "headDepth": float, "size": str, "tolerance": 'DimensionTolerance', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_HoleFeatureOptional = TypedDict("_HoleFeatureOptional", {"positions": List['Vec3'], "sketch": str, "diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "headDiameter": float, "headDepth": float, "size": str, "tolerance": 'DimensionTolerance', "spare": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class HoleFeature(_HoleFeatureRequired, _HoleFeatureOptional):
     pass
 
@@ -510,9 +510,9 @@ _PcbTraceFeatureOptional = TypedDict("_PcbTraceFeatureOptional", {"centreline": 
 class PcbTraceFeature(_PcbTraceFeatureRequired, _PcbTraceFeatureOptional):
     pass
 
-#: A FINDING A PROCESS OR A PURPOSE PERMITS: `<permitted check body process edgeDir region reason />`. A square edge of a laser-cut sheet, a hole that is there for a cable. It permits the findings of that check on the bodies it names, made by that process, along that direction and in that region (each given test must hold). A permitted finding stays in the report with the entry that permitted it.
+#: A FINDING A PROCESS OR A PURPOSE PERMITS: `<permitted check body process edgeDir region diameter reason />`. A square edge of a laser-cut sheet, a hole that is there for a cable. It permits the findings of that check on the bodies it names, made by that process, along that direction and in that region (each given test must hold). A permitted finding stays in the report with the entry that permitted it.
 _PermittedFindingRequired = TypedDict("_PermittedFindingRequired", {"id": str, "check": str, "body": str, "reason": str})
-_PermittedFindingOptional = TypedDict("_PermittedFindingOptional", {"process": str, "edgeDir": 'Vec3', "region": 'CheckRegion'}, total=False)
+_PermittedFindingOptional = TypedDict("_PermittedFindingOptional", {"process": str, "edgeDir": 'Vec3', "region": 'CheckRegion', "diameter": float}, total=False)
 class PermittedFinding(_PermittedFindingRequired, _PermittedFindingOptional):
     pass
 
@@ -1043,7 +1043,7 @@ class DraftProps(_DraftPropsRequired, _DraftPropsOptional):
 
 #: The keywords of hole(…): the HoleFeature fields, in snake_case.
 _HolePropsRequired = TypedDict("_HolePropsRequired", {"face": 'TopoTarget', "id": str})
-_HolePropsOptional = TypedDict("_HolePropsOptional", {"positions": List['Vec3'], "sketch": str, "diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "head_diameter": float, "head_depth": float, "size": str, "tolerance": 'DimensionTolerance', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_HolePropsOptional = TypedDict("_HolePropsOptional", {"positions": List['Vec3'], "sketch": str, "diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "head_diameter": float, "head_depth": float, "size": str, "tolerance": 'DimensionTolerance', "spare": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class HoleProps(_HolePropsRequired, _HolePropsOptional):
     pass
 
