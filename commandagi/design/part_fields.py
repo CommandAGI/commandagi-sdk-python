@@ -246,8 +246,8 @@ def check_facet(where: str, arg: str, v: Any) -> Dict[str, Any]:
                 raise ValueError(f'{where}: {key} is one of {", ".join(_CHOICES[key])} (got "{x}")')
             if key in _DATES and not _DAY.match(x):
                 raise ValueError(f"{where}: {key} is YYYY-MM-DD")
-            if key == "shipping.origin" and not re.match(r"^[A-Z]{2}$", x):
-                raise ValueError(f'{where}: {key} is an ISO 3166 alpha-2 code ("CN")')
+            if key == "shipping.origin" and not re.match(r"^(?:[A-Z]{2}|unknown)$", x):
+                raise ValueError(f'{where}: {key} is an ISO 3166 alpha-2 code ("CN"), or "unknown"')
     return {k: copy.deepcopy(x) for k, x in v.items() if x is not None}
 
 

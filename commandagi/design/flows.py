@@ -2,7 +2,7 @@
 visits, its recipe parameters with their units, its time and who does it, and the measurements taken in the process,
 the same document and the same elements as the TypeScript SDK's JSX (``commandagi/design`` ``flows.ts``)::
 
-    from commandagi.design.flows import flow, tool, step, param, measure
+    from commandagi.design.flows import flow, tool, step, param, measure, visit
 
     result = flow(
         tool(id="coater", ref="stage1.bom.3d.py#coater", rate_per_hour=40, currency="USD"),
@@ -10,13 +10,15 @@ the same document and the same elements as the TypeScript SDK's JSX (``commandag
         step(
             param(name="speed", value=3000, unit="rpm"),
             measure(id="resist", name="resist thickness", nominal=1.2, plus=0.1, minus=0.1, unit="um"),
+            visit(tool="oven", minutes=2, instruction="soft bake"),
             id="coat", order=1, tool="coater", by="in-house", minutes=6,
         ),
         name="Alignment marks", of="stage1.bom.3d.py#wafer",
     )
 
 A record is an element and its fields are the element's attributes (snake_case keywords: ``rate_per_hour`` is
-``ratePerHour``). Nothing adds a default. The check is the host's (``commandagi check <file>.flow.py``).
+``ratePerHour``). A step that goes to more tools than its own names each in a ``visit(tool=…, minutes=…)``. Nothing
+adds a default. The check is the host's (``commandagi check <file>.flow.py``).
 """
 from __future__ import annotations
 
@@ -35,10 +37,11 @@ FLOW_STEP_FIELDS = ["id", "order", "kind", "tool", "fixture", "by", "minutes", "
                     "note"]
 FLOW_PARAM_FIELDS = ["name", "value", "unit", "description"]
 FLOW_MEASURE_FIELDS = ["id", "name", "nominal", "min", "max", "plus", "minus", "unit", "method", "sampling", "acceptance"]
+FLOW_VISIT_FIELDS = ["tool", "minutes", "setupMinutes", "ratePerHour", "currency", "instruction"]
 
 _CHILDREN = {"holds": "children"}
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
-SIGNATURES: Dict[str, Dict[str, Any]] = {"flow": _CHILDREN, "tool": {}, "step": _CHILDREN, "param": {}, "measure": {}}
+SIGNATURES: Dict[str, Dict[str, Any]] = {"flow": _CHILDREN, "tool": {}, "step": _CHILDREN, "param": {}, "measure": {}, "visit": {}}
 
 __all__ = ["FLOW_STEP_KINDS", "SIGNATURES", "FLOW_VOCABULARY", *define(globals(), "flows", SIGNATURES)]
 
@@ -85,7 +88,7 @@ def _step(t: DocTree) -> None:
     _money(a, at)
     if a.get("kind") == "note":
         _check("tool" not in a and a.get("minutes", 0) == 0 and not t["children"],
-               f"{at}: a note step names no tool, takes no time (minutes 0 or absent) and holds no param or measure")
+               f"{at}: a note step names no tool, takes no time (minutes 0 or absent) and holds no param, measure or visit")
     names = [c["attrs"].get("name") for c in t["children"] if c["tag"] == "param"]
     twice = next((n for i, n in enumerate(names) if n in names[:i]), None)
     _check(twice is None, f"{at}: two params are named {json.dumps(twice, ensure_ascii=False)}")
@@ -97,6 +100,12 @@ def _step(t: DocTree) -> None:
             v = b.get("value")
             _check(_num(v) or isinstance(v, (str, bool)), f"{pat}: value is a number, a text or true/false")
             _check("unit" not in b or (isinstance(b["unit"], str) and b["unit"].strip()), f"{pat}: unit is a unit's symbol (rpm, sccm, mTorr, °C, s)")
+        elif c["tag"] == "visit":
+            vat = f'{at} {_where("visit", "tool", b)}'
+            _check(isinstance(b.get("tool"), str) and _ID.fullmatch(b["tool"]), f"{vat}: tool is the id of one of the flow's tools")
+            for k in ("minutes", "setupMinutes"):
+                _check(k not in b or (_num(b[k]) and b[k] >= 0), f"{vat}: {k} is a number of at least 0")
+            _money(b, vat)
         else:
             mat = _where("measure", "id", b)
             _check(isinstance(b.get("id"), str) and _ID.fullmatch(b["id"]), f'{mat}: id is letters, digits, ".", "_" and "-"')
@@ -111,7 +120,8 @@ def _step(t: DocTree) -> None:
 def _step_record(t: DocTree) -> Dict[str, Any]:
     params = [dict(c["attrs"]) for c in t["children"] if c["tag"] == "param"]
     measures = [dict(c["attrs"]) for c in t["children"] if c["tag"] == "measure"]
-    return {**t["attrs"], **({"params": params} if params else {}), **({"measures": measures} if measures else {})}
+    visits = [dict(c["attrs"]) for c in t["children"] if c["tag"] == "visit"]
+    return {**t["attrs"], **({"params": params} if params else {}), **({"measures": measures} if measures else {}), **({"visits": visits} if visits else {})}
 
 
 def _flow(t: DocTree) -> Dict[str, Any]:
@@ -138,6 +148,7 @@ FLOW_VOCABULARY = Vocabulary("flow", "a process flow", "flow", {
     "step": {"parents": ["flow"], "key": "id", "required": ["id"], "attrs": FLOW_STEP_FIELDS},
     "param": {"parents": ["step"], "required": ["name", "value"], "attrs": FLOW_PARAM_FIELDS},
     "measure": {"parents": ["step"], "key": "id", "required": ["id"], "attrs": FLOW_MEASURE_FIELDS},
+    "visit": {"parents": ["step"], "required": ["tool"], "attrs": FLOW_VISIT_FIELDS},
 }, _flow, _never, lambda name: {"name": name})
 
 register_vocabulary(FLOW_VOCABULARY, "flows")

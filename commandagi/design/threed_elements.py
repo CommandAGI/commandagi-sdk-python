@@ -398,7 +398,7 @@ class MakeHumanFeature(_MakeHumanFeatureRequired, _MakeHumanFeatureOptional):
 
 #: HOW AND WHERE A MADE PART IS MADE: the device or the shop, the process parameters, the time and its rate.
 _MakeSpecRequired = TypedDict("_MakeSpecRequired", {})
-_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "flow": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "currency": str, "leadTimeDays": float, "setups": List[Tuple[float, float, float]]}, total=False)
+_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "flow": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "ratePerHourHigh": float, "currency": str, "leadTimeDays": float, "setups": List[Tuple[float, float, float]]}, total=False)
 class MakeSpec(_MakeSpecRequired, _MakeSpecOptional):
     pass
 

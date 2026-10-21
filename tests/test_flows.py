@@ -4,7 +4,7 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design.documents import declare_document
-from commandagi.design.flows import flow, measure, param, step, tool
+from commandagi.design.flows import flow, measure, param, step, tool, visit
 
 
 class FlowsTests(unittest.TestCase):
@@ -14,6 +14,7 @@ class FlowsTests(unittest.TestCase):
             step(id="why", kind="note", instruction="Marks first."),
             step(param(name="speed", value=3000, unit="rpm"),
                  measure(id="resist", name="resist thickness", nominal=1.2, plus=0.1, minus=0.1, unit="um"),
+                 visit(tool="oven", minutes=2, instruction="soft bake"),
                  id="coat", order=1, tool="coater", by="in-house", minutes=6),
             name="Marks", of="Kit.3d.tsx#wafer"))
         self.assertEqual(d["format"], "flow")
@@ -24,7 +25,8 @@ class FlowsTests(unittest.TestCase):
                 {"id": "why", "kind": "note", "instruction": "Marks first."},
                 {"id": "coat", "order": 1, "tool": "coater", "by": "in-house", "minutes": 6,
                  "params": [{"name": "speed", "value": 3000, "unit": "rpm"}],
-                 "measures": [{"id": "resist", "name": "resist thickness", "nominal": 1.2, "plus": 0.1, "minus": 0.1, "unit": "um"}]},
+                 "measures": [{"id": "resist", "name": "resist thickness", "nominal": 1.2, "plus": 0.1, "minus": 0.1, "unit": "um"}],
+                 "visits": [{"tool": "oven", "minutes": 2, "instruction": "soft bake"}]},
             ]})
 
     def test_refusals(self):
@@ -39,6 +41,8 @@ class FlowsTests(unittest.TestCase):
             (flow(step(measure(id="m", plus=0.1), id="a")), r'<measure id="m">: plus and minus are tolerances of the nominal: give nominal'),
             (flow(step(measure(id="m", min=2, max=1), id="a")), r'<measure id="m">: min is at most max'),
             (flow(param(name="x", value=1)), r'<param> stands in <step>, not in <flow>'),
+            (flow(step(visit(tool="oven", minutes=-1), id="a")), r'<step id="a"> <visit tool="oven">: minutes is a number of at least 0'),
+            (flow(step(visit(tool="oven"), id="a", kind="note")), r'<step id="a">: a note step names no tool, takes no time .* no param, measure or visit'),
             (flow(step(measure(id="m", max=1), id="a"), step(measure(id="m", max=2), id="b")), r'<measure id="m">: two measures have this id'),
             (flow(step(param(name="t", value=1), param(name="t", value=2), id="a")), r'<step id="a">: two params are named "t"'),
         ]

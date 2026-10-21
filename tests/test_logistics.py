@@ -86,6 +86,8 @@ class LogisticsTests(unittest.TestCase):
         ):
             with self.subTest(kw=kw), self.assertRaisesRegex(ValueError, message):
                 sheet(schematic.part("U4", pins=["1"], **kw))
+        # A part not specified yet says so (PCBC-16): the host's check warns of each "unknown".
+        sheet(schematic.part("U4", pins=["1"], shipping={"hsCode": "unknown", "origin": "unknown", "hazmat": "unknown"}))
 
     def test_terms_print_numbers_as_javascript_does(self):
         self.assertEqual(js_json({"a": [1.0, 9.4, 0.1 + 0.2, 1e-7, 0.00001, 1e21, 2.5e-10, -0.5]}),
