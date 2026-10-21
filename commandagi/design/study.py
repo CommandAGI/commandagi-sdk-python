@@ -125,12 +125,12 @@ __all__ = ["STUDY_UNITS", "STUDY_ROOT_FIELDS", "STUDY_KINDS", "SIGNATURES", "reg
 
 register_study_kind("structural", {
     "material": {"rule": {"parents": ["study"], "single": True, "required": ["grade"], "attrs": ["grade", "body", "poisson"]}, "field": "material"},
-    "fixture": {"rule": {"parents": ["study"], "key": "id", "required": ["id", "type", _FACES], "attrs": ["id", "type", _FACES]}, "field": "fixtures", "list": True},
+    "fixture": {"rule": {"parents": ["study"], "key": "id", "required": ["id", "type", _FACES], "attrs": ["id", "type", _FACES, "region"]}, "field": "fixtures", "list": True},
     "loadCase": {"rule": {"parents": ["study"], "key": "id", "required": ["id"], "attrs": ["id"]}, "field": "loadCases", "list": True, "holds": True},
     "force": {"rule": {"parents": ["loadCase"], "key": "id", "required": ["id", _FACES, "total"], "attrs": ["id", _FACES, "total"]}, "field": "loads", "list": True, "typed": True},
     "pressure": {"rule": {"parents": ["loadCase"], "key": "id", "required": ["id", _FACES, "value"], "attrs": ["id", _FACES, "value"]}, "field": "loads", "list": True, "typed": True},
     "mesh": {"rule": {"parents": ["study"], "single": True, "attrs": ["order", "size", "refine"]}, "field": "mesh"},
-    "solver": {"rule": {"parents": ["study"], "single": True, "attrs": ["kind", "analysis"]}, "field": "solver"},
+    "solver": {"rule": {"parents": ["study"], "single": True, "attrs": ["kind", "analysis", "timeout"]}, "field": "solver"},
 })
 # A flow study (kind="flow", units="m-kg-s"): the fluid is one body of the part; the inlet's and the outlet's faces are
 # picks on it, every other face is a wall (study.ts in the TypeScript SDK says the rest).

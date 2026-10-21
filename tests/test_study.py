@@ -7,6 +7,7 @@ from commandagi.design import study as s
 from commandagi.design.documents import declare_document
 
 FACE = {"kind": "face", "select": {"normal": [0, 0, -1]}}
+HINGE = {"inBox": {"min": [0, -5, 0], "max": [0, 5, 0]}}
 
 
 class StudyTests(unittest.TestCase):
@@ -14,8 +15,10 @@ class StudyTests(unittest.TestCase):
         d = declare_document(s.study(
             s.material(grade="PETG", poisson=0.38),
             s.fixture(id="mount", type="fixed", faces=FACE),
+            s.fixture(id="hinge", type="fixed", faces=FACE, region=HINGE),
             s.loadCase(s.force(id="grip", faces=FACE, total=[-40, 0, 0]), s.pressure(id="air", faces=FACE, value=0.1), id="clamp"),
             s.mesh(order=2, size=2, refine=[1, 0.7, 0.5]),
+            s.solver(kind="calculix", analysis="static", timeout=1800),
             s.criterion(id="safety", quantity="vonMises.max", limit="yield / 2", load_case="clamp"),
             kind="structural", part="Jaw.3d.tsx", units="mm-N-MPa-t",
         ))
@@ -23,10 +26,11 @@ class StudyTests(unittest.TestCase):
         doc = {
             "kind": "structural", "part": "Jaw.3d.tsx", "units": "mm-N-MPa-t",
             "material": {"grade": "PETG", "poisson": 0.38},
-            "fixtures": [{"id": "mount", "type": "fixed", "faces": FACE}],
+            "fixtures": [{"id": "mount", "type": "fixed", "faces": FACE}, {"id": "hinge", "type": "fixed", "faces": FACE, "region": HINGE}],
             "loadCases": [{"id": "clamp", "loads": [{"type": "force", "id": "grip", "faces": FACE, "total": [-40, 0, 0]},
                                                     {"type": "pressure", "id": "air", "faces": FACE, "value": 0.1}]}],
             "mesh": {"order": 2, "size": 2, "refine": [1, 0.7, 0.5]},
+            "solver": {"kind": "calculix", "analysis": "static", "timeout": 1800},
             "criteria": [{"id": "safety", "quantity": "vonMises.max", "limit": "yield / 2", "loadCase": "clamp"}],
         }
         self.assertEqual(d["document"], doc)
