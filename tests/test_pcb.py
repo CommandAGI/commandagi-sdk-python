@@ -140,6 +140,18 @@ class BoardTests(unittest.TestCase):
         ])
         with self.assertRaisesRegex(ValueError, "kind is signal, power"):
             declared(netclass(name="a", nets=["X"], kind="loud"))
+        rules = declared(netclass(name="Default", nets=["*"], width=0.2, min_width=0.15, clearance=0.2, edge_clearance=0.3, hole_clearance=0.15,
+                                  inner={"clearance": 0.15, "width": 0.15}, min_spokes=1), width=60, height=40)
+        self.assertEqual([n["inputs"] for n in rules["nodes"].values() if n["type"] == "eda.boardfact"], [
+            {"fact": "netclass", "name": "Default", "nets": ["*"], "width": 0.2, "minWidth": 0.15, "clearance": 0.2, "edgeClearance": 0.3,
+             "holeClearance": 0.15, "inner": {"clearance": 0.15, "width": 0.15}, "minSpokes": 1},
+        ])
+        with self.assertRaisesRegex(ValueError, "minWidth is at most width"):
+            declared(netclass(name="a", nets=["X"], width=0.2, min_width=0.3))
+        with self.assertRaisesRegex(ValueError, "the rules on inner copper layers"):
+            declared(netclass(name="a", nets=["X"], inner={"gap": 0.1}))
+        with self.assertRaisesRegex(ValueError, "minSpokes is a whole number from 0 to 4"):
+            declared(netclass(name="a", nets=["X"], min_spokes=1.5))
         with self.assertRaisesRegex(ValueError, "maxDistance needs near"):
             declared(group(name="g", parts=["R1"], max_distance=3))
         with self.assertRaisesRegex(ValueError, "give awayFrom and distance together"):

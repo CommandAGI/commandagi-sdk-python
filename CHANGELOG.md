@@ -4,6 +4,16 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- `netclass(...)` states the rules a four-layer board needs: `min_width` (the narrowest track; `width` is what the
+  router lays), `edge_clearance` and `hole_clearance` (the least gaps to the board edge and to a hole),
+  `inner={"clearance": …, "width": …, "minWidth": …}` (the rules on inner copper layers) and `min_spokes` (the fewest
+  thermal spokes a pad needs to a pour). `commandagi check` holds the board to them and `commandagi export kicad`
+  writes them into the project and its `.kicad_dru` (microfab EDA-07).
+
 ## 0.6.2 (2026-10-16)
 
 No change in this SDK's code. The release carries `@commandagi/host` 0.6.2, which `commandagi check` and the local 3D

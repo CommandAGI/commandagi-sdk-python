@@ -47,8 +47,12 @@ The calls (children are positional; every attribute is a keyword):
 
 The layout's constraints (the board's design intent: the placer, the router, the layout score and the checks read
 them; the editor and the layout operations write each one back):
-    netclass(name, nets, kind, width, clearance, via_diameter, via_drill, current, criticality, max_length, max_vias, impedance)
-                                      the rules of the nets named ("FIN*" matches by prefix).
+    netclass(name, nets, kind, width, min_width, clearance, edge_clearance, hole_clearance, inner, min_spokes,
+             via_diameter, via_drill, current, criticality, max_length, max_vias, impedance)
+                                      the rules of the nets named ("FIN*" matches by prefix): the width the router
+                                      lays and the narrowest allowed (``min_width``), the gaps to copper, to the
+                                      board edge and to a hole, the rules on inner layers (``inner``: {"clearance",
+                                      "width", "minWidth"}), the fewest thermal spokes a pad needs to a pour.
     diffpair(name, positive, negative, gap, width, impedance, max_skew)
     group(name, parts, region, near, max_distance, conviction, side)
                                       parts placed together: in the box ``region`` [x0, y0, x1, y1], within
@@ -256,7 +260,7 @@ def _constraint_fact(el: Element) -> Dict[str, Any]:
         return v
 
     if el.tag == "netclass":
-        _refuse_unknown(el, ["name", "nets", "kind", "width", "clearance", "viaDiameter", "viaDrill", "current", "criticality", "maxLength", "maxVias", "impedance"])
+        _refuse_unknown(el, ["name", "nets", "kind", "width", "minWidth", "clearance", "edgeClearance", "holeClearance", "inner", "minSpokes", "viaDiameter", "viaDrill", "current", "criticality", "maxLength", "maxVias", "impedance"])
         kind = _text(el, "kind")
         if kind is not None and kind not in _NET_KINDS:
             raise ValueError(f"{_where(el)}: kind is {', '.join(_NET_KINDS)}")
@@ -266,10 +270,17 @@ def _constraint_fact(el: Element) -> Dict[str, Any]:
         put("name", _text(el, "name", True))
         put("nets", names("nets", True))
         put("kind", kind)
-        for k in ("width", "clearance", "viaDiameter", "viaDrill", "current", "maxLength", "impedance"):
+        for k in ("width", "minWidth", "clearance", "edgeClearance", "holeClearance", "viaDiameter", "viaDrill", "current", "maxLength", "impedance"):
             put(k, _positive(el, k))
         put("criticality", unit("criticality"))
         put("maxVias", max_vias)
+        if out.get("minWidth") is not None and out.get("width") is not None and out["minWidth"] > out["width"]:
+            raise ValueError(f"{_where(el)}: minWidth is at most width")
+        put("inner", _plain(el, "inner", lambda v: _is_object(v) and len(v) > 0 and all(k in ("clearance", "width", "minWidth") and _is_num(x) and x > 0 for k, x in v.items()), "the rules on inner copper layers: { clearance, width, minWidth } (mm)"))
+        spokes = _num(el, "minSpokes")
+        if spokes is not None and not (float(spokes).is_integer() and 0 <= spokes <= 4):
+            raise ValueError(f"{_where(el)}: minSpokes is a whole number from 0 to 4")
+        put("minSpokes", spokes)
         if out.get("viaDiameter") is not None and out.get("viaDrill") is not None and out["viaDiameter"] <= out["viaDrill"]:
             raise ValueError(f"{_where(el)}: viaDiameter is more than viaDrill")
     elif el.tag == "diffpair":
