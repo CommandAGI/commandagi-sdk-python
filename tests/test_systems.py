@@ -43,7 +43,11 @@ class SystemsTests(unittest.TestCase):
         self.assertEqual(list(d), ["name", "modes", "rails", "converters", "loads", "contributions", "boms", "budgets", "checks"])
         self.assertEqual(d["rails"], [{"id": "+5V", "voltage": 5, "source": "USB"}, {"id": "VBAT", "voltage": 3.8}])
         cases = [
-            (budget(id="b", quantity="volume", limit=1), r'<budget id="b">: quantity must be one of mass, power, cost, thermal \(got "volume"\)'),
+            (budget(id="b", quantity="Exhaust flow", limit=1, unit="m3/h"),
+             r"<budget id=\"b\">: quantity must be one of mass, power, cost, thermal, or a quantity's name"),
+            (budget(id="b", quantity="exhaust-flow", limit=600), r'<budget id="b">: a quantity of exhaust-flow states its unit'),
+            (contribution(id="c", quantity="exhaust-flow", part="P", value=35, source="datasheet"),
+             r'<contribution id="c">: a quantity of exhaust-flow states its unit'),
             (budget(id="b", quantity="power", limit=1), "a power budget names its rail and its mode"),
             (budget(id="b", quantity="thermal", limit=1, mode="m"), r"thermal resistance to the ambient \(resistance, K/W\)"),
             (budget(id="b", quantity="mass", limit=1, margin=1.5), "margin is a fraction"),

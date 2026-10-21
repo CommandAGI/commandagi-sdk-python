@@ -39,7 +39,10 @@ from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
 
 VERIFICATION_METHODS = ["test", "analysis", "inspection", "demonstration"]
+#: What a budget sums from the design's own records; any other quantity is declared by its contributions, with a unit.
 BUDGET_QUANTITIES = ["mass", "power", "cost", "thermal"]
+#: A declared quantity's name ("exhaust-flow", "floor-area").
+DECLARED_QUANTITY = re.compile(r"[a-z][a-z0-9-]*")
 SYSTEM_CHECK_KINDS = ["interface", "trace"]
 SIDE_KINDS = ["circuit", "3d", "firmware"]
 
@@ -94,6 +97,18 @@ def _check(cond: Any, message: str) -> None:
         raise ValueError(message)
 
 
+def _check_quantity(a: Dict[str, Any], at: str) -> None:
+    """A built-in quantity, or a declared one's name with its unit (the unit names the family the host converts within)."""
+    q = a.get("quantity")
+    if q in BUDGET_QUANTITIES:
+        return
+    _check(isinstance(q, str) and DECLARED_QUANTITY.fullmatch(q),
+           f"{at}: quantity must be one of {', '.join(BUDGET_QUANTITIES)}, or a quantity's name in lower-case letters, digits "
+           f'and "-" ("exhaust-flow") (got {json.dumps(q)})')
+    _check(isinstance(a.get("unit"), str) and a["unit"].strip(),
+           f'{at}: a quantity of {q} states its unit (unit="m3/h"): the unit names what it measures')
+
+
 def _lists(children: List[DocTree], by_tag: Dict[str, str]) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
     for c in children:
@@ -138,8 +153,7 @@ def _system(t: DocTree) -> Dict[str, Any]:
             for k in ("current", "power", "voltage"):
                 _check(k not in a or _num(a[k]), f"{at}: {k} is a number")
         if tag == "contribution":
-            _check(a.get("quantity") in BUDGET_QUANTITIES,
-                   f"{at}: quantity must be one of {', '.join(BUDGET_QUANTITIES)} (got {json.dumps(a.get('quantity'))})")
+            _check_quantity(a, at)
             _check(a.get("quantity") != "cost",
                    f"{at}: a cost is stated in the design's logistics (a part's suppliers, a made part's rate), which a cost "
                    "budget's design rolls up, not as a contribution")
@@ -147,8 +161,7 @@ def _system(t: DocTree) -> Dict[str, Any]:
             _check(isinstance(a.get("source"), str) and a["source"].strip(),
                    f'{at}: source says where the number was read (a datasheet, a measurement, "estimate: …")')
         if tag == "budget":
-            _check(a.get("quantity") in BUDGET_QUANTITIES,
-                   f"{at}: quantity must be one of {', '.join(BUDGET_QUANTITIES)} (got {json.dumps(a.get('quantity'))})")
+            _check_quantity(a, at)
             _check(_num(a.get("limit")), f"{at}: limit is a number")
             m = a.get("margin")
             _check("margin" not in a or (_num(m) and 0 <= m < 1), f"{at}: margin is a fraction of the limit kept free, in [0, 1)")
