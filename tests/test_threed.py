@@ -292,6 +292,13 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(n["permitted"]["inputs"]["value"][0]["edgeDir"], [0, 0, 1])
         with self.assertRaisesRegex(ValueError, "length"):
             run_module(src.replace("length=18", "length=-1"), "S.3d.py")
+        # PCBC-14, PCBC-18: a check swept over a joint's range; a pair accept bounded by its volume.
+        swept = src.replace("min_volume=0.1)", "sweep={'joint': 'ramJ', 'step': 10})").replace("region={'min': [0, 0, 0], 'max': [1, 1, 1]}", "other='Lid', max_volume=3200")
+        n = run_module(swept, "S.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["checks"]["inputs"]["value"], [{"id": "clash", "kind": "interference", "sweep": {"joint": "ramJ", "step": 10}}])
+        self.assertEqual(n["accepted"]["inputs"]["value"][0]["maxVolume"], 3200)
+        with self.assertRaisesRegex(ValueError, "sweep/samples: must be at least 2"):
+            run_module(swept.replace("'step': 10", "'samples': 1"), "S.3d.py")
 
 
 if __name__ == "__main__":
