@@ -808,7 +808,7 @@ class TopoBox(_TopoBoxRequired, _TopoBoxOptional):
 
 #: WHAT FACES OR EDGES ARE, STATED AS DATA — the tests one face or edge of the bodies must pass to be chosen.
 _TopoQueryRequired = TypedDict("_TopoQueryRequired", {})
-_TopoQueryOptional = TypedDict("_TopoQueryOptional", {"normal": 'Vec3', "parallel": 'Vec3', "perpendicular": 'Vec3', "axis": 'Vec3', "geometry": Literal["line", "circle", "arc", "ellipse", "spline", "other", "plane", "cylinder", "cone", "sphere", "torus"], "length": 'TopoRange', "radius": 'TopoRange', "area": 'TopoRange', "ofFace": 'TopoQuery', "createdBy": str, "inBox": 'TopoBox', "farthest": 'Vec3', "any": List['TopoQuery'], "not": 'TopoQuery'}, total=False)
+_TopoQueryOptional = TypedDict("_TopoQueryOptional", {"normal": 'Vec3', "parallel": 'Vec3', "perpendicular": 'Vec3', "axis": 'Vec3', "geometry": Literal["line", "circle", "arc", "ellipse", "spline", "other", "plane", "cylinder", "cone", "sphere", "torus"], "length": 'TopoRange', "radius": 'TopoRange', "area": 'TopoRange', "ofFace": 'TopoQuery', "createdBy": str, "at": 'Vec3', "inBox": 'TopoBox', "farthest": 'Vec3', "any": List['TopoQuery'], "not": 'TopoQuery'}, total=False)
 class TopoQuery(_TopoQueryRequired, _TopoQueryOptional):
     pass
 

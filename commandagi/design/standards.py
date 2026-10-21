@@ -88,7 +88,8 @@ def sized_hole(hole: Dict[str, Any]) -> Dict[str, Any]:
     tables give for that thread (a counterbore for a hexagon socket head cap screw, DIN 974-1; a countersink for a
     countersunk screw, DIN 74 form F, its depth from its diameter and angle). The size wins: a ``diameter``,
     ``headDiameter`` or ``headDepth`` that differs from the size's is refused. Leave it out, or clear ``size`` to give
-    your own."""
+    your own. One choice stays yours: a counterbore deeper than the size's (``headDepth`` more than the table's) sinks
+    the head below the face."""
     if not isinstance(hole.get("size"), str):
         return hole
     named = hole_size(hole["size"])
@@ -102,10 +103,14 @@ def sized_hole(hole: Dict[str, Any]) -> Dict[str, Any]:
         says["headDiameter"] = sink["diameter"]
         depth = (sink["diameter"] - named["diameter"]) / 2 / math.tan(sink["angleDeg"] * math.pi / 360)
         says["headDepth"] = math.floor(depth * 1e4 + 0.5) / 1e4
+    depth = hole.get("headDepth")
+    if hole.get("style") == "counterbore" and "headDepth" in says and _is_number(depth) and depth > says["headDepth"]:
+        says["headDepth"] = depth
     for field, value in says.items():
         written = hole.get(field)
         if _is_number(written) and abs(written - value) > 1e-9:
-            raise ValueError(f'{field}: "{hole["size"]}" is {_number(value)} mm (got {_number(written)}); leave {field} out, or clear size')
+            deeper = " (a counterbore may be deeper than the size's, not shallower)" if field == "headDepth" and hole.get("style") == "counterbore" else ""
+            raise ValueError(f'{field}: "{hole["size"]}" is {_number(value)} mm (got {_number(written)}); leave {field} out, or clear size{deeper}')
     return {**hole, **says}
 
 

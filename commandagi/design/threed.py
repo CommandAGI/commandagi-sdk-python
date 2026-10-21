@@ -37,10 +37,12 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
                                               ones a query chooses when the part is built, ``{"kind", "select": {…}}``:
                                               normal, parallel, perpendicular, axis (directions), geometry, length,
                                               radius, area (ranges ``{"min", "max"}``), ofFace (the edges of the faces a
-                                              face query chooses), createdBy (what a feature made), inBox, farthest
+                                              face query chooses), createdBy (what a feature made), at (a point on
+                                              the face), inBox, farthest
                                               (a direction: "the top"), any, not. Every test present must hold
     hole(face=, positions= | sketch=, …)      where the holes are: ``positions`` (points in model coordinates) or
-                                              ``sketch`` (a sketch of points); with neither, the face's centre
+                                              ``sketch`` (a sketch of points); with neither, the face's centre. A
+                                              face that chooses several drills each place in the one it lies on
     feature(type_=, id=, name=, …)            a feature of a type the kernel does not know
     sketch(*entities, id=, name=, plane=)     a sketch: point(id=, x=, y=), a segment by its type (line, circle, arc,
                                               spline, ellipse, ellipseArc), constraint(id=, kind=, entities=, …),
