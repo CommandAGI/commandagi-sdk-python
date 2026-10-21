@@ -10,9 +10,9 @@ try:
 except ImportError:  # pragma: no cover
     from typing_extensions import Literal, TypedDict  # type: ignore
 
-#: A FINDING ACCEPTED ON PURPOSE: `<accept check body region reason />`. It suppresses the findings of that check on that body whose location, in the body's own frame, lies in `region`. A region within 5 % of the body's box and 100 000 mm³ covers every finding in it; a larger one covers only a finding whose own extent (a clash's box, else its point), grown by 5 mm, holds the whole region, and one that covers none is refused: it is itself an error. With `other` and no region it covers the findings between two bodies (a part modelled as its envelope inside another: `<accept check="clash" body="Spindle" other="Clamp ring" reason="…" />`); `maxVolume` bounds what it covers, so a body that moves deeper in is a finding again. With neither, it covers only findings with no place (a logistics finding: `<accept check="sourcing" body="Label" rule="no-supplier" reason="…" />`). A suppressed finding stays in the report with the accept that suppressed it and severity `suppressed`.
+#: A FINDING ACCEPTED ON PURPOSE: `<accept check body region reason />`. It suppresses the findings of that check on that body whose location, in the body's own frame, lies in `region`. A region within 5 % of the body's box and 100 000 mm³ covers every finding in it; a larger one covers only a finding whose own extent (a clash's box, else its point), grown by 5 mm, holds the whole region, and one that covers none is refused: it is itself an error. With `other` and no region it covers the findings between two bodies (a part modelled as its envelope inside another: `<accept check="clash" body="Spindle" other="Clamp ring" reason="…" />`). With neither, it covers only findings with no place (a logistics finding: `<accept check="sourcing" body="Label" rule="no-supplier" reason="…" />`). A suppressed finding stays in the report with the accept that suppressed it and severity `suppressed`.
 _AcceptedFindingRequired = TypedDict("_AcceptedFindingRequired", {"id": str, "check": str, "body": str, "reason": str})
-_AcceptedFindingOptional = TypedDict("_AcceptedFindingOptional", {"rule": str, "region": 'CheckRegion', "other": str, "maxVolume": float}, total=False)
+_AcceptedFindingOptional = TypedDict("_AcceptedFindingOptional", {"rule": str, "region": 'CheckRegion', "other": str}, total=False)
 class AcceptedFinding(_AcceptedFindingRequired, _AcceptedFindingOptional):
     pass
 
@@ -189,7 +189,7 @@ class _DesignCheck5(__DesignCheck5Required, __DesignCheck5Optional):
 
 #: A CHECK THE DOCUMENT MUST PASS: `<check kind … />`. The kinds built in are `interference`, `clearance`, `holes`, `fasteners`, `edges`, `symmetry`, and the tolerance kinds `tolerances`, `fit` and `stackup` (`./tolerances.ts`); another kind is a check that a registered function runs (a manufacturability check), and where none is registered the check is skipped with that reason, never passed.
 _DesignCheckRequired = TypedDict("_DesignCheckRequired", {"id": str, "kind": str})
-_DesignCheckOptional = TypedDict("_DesignCheckOptional", {"bodies": List[str], "against": List[str], "severity": Literal["error", "warning"], "min": float, "minVolume": float, "angle": float, "breakWidth": float, "maxRadius": float, "plane": Literal["yz", "xz", "xy"], "tolerance": float, "hole": str, "shaft": str, "intent": Literal["clearance", "transition", "interference"], "pair": Tuple[str, str], "chain": List[str], "limit": '_DesignCheck5', "method": Literal["worst-case", "rss", "monte-carlo"], "samples": int, "seed": int, "sweep": 'JointSweep', "options": Dict[str, Any]}, total=False)
+_DesignCheckOptional = TypedDict("_DesignCheckOptional", {"bodies": List[str], "against": List[str], "severity": Literal["error", "warning"], "min": float, "minVolume": float, "angle": float, "breakWidth": float, "maxRadius": float, "plane": Literal["yz", "xz", "xy"], "tolerance": float, "hole": str, "shaft": str, "intent": Literal["clearance", "transition", "interference"], "pair": Tuple[str, str], "chain": List[str], "limit": '_DesignCheck5', "method": Literal["worst-case", "rss", "monte-carlo"], "samples": int, "seed": int, "options": Dict[str, Any]}, total=False)
 class DesignCheck(_DesignCheckRequired, _DesignCheckOptional):
     pass
 
@@ -362,16 +362,16 @@ _JointReferenceOptional = TypedDict("_JointReferenceOptional", {"direction": 'Ve
 class JointReference(_JointReferenceRequired, _JointReferenceOptional):
     pass
 
-#: HOW A CHECK MOVES A JOINT: `sweep={{ joint: "ramJ", step: 10 }}`. The values are spread evenly over the joint's `limits`, both ends included; where a pair starts or stops clashing (or being too near) between two values, the value is found to 0.1 mm or 0.1°. A value is the joint's displacement from the pose the document draws: millimetres along a prismatic joint's axis, radians about a revolute joint's axis through its anchor.
-_JointSweepRequired = TypedDict("_JointSweepRequired", {"joint": str})
-_JointSweepOptional = TypedDict("_JointSweepOptional", {"samples": int, "step": float}, total=False)
-class JointSweep(_JointSweepRequired, _JointSweepOptional):
+#: THE DATA OF LIBRARY FASTENER PIECES, GIVEN ONCE: `<library id match engineering sizes>`. Every screw, washer and nut of the document's `<fastener>` stacks whose designation (with its stack's grade, when the stack states one) matches `match` (`*` matches any text: "ISO 4762 M5*", "ISO 7089 *", "ISO 4017 * A2-70") takes this engineering data (a supplier and its price, compliance, shipping, lifecycle). `sizes` is the table of what differs by size: each row's part number, sku, price and mass. A piece's own `<body id="f1">` (or `f1.washer`, `f1.nut`) says more where it says it; the first `<library>` that matches is read.
+_LibraryDataRequired = TypedDict("_LibraryDataRequired", {"id": str, "match": str, "engineering": 'PartEngineering'})
+_LibraryDataOptional = TypedDict("_LibraryDataOptional", {"sizes": List['LibrarySize']}, total=False)
+class LibraryData(_LibraryDataRequired, _LibraryDataOptional):
     pass
 
-#: THE DATA OF LIBRARY FASTENER PIECES, GIVEN ONCE: `<library id match engineering>`. Every screw, washer and nut of the document's `<fastener>` stacks whose designation (with its stack's grade, when the stack states one) matches `match` (`*` matches any text: "ISO 4762 M5*", "ISO 7089 *", "ISO 4017 * A2-70") takes this engineering data (a supplier and its price, compliance, shipping, lifecycle). A piece's own `<body id="f1">` (or `f1.washer`, `f1.nut`) says more where it says it; the first `<library>` that matches is read.
-_LibraryDataRequired = TypedDict("_LibraryDataRequired", {"id": str, "match": str, "engineering": 'PartEngineering'})
-_LibraryDataOptional = TypedDict("_LibraryDataOptional", {}, total=False)
-class LibraryData(_LibraryDataRequired, _LibraryDataOptional):
+#: ONE SIZE OF A `<library>`: what differs from size to size, over the library's `engineering`.
+_LibrarySizeRequired = TypedDict("_LibrarySizeRequired", {"size": str})
+_LibrarySizeOptional = TypedDict("_LibrarySizeOptional", {"partNumber": str, "mpn": str, "sku": str, "priceBreaks": List['PriceBreak'], "mass": 'PartMass'}, total=False)
+class LibrarySize(_LibrarySizeRequired, _LibrarySizeOptional):
     pass
 
 #: WHERE A BOUGHT PART IS IN ITS LIFE, AND HOW MANY ARE ON THE SHELF.
@@ -398,7 +398,7 @@ class MakeHumanFeature(_MakeHumanFeatureRequired, _MakeHumanFeatureOptional):
 
 #: HOW AND WHERE A MADE PART IS MADE: the device or the shop, the process parameters, the time and its rate.
 _MakeSpecRequired = TypedDict("_MakeSpecRequired", {})
-_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "flow": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "ratePerHourHigh": float, "currency": str, "leadTimeDays": float, "setups": List[Tuple[float, float, float]]}, total=False)
+_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "flow": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "currency": str, "leadTimeDays": float, "setups": List[Tuple[float, float, float]]}, total=False)
 class MakeSpec(_MakeSpecRequired, _MakeSpecOptional):
     pass
 
@@ -476,6 +476,12 @@ _MoleculeRepresentationOptional = TypedDict("_MoleculeRepresentationOptional", {
 class MoleculeRepresentation(_MoleculeRepresentationRequired, _MoleculeRepresentationOptional):
     pass
 
+#: A HOLE OF A BOUGHT PART DRAWN AS ITS ENVELOPE: where the real part (a valve's flange, a lug's ring, a pump's foot) has a hole that a screw passes through or screws into. The fastener checks read it as they read a modelled round hole.
+_MountingHoleRequired = TypedDict("_MountingHoleRequired", {"at": 'Vec3', "diameter": float})
+_MountingHoleOptional = TypedDict("_MountingHoleOptional", {"axis": 'Vec3', "depth": float}, total=False)
+class MountingHole(_MountingHoleRequired, _MountingHoleOptional):
+    pass
+
 #: The NURBS half of a curve — degree, knots, weights. Stored verbatim as a sketch spline's `nurbs`.
 _NurbsSpecRequired = TypedDict("_NurbsSpecRequired", {"degree": float})
 _NurbsSpecOptional = TypedDict("_NurbsSpecOptional", {"weights": List[float], "knots": List[float], "mults": List[float], "periodic": bool}, total=False)
@@ -501,7 +507,7 @@ class ParamRect(_ParamRectRequired, _ParamRectOptional):
 
 #: A part's engineering data: its material grade and finish, how it is made or who sells it, and the logistics a declared check may require (docs/formats.md § logistics).
 _PartEngineeringRequired = TypedDict("_PartEngineeringRequired", {})
-_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "processName": str, "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle', "chemical": 'ProcessChemical'}, total=False)
+_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "processName": str, "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle', "chemical": 'ProcessChemical', "envelope": bool, "mountingHoles": List['MountingHole']}, total=False)
 class PartEngineering(_PartEngineeringRequired, _PartEngineeringOptional):
     pass
 

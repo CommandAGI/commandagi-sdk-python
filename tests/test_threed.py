@@ -300,6 +300,24 @@ class ThreeDTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "sweep/samples: must be at least 2"):
             run_module(swept.replace("'step': 10", "'samples': 1"), "S.3d.py")
 
+    def test_an_envelope_declares_its_mounting_holes_and_a_library_its_sizes(self):
+        src = ("from commandagi.design.threed import *\n"
+               "result = assembly(\n"
+               "    box(id='valve', center=[0, 0, -10], size=[30, 30, 20], operation='new'),\n"
+               "    body(id='valve', engineering={'process': 'purchased', 'envelope': True,\n"
+               "         'mountingHoles': [{'at': [-10, 0, 0], 'axis': [0, 0, -1], 'diameter': 5, 'depth': 12}]}),\n"
+               "    library(id='shcs', match='ISO 4762 * A2-70', engineering={'process': 'purchased'},\n"
+               "            sizes=[{'size': 'M4x25', 'partNumber': 'MF-SHCS-M4x0025-A2', 'priceBreaks': [{'quantity': 1, 'unitPrice': 0.2}]}]),\n"
+               "    name='Valve',\n"
+               ")\n")
+        n = run_module(src, "V.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["bodyMeta"]["inputs"]["valve"]["engineering"]["mountingHoles"][0]["depth"], 12)
+        self.assertEqual(n["library"]["inputs"]["value"][0]["sizes"][0]["partNumber"], "MF-SHCS-M4x0025-A2")
+        with self.assertRaisesRegex(ValueError, "sizes/0/price: is not one of its fields"):
+            run_module(src.replace("'priceBreaks'", "'price'"), "V.3d.py")
+        with self.assertRaisesRegex(ValueError, "mountingHoles/0/diameter: is required"):
+            run_module(src.replace("'diameter': 5, ", ""), "V.3d.py")
+
 
 if __name__ == "__main__":
     unittest.main()

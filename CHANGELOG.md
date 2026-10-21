@@ -4,6 +4,21 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- A bought part drawn as its envelope: `engineering.envelope: true` and its `mountingHoles` (`at`, `axis` in its own
+  frame, `diameter`, `depth`). The fasteners check reads those holes, not the envelope's material; a screw off them
+  is one `no-mounting-hole` (IC2-13).
+- `<library sizes>`: a table of what differs by size (part number, mpn, sku, price breaks, mass), so one `<library>`
+  prices every size it lists (CORE-29).
+
+Changed
+
+- A library fastener piece has a mass: its envelope's volume × its stack grade's density (CORE-44). A bill line of
+  pieces is named by its designation, and a roll-up line by its part number, not by the first screw's id (CORE-29).
+
 ## 0.6.3 (2026-10-21)
 
 The fixes for the microfab team's report on 0.6.2 (110 issues; the ids in brackets are theirs). The vocabulary below
