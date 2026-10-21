@@ -4,9 +4,63 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
-## Unreleased
+## 0.6.3 (2026-10-21)
+
+The fixes for the microfab team's report on 0.6.2 (110 issues; the ids in brackets are theirs). The vocabulary below
+is the same in the three SDKs, in each language's spelling; `@commandagi/host` 0.6.3 carries the checks.
+
+Changed (a document written for 0.6.2 may need an edit)
+
+- One face query for 3D documents, checks and studies: a study's `type` is `geometry`, `nearest` is `farthest` with
+  the direction reversed, `radius` and `area` take `{ min, max }`; `at` names the face that holds a point (CORE-24,
+  PCBC-12, IC2-08).
+- A finding names a body by the id the document gives it (`<body id>`, else the feature that made it); the rebuild's
+  `body_0` is `rebuildId` (CORE-13). A covered finding's `severity` is `suppressed`, its own in `coveredSeverity`
+  (PCBC-03).
+- `commandagi check` prints a compact report (verdict, each check, findings grouped by rule); `--json` or `--out FILE`
+  gives the whole report (IC2-12, PCBC-04).
+- A `bodies` entry that names no body is an `unknown-body` error: a check of nothing never passes (LABS-02).
+- Copper joins where it is drawn, and a pour joins the pads and vias of its net it covers; `from`/`to` are optional
+  (EDA-03, EDA-06). A part on the bottom flips its pads, paste, mask, silk and courtyard as KiCad does (EDA-04). An
+  unrouted net on a board with copper is an error (EDA-05).
+- An unknown material is a warning of the process check (CORE-11).
 
 Added
+
+- Placed parts carry what their file states: engineering, mass, part number, fasteners; a placed assembly keeps its
+  members as `<placement>/<id>`. Check, `threed bom`, `threed observe`, STEP and `diff` agree (CORE-01 to -04, -09,
+  -20, -26, -27). Bill lines and logistics findings are one per part number with a quantity (LABS-16, IC1-11).
+- A `.3d.tsx` imports sibling `.ts`, `.tsx` and `.json` files; a `.3d.py` reads its folder and imports sibling modules
+  (CORE-05, CORE-06). Syntax errors name the author's line and column (IC1-01); every refused element in one run
+  (IC1-02).
+- `commandagi --version` with no key; `check --only ID`, `--timeout S` and a timeout that says so; `release --dry-run`
+  and `.releaseignore`; a release also holds the folder's requirements, systems and interfaces (SETUP-01, IC1-09,
+  LABS-19, LABS-20, CORE-28). `commandagi layout | route | fabricate <board>` run on this computer (EDA-17).
+- Faces: a hole on a face split in two, a pick by a point on the face, a pick among the bodies a feature consumes, an
+  ambiguous pick that names its faces (CORE-08, IC2-02, IC2-03, LABS-05). A counterbore deeper than its size's
+  (CORE-10); `m2.5` threads (IC2-04); a clearance pair the kernel cannot measure is its own finding (CORE-19).
+- Every ISO 286 class (IT01 to IT18, A to ZC) to 3150 mm, and ISO 2768-1 (IC2-05, CORE-17, IC1-06); a fit between two
+  sizes of different nominals (CORE-16); a fit's `pair` covers its press fit's clash (CORE-18); `against` on
+  interference and clearance (CORE-25, LABS-03); `<accept other>` for a part modelled inside another, an accept sized
+  to its finding (PCBC-09, IC1-10); `<hole spare>` and `<permitted diameter>` (IC1-04).
+- The mill check judges each face from the setup that reaches it (`make.setups`, or the fewest sides), drilled holes as
+  drilled, a plate turned on the table, the machine's materials (CORE-07, -12, -14, -15, -21, -34). The resin printer
+  prints: SLA printability (drain, cups) and slicing (CORE-32); `commandagi slicer slice X.slice.tsx` (CORE-33).
+- Drawing sheets: hole callouts from the hole features (depth, blind, FAR SIDE), a hole table from a datum corner, no
+  overlapping callouts, the release's REV (CORE-22, -31, -36, PCBC-10).
+- Studies: inverted elements straightened, each level's reason on its line, `<solver timeout>`, `--keep finest`, a
+  fixture on a region (CORE-37, IC2-10, PCBC-11, IC1-15).
+- Budgets of any quantity and unit (flow, area, volume …), a priced `<item ref>` to a design with its lead-time path,
+  a diff that names every logistics change, process flows (`.flow.tsx`), cost ranges, µm and nm, `other` processes,
+  `<library>` data for fastener pieces, `<fastener material partNumber>`, a `chemicals` check (LABS-06 to -12, IC1-03,
+  IC1-05, IC1-12, IC2-11, PCBC-13). HFS5-2060 and HFS5-2080 in the T-slot table (CORE-35).
+- Boards: pinless parts (EDA-02), four-layer net-class rules (EDA-07), KiCad parity on no-connect pins, datasheets and
+  back-side text (EDA-08 to -10), interface sides that read a sheet, a board or a `.sch.py` (EDA-14), a fabrication
+  BOM by part number (EDA-19), `near` as a hard rule of the placer (EDA-20).
+- Speed: a 1136-hole plate checks in about 5 s (was 4 min 54 s); a 206-body assembly in 45 s (was 4 min 41 s)
+  (LABS-04, IC2-06).
+
+In this SDK
 
 - `netclass(...)` states the rules a four-layer board needs: `min_width` (the narrowest track; `width` is what the
   router lays), `edge_clearance` and `hole_clearance` (the least gaps to the board edge and to a hole),
