@@ -16,7 +16,10 @@ document. Each element carries the call that made it, and each node or record it
 from __future__ import annotations
 
 import json
+import os
 import re
+import sys
+import types
 from typing import Any, Dict, List, Optional
 
 from .ir import Declaration, NodeRef, Out, Scope, channels, check_ir, is_ir_graph
@@ -64,6 +67,10 @@ def _stem(path: str) -> str:
                   "", name, flags=re.IGNORECASE) or "Part"
 
 
+#: The package a code file's own folder is while it runs (its relative imports read that folder).
+_FOLDER_PACKAGE = "__code_folder__"
+
+
 def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Run a code part's source with these inputs; return ``{"graph", "params"}`` (JSON-ready)."""
     inputs = dict(inputs or {})
@@ -78,6 +85,16 @@ def run_module(source: str, path: str, inputs: Optional[Dict[str, Any]] = None) 
         shown.append(obj)
 
     ns: Dict[str, Any] = {"__name__": "__code_part__", "__file__": path, "param": param, "show_object": show_object, "inputs": inputs}
+    # The file's folder is its package, so a relative import (`from .helper import x`) reads the module beside it, as
+    # `from helper import x` does.
+    folder = os.path.dirname(path)
+    if folder:
+        for name in [m for m in sys.modules if m.startswith(f"{_FOLDER_PACKAGE}.")]:
+            del sys.modules[name]
+        package = types.ModuleType(_FOLDER_PACKAGE)
+        package.__path__ = [folder]
+        sys.modules[_FOLDER_PACKAGE] = package
+        ns["__package__"] = _FOLDER_PACKAGE
     with _source.running(source, path) as run:
         exec(compile(source, path, "exec"), ns)
     declared = ns.get("params")
