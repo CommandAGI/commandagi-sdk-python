@@ -429,6 +429,8 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
                 if t in _FEATURES or t in _NOT_FEATURES:
                     raise ValueError(f"{_where(el)}: a {t} is written {t.replace('-', '_')}(…)")
                 declared.append(el)
+            elif el.tag in ("part", "assembly"):
+                raise ValueError(f"<{el.tag}> is a document of its own: place its file with external_part(file_name=\"…\", importer=\"3d\") (its bodies keep their names under the placement)")
             else:
                 raise ValueError(f"<{el.tag}> is not read in a 3D document (see commandagi.design.threed)")
         except ValueError as e:
