@@ -125,7 +125,7 @@ __all__ = ["STUDY_UNITS", "STUDY_ROOT_FIELDS", "STUDY_KINDS", "SIGNATURES", "reg
 
 register_study_kind("structural", {
     "material": {"rule": {"parents": ["study"], "single": True, "required": ["grade"], "attrs": ["grade", "body", "poisson"]}, "field": "material"},
-    "fixture": {"rule": {"parents": ["study"], "key": "id", "required": ["id", "type", _FACES], "attrs": ["id", "type", _FACES, "region"]}, "field": "fixtures", "list": True},
+    "fixture": {"rule": {"parents": ["study"], "key": "id", "required": ["id", "type", _FACES], "attrs": ["id", "type", _FACES, "region", "stiffness", "axis"]}, "field": "fixtures", "list": True},
     "loadCase": {"rule": {"parents": ["study"], "key": "id", "required": ["id"], "attrs": ["id"]}, "field": "loadCases", "list": True, "holds": True},
     "force": {"rule": {"parents": ["loadCase"], "key": "id", "required": ["id", _FACES, "total"], "attrs": ["id", _FACES, "total"]}, "field": "loads", "list": True, "typed": True},
     "pressure": {"rule": {"parents": ["loadCase"], "key": "id", "required": ["id", _FACES, "value"], "attrs": ["id", _FACES, "value"]}, "field": "loads", "list": True, "typed": True},
