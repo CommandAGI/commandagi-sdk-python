@@ -4,20 +4,53 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
-## Unreleased
+## 0.6.4 (2026-10-22)
+
+The fixes for the microfab team's re-test on 0.6.3 (66 open items; the ids in brackets are theirs). The vocabulary below
+is the same in the three SDKs, in each language's spelling; `@commandagi/host` 0.6.4 carries the checks.
+
+Changed (a document written for 0.6.3 may need an edit)
+
+- A placed assembly keeps its own `<permitted>`, `<library>`, `<accept>` (`body` and `other`) and names under the
+  placement: a dock that passes alone passes where it is placed. A placement's id selects its members in `bodies`,
+  `against` and `pair` (`dock`, `dock/MF-SH-VEE-20`) (CORE-51, CORE-52, CORE-54). A placed file of several parts keeps
+  each as `<placement>/<id>`.
+- Every file resolves its imports from its own folder, in every command; the folder a run reads is `--folder`, else the
+  file's git repository (CORE-48, CORE-50). A `<part>` or `<assembly>` inside another document says to place its file.
+- `commandagi diff` prints its lines; `--json` or `--out FILE` gives the JSON (CORE-45).
+- An accept of a check that ran and covers nothing warns (`accept-unused`); a whole-part finding (`mill.material`) has
+  no place, so a body + rule accept covers it (CORE-47). `--only` leaves out the other checks' accepts (IC2-18).
+- One finding per hole, cup or region, each with its own size (CORE-46). A washer is what bears on a clamped part
+  (IC2-14).
+- A bill line of fastener pieces is named by its designation, a roll-up line by its part number (CORE-29).
+- `route` says `complete: false` while a net has islands, pours counted (EDA-23); `route`/`layout` `--out` names the
+  board written, the input is left (EDA-22); copper too near the edge is an error (EDA-25); a part with no sheet
+  position is in ERC (EDA-21).
 
 Added
 
-- A bought part drawn as its envelope: `engineering.envelope: true` and its `mountingHoles` (`at`, `axis` in its own
-  frame, `diameter`, `depth`). The fasteners check reads those holes, not the envelope's material; a screw off them
-  is one `no-mounting-hole` (IC2-13).
-- `<library sizes>`: a table of what differs by size (part number, mpn, sku, price breaks, mass), so one `<library>`
-  prices every size it lists (CORE-29).
-
-Changed
-
-- A library fastener piece has a mass: its envelope's volume × its stack grade's density (CORE-44). A bill line of
-  pieces is named by its designation, and a roll-up line by its part number, not by the first screw's id (CORE-29).
+- `<check sweep={{ joint, samples | step }}>`: interference and clearance over a joint's limits, each finding at its
+  joint value with where it starts and ends (PCBC-14); `<accept maxVolume>` (PCBC-18).
+- `<externalPart omit moves>`: one placed file with parts left out or moved; a frame placed in every station (IC1-19,
+  IC1-14, PCBC-20).
+- `engineering.envelope` and `mountingHoles` for a bought part drawn as its envelope (IC2-13); `<library sizes>`, one
+  table of sizes, part numbers and prices (CORE-29); a library screw's mass (CORE-44).
+- STEP files hold one product per part used N times, nested sub-assemblies, and the library's part numbers (CORE-20,
+  CORE-53, IC2-19); `threed observe` names bodies as the checks do (CORE-39).
+- `<slice device>`: a resin setup names its printer (CORE-42). A through hole is drilled from both declared setups
+  (CORE-40). A run of primitive cuts is one boolean: 473 cut cylinders check in 2.7 s, not 21 s (IC2-15).
+- Studies: results are streamed (a 2.18M-node study, 1.2 GB of results, runs to its verdict: CORE-55); a container
+  ends with its host; stress beside a converging re-entrant edge is read (CORE-56); `spring` and `pin` supports
+  (IC1-15); `--keep field` (PCBC-19); `study check` refuses what `study run` refuses (CORE-41).
+- `COMMANDAGI_THREED=cloud` on the command line, and every report says where its kernel ran (CORE-43, IC1-18,
+  IC2-16). Times per check and per feature (IC1-09, PCBC-15). A long hole table continues on further sheets
+  (IC1-17); a misplaced view is named (IC2-17). A wrong bracket is reported at its token (IC1-16).
+- `diff`, `release status --diff` and a task's check read flows, systems, requirements and interfaces (LABS-21); a
+  release checks its flows (LABS-22); `make.ratePerHourHigh` (LABS-23); `<visit tool minutes>` in a flow step
+  (LABS-24); `commandagi task propose | approve | decline` offline (LABS-13); `live-miss` (LABS-14); `"unknown"` for
+  HS code, origin, hazmat, ECCN and datasheet (PCBC-16).
+- Boards: pours read KiCad's own fill settings (EDA-27, in part); plane vias from the router (EDA-23); `pins
+  --install-hook` (EDA-26); RXD0/TXD0 GPIO numbers (EDA-12); `.3d.py` relative imports (PCBC-17).
 
 ## 0.6.3 (2026-10-21)
 
