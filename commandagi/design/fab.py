@@ -17,6 +17,9 @@ the 3D app's CAM and slicing modes edit: the same elements as the TypeScript SDK
     result = slice(source(file_id="carrier.stl", name="carrier.stl"), spool(material_id="pla", diameter_mm=1.75),
                    profile="fdm_pla_0.20_draft")
 
+A slicing setup that runs on no unit names its printer by its device definition: ``slice(…, profile=…, device=…)`` (a
+ref to a ``definition.tsx`` that declares ``process.print``). With a ``machine`` too, the unit's device is that definition.
+
 The rule of the ontology's files: a record is an element and its fields are its attributes (keywords in snake_case
 of the native names: ``thickness_mm`` is ``thicknessMm``; millimetres). A setup's single records (``source``,
 ``design``, ``stock``, ``part``, ``machine``, ``runsOn``, ``spool``) are one element each, absent when the native field
@@ -42,6 +45,8 @@ CAM_OPERATION_FIELDS = ["id", "op", "profile", "enabled", "params", "tabs", "reg
 #: A unit's channel a job runs on (``runsOn`` of a machining setup, ``machine`` of a slicing setup).
 TARGET_FIELDS = ["unit", "channel", "name"]
 SPOOL_FIELDS = ["materialId", "diameterMm"]
+#: A slicing setup's own fields: its profile, its overrides, and the printer's definition (``device``).
+SLICE_FIELDS = ["profile", "params", "device"]
 
 _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the machine jobs: what it holds (the TypeScript SDK's ``SIGNATURES``). ``machine``, ``source`` and
@@ -52,7 +57,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 }
 
 __all__ = ["CAM_REF_FIELDS", "CAM_STOCK_FIELDS", "CAM_PART_FIELDS", "CAM_MACHINE_FIELDS", "CAM_FIXTURE_FIELDS",
-           "CAM_OPERATION_FIELDS", "TARGET_FIELDS", "SPOOL_FIELDS", "SIGNATURES", "cam_vocabulary", "slice_vocabulary", "FAB",
+           "CAM_OPERATION_FIELDS", "TARGET_FIELDS", "SPOOL_FIELDS", "SLICE_FIELDS", "SIGNATURES", "cam_vocabulary", "slice_vocabulary", "FAB",
            *define(globals(), "fab", SIGNATURES)]
 
 
@@ -133,7 +138,7 @@ def _slice_from_tree(t: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _slice_to_tree(d: Dict[str, Any]) -> Dict[str, Any]:
-    return {"tag": "slice", "attrs": _attrs_of(d, ["profile", "params"]), "children": [
+    return {"tag": "slice", "attrs": _attrs_of(d, SLICE_FIELDS), "children": [
         *_one("source", d.get("source"), CAM_REF_FIELDS), *_one("design", d.get("design"), CAM_REF_FIELDS),
         *_one("spool", d.get("spool"), SPOOL_FIELDS), *_one("machine", d.get("machine"), TARGET_FIELDS)]}
 
@@ -141,7 +146,7 @@ def _slice_to_tree(d: Dict[str, Any]) -> Dict[str, Any]:
 slice_vocabulary = Vocabulary(
     format="slice", noun="a slicing setup", root="slice",
     tags={
-        "slice": {"parents": [], "required": ["profile"], "attrs": ["profile", "params"]},
+        "slice": {"parents": [], "required": ["profile"], "attrs": SLICE_FIELDS},
         "source": {"parents": ["slice"], "single": True, **_REF},
         "design": {"parents": ["slice"], "single": True, **_REF},
         "spool": {"parents": ["slice"], "single": True, "attrs": SPOOL_FIELDS},

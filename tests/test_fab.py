@@ -61,6 +61,13 @@ class FabTests(unittest.TestCase):
         self.assertEqual({k: (v["tag"], v["line"]) for k, v in d["sources"].items()},
                          {"": ("slice", 2), "source": ("source", 3), "spool": ("spool", 4), "machine": ("machine", 5)})
         self.assertEqual(d["sources"]["spool"]["props"]["diameter_mm"]["value"], 1.75)
+        # A setup that runs on no unit names its printer by its definition.
+        saturn = "cloud://global/devices/elegoo-saturn-4-ultra/definition.tsx"
+        out = run_module(
+            'from commandagi.design.fab import slice, source\n'
+            f'result = slice(source(file_id="node.stl", name="node.stl"), profile="sla_resin_0.05", device="{saturn}")\n',
+            "Node.slice.py")
+        self.assertEqual(out["document"]["document"], {"profile": "sla_resin_0.05", "device": saturn, "source": {"fileId": "node.stl", "name": "node.stl"}})
         with self.assertRaisesRegex(ValueError, r"<slice> needs profile"):
             declare_document(slice())
 
