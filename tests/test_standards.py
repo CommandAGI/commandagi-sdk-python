@@ -36,6 +36,7 @@ class StandardsTests(unittest.TestCase):
         row("bearings", "625", {"d": 5, "D": 16, "B": 5})
         row("mgn-linear-guide", "MGN12H", {"H": 13, "W": 27, "L": 45.4, "WR": 12, "HR": 8, "P": 25})
         row("t-slot-profiles", "HFS5-2020", {"width": 20, "height": 20, "slotWidth": 6})
+        row("t-slot-profiles", "HFS5-2080", {"width": 20, "height": 80, "slotCount": 10, "massKgPerM": 1.64, "iyCm4": 36})
         row("iso-2338", "6", {"chamferC": 1.2})
         row("heat-set-inserts", "M3x5.7", {"thread": "M3", "length": 5.7, "recommendedHoleDiameter": 4})
 
