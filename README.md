@@ -5,6 +5,7 @@ Drive the whole CommandAGI platform as code: agent threads, memory and integrati
 
 ```bash
 pip install commandagi
+# or, in an environment uv manages: uv pip install commandagi (in a uv project: uv add commandagi)
 export COMMANDAGI_API_KEY=cagi_...     # Settings → API keys
 ```
 

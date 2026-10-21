@@ -133,6 +133,17 @@ class ThreeDTests(unittest.TestCase):
         self.assertIn("makeHuman", THREED_FEATURES)
         self.assertNotIn("makehuman", THREED_FEATURES)
         read(pointCloud(id="pc", positions=positions))()
+        # Every refused element of the file is named in one run, one line each, in the file's order.
+        def engineering(process, **more):
+            return {"partNumber": "X", "material": "6061-T6", "process": process, **more}
+        with self.assertRaises(ValueError) as caught:
+            read(body(id="b4", engineering=engineering("sheet-metal")), body(id="b6", engineering=engineering("cnc-milling", notes="x")),
+                 extrude(id="e1", profile=profile, distance=-1, operation="new"))()
+        self.assertEqual(str(caught.exception), "\n".join([
+            '<body id="b4">: engineering/process: must be one of cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, manual, purchased, reference (got "sheet-metal")',
+            '<body id="b6">: engineering/notes: is not one of its fields',
+            '<extrude id="e1">: distance: must be greater than 0 (got -1)',
+        ]))
 
     def test_a_hole_is_placed_and_faces_and_edges_are_chosen_by_a_query(self):
         top = {"kind": "face", "select": {"normal": [0, 0, 1], "farthest": [0, 0, 1]}}

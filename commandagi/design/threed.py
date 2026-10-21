@@ -339,145 +339,155 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
     body_sources: Dict[str, Any] = {}
     declared: List[Element] = []
     lists: Dict[str, Dict[str, Any]] = {}
+    # Every element is read, and every one refused is named together: a file with ten mistakes needs one run, not ten.
+    refused: List[str] = []
     for el in child_elements(root):
-        if el.tag == "parameter":
-            _no_children(el)
-            pname = el.props.get("name")
-            if not isinstance(pname, str) or not pname or slug(pname) != pname:
-                raise ValueError(f"{_where(el)} needs a name (letters, digits, _ . -)")
-            for k in el.props:
-                if k not in ("key", "name", "bindings", *_PARAM_FIELDS):
-                    raise ValueError(f"{_where(el)}: prop {k} is not read on a parameter")
-            if not _is_number(el.props.get("value")):
-                raise ValueError(f"{_where(el)}: value is a number")
-            if el.props.get("tolerance") is not None:
-                problem = tolerance_problem(el.props["tolerance"])
-                if problem:
-                    raise ValueError(f"{_where(el)}: tolerance: {problem}")
-            claim(pname, f'parameter "{pname}"')
-            f = _fields(el, ("name", "bindings"))
-            bindings = [] if el.props.get("bindings") is None else _plain(el.props["bindings"], f"{_where(el)} bindings")
-            if not isinstance(bindings, list) or any(not isinstance(b, dict) or not isinstance(b.get("target"), str)
-                                                     or not isinstance(b.get("field"), str) for b in bindings):
-                raise ValueError(f"{_where(el)}: bindings are [{{ target, field }}]")
-            nodes[pname] = {"id": pname, "type": "input", "label": pname, "inputs": {**f, **({"drives": bindings} if bindings else {})}, **_meta(el)}
-        elif el.tag == "plane":
-            _no_children(el)
-            i = _id_of(el)
-            claim(i, f'plane "{i}"')
-            rest = _fields(el, ("id",))
-            label = rest.pop("name", None)
-            nodes[i] = {"id": i, "type": "plane", **({"label": label} if isinstance(label, str) else {}), "inputs": rest, **_meta(el)}
-        elif el.tag == "body":
-            _no_children(el)
-            i = _id_of(el)
-            if i in bodies:
-                raise ValueError(f"two body elements are called {i}")
-            body_fields = _fields(el, ("id",))
-            if "engineering" in body_fields:
-                body_fields["engineering"] = _check_value(el, "PartEngineering", body_fields["engineering"], "engineering")
-            bodies[i] = body_fields
-            if el.source is not None:
-                body_sources[i] = el.source
-        elif el.tag in THREED_LISTS:
-            _no_children(el)
-            i = _id_of(el)
-            held = lists.setdefault(el.tag, {"items": [], "sources": {}})
-            if any(x.get("id") == i for x in held["items"]):
-                raise ValueError(f"two {el.tag} elements are called {i}")
-            item = _check_value(el, THREED_LISTS[el.tag]["def"], _fields(el))
-            if el.tag == "sheet":
-                problems = _sheet_view_problems(item["views"])
-                if problems:
-                    raise ValueError(f"{_where(el)}: {'; '.join(problems)}")
-            held["items"].append(item)
-            if el.source is not None:
-                held["sources"][f"{el.tag}:{i}"] = el.source
-        elif el.tag == "slot":
-            _no_children(el)
-            field = el.props.get("name")
-            if not isinstance(field, str) or not re.match(r"^[A-Za-z_]\w*$", field):
-                raise ValueError(f"{_where(el)} needs the name of a document field")
-            if field in _NOT_SLOTS:
-                raise ValueError(f"{_where(el)}: {field} is not a slot (it has its own element or attribute)")
-            for k in el.props:
-                if k not in ("key", "name", "value"):
-                    raise ValueError(f'{_where(el)}: prop {k} is not read on a slot (its value is "value")')
-            claim(field, f"the document's {field}")
-            value = _plain(el.props.get("value"), f"{_where(el)} value")
-            inputs: Dict[str, Any] = {"value": value}
-            if field in _OBJECT_SLOTS:
-                if not isinstance(value, dict):
-                    raise ValueError(f"{_where(el)}: the document's {field} is an object")
-                inputs = value
-                for tag, held_in in THREED_LISTS.items():
-                    if held_in["node"] == field and held_in["port"] in inputs:
-                        raise ValueError(f"{_where(el)}: {held_in['port']} are written as {tag}(…) elements")
-            nodes[field] = {"id": field, "type": f"3d.{field}", "inputs": inputs, **_meta(el)}
-        elif el.tag in _FEATURES:
-            declared.append(el)
-        elif el.tag == "feature":
-            t = el.props.get("type")
-            if not isinstance(t, str) or not re.match(r"^[A-Za-z_][\w.-]*$", t):
-                raise ValueError(f"{_where(el)} needs the feature's type")
-            if t in _FEATURES or t in _NOT_FEATURES:
-                raise ValueError(f"{_where(el)}: a {t} is written {t.replace('-', '_')}(…)")
-            declared.append(el)
-        else:
-            raise ValueError(f"<{el.tag}> is not read in a 3D document (see commandagi.design.threed)")
+        try:
+            if el.tag == "parameter":
+                _no_children(el)
+                pname = el.props.get("name")
+                if not isinstance(pname, str) or not pname or slug(pname) != pname:
+                    raise ValueError(f"{_where(el)} needs a name (letters, digits, _ . -)")
+                for k in el.props:
+                    if k not in ("key", "name", "bindings", *_PARAM_FIELDS):
+                        raise ValueError(f"{_where(el)}: prop {k} is not read on a parameter")
+                if not _is_number(el.props.get("value")):
+                    raise ValueError(f"{_where(el)}: value is a number")
+                if el.props.get("tolerance") is not None:
+                    problem = tolerance_problem(el.props["tolerance"])
+                    if problem:
+                        raise ValueError(f"{_where(el)}: tolerance: {problem}")
+                claim(pname, f'parameter "{pname}"')
+                f = _fields(el, ("name", "bindings"))
+                bindings = [] if el.props.get("bindings") is None else _plain(el.props["bindings"], f"{_where(el)} bindings")
+                if not isinstance(bindings, list) or any(not isinstance(b, dict) or not isinstance(b.get("target"), str)
+                                                         or not isinstance(b.get("field"), str) for b in bindings):
+                    raise ValueError(f"{_where(el)}: bindings are [{{ target, field }}]")
+                nodes[pname] = {"id": pname, "type": "input", "label": pname, "inputs": {**f, **({"drives": bindings} if bindings else {})}, **_meta(el)}
+            elif el.tag == "plane":
+                _no_children(el)
+                i = _id_of(el)
+                claim(i, f'plane "{i}"')
+                rest = _fields(el, ("id",))
+                label = rest.pop("name", None)
+                nodes[i] = {"id": i, "type": "plane", **({"label": label} if isinstance(label, str) else {}), "inputs": rest, **_meta(el)}
+            elif el.tag == "body":
+                _no_children(el)
+                i = _id_of(el)
+                if i in bodies:
+                    raise ValueError(f"two body elements are called {i}")
+                body_fields = _fields(el, ("id",))
+                if "engineering" in body_fields:
+                    body_fields["engineering"] = _check_value(el, "PartEngineering", body_fields["engineering"], "engineering")
+                bodies[i] = body_fields
+                if el.source is not None:
+                    body_sources[i] = el.source
+            elif el.tag in THREED_LISTS:
+                _no_children(el)
+                i = _id_of(el)
+                held = lists.setdefault(el.tag, {"items": [], "sources": {}})
+                if any(x.get("id") == i for x in held["items"]):
+                    raise ValueError(f"two {el.tag} elements are called {i}")
+                item = _check_value(el, THREED_LISTS[el.tag]["def"], _fields(el))
+                if el.tag == "sheet":
+                    problems = _sheet_view_problems(item["views"])
+                    if problems:
+                        raise ValueError(f"{_where(el)}: {'; '.join(problems)}")
+                held["items"].append(item)
+                if el.source is not None:
+                    held["sources"][f"{el.tag}:{i}"] = el.source
+            elif el.tag == "slot":
+                _no_children(el)
+                field = el.props.get("name")
+                if not isinstance(field, str) or not re.match(r"^[A-Za-z_]\w*$", field):
+                    raise ValueError(f"{_where(el)} needs the name of a document field")
+                if field in _NOT_SLOTS:
+                    raise ValueError(f"{_where(el)}: {field} is not a slot (it has its own element or attribute)")
+                for k in el.props:
+                    if k not in ("key", "name", "value"):
+                        raise ValueError(f'{_where(el)}: prop {k} is not read on a slot (its value is "value")')
+                claim(field, f"the document's {field}")
+                value = _plain(el.props.get("value"), f"{_where(el)} value")
+                inputs: Dict[str, Any] = {"value": value}
+                if field in _OBJECT_SLOTS:
+                    if not isinstance(value, dict):
+                        raise ValueError(f"{_where(el)}: the document's {field} is an object")
+                    inputs = value
+                    for tag, held_in in THREED_LISTS.items():
+                        if held_in["node"] == field and held_in["port"] in inputs:
+                            raise ValueError(f"{_where(el)}: {held_in['port']} are written as {tag}(…) elements")
+                nodes[field] = {"id": field, "type": f"3d.{field}", "inputs": inputs, **_meta(el)}
+            elif el.tag in _FEATURES:
+                declared.append(el)
+            elif el.tag == "feature":
+                t = el.props.get("type")
+                if not isinstance(t, str) or not re.match(r"^[A-Za-z_][\w.-]*$", t):
+                    raise ValueError(f"{_where(el)} needs the feature's type")
+                if t in _FEATURES or t in _NOT_FEATURES:
+                    raise ValueError(f"{_where(el)}: a {t} is written {t.replace('-', '_')}(…)")
+                declared.append(el)
+            else:
+                raise ValueError(f"<{el.tag}> is not read in a 3D document (see commandagi.design.threed)")
+        except ValueError as e:
+            refused.append(str(e))
     for el in declared:
-        i = _id_of(el)
-        claim(i, f'feature "{i}"')
-        generic = el.tag == "feature"
-        if not generic and "type" in el.props:
-            raise ValueError(f"{_where(el)}: the tag is the feature's type")
-        ftype = el.props["type"] if generic else el.tag
-        rest = _fields(el, ("id", "type") if generic else ("id",))
-        label = rest.pop("name", None)
-        suppressed = rest.pop("suppressed", None)
-        if suppressed is not None and not isinstance(suppressed, bool):
-            raise ValueError(f"{_where(el)}: suppressed is true or false")
-        inputs = rest
-        sources: Optional[Dict[str, Any]] = None
-        if el.tag == "sketch":
-            if "sketch" in rest:
-                raise ValueError(f"{_where(el)}: a sketch's points, segments and constraints are its child elements")
-            sk, sources = _sketch_of(el)
-            inputs = {**rest, "sketch": sk}
-        # A hole that names a standard size ("M4 close fit") has that size's diameter and head (standards.py).
-        if el.tag == "hole" and isinstance(inputs.get("size"), str):
-            try:
-                inputs = sized_hole(inputs)
-            except ValueError as e:
-                raise ValueError(f"{_where(el)}: {e}") from None
-        if not generic:
-            filled = _check_feature(el, {"type": ftype, "id": i, "name": label if label is not None else i,
-                                         **({"suppressed": suppressed} if suppressed is not None else {}), **inputs})
-            inputs = {k: v for k, v in filled.items() if k not in ("type", "id", "name", "suppressed")}
-        if el.tag != "sketch":
-            _no_children(el)
-            if el.tag == "code":
-                # A code feature's `inputs` are ports of its node, beside `source` and `consumes` (the document graph's rule).
-                code_inputs = rest.pop("inputs", None)
-                if code_inputs is not None and not isinstance(code_inputs, dict):
-                    raise ValueError(f"{_where(el)}: inputs is an object")
-                for k in rest:
-                    if k not in ("source", "consumes"):
-                        raise ValueError(f"{_where(el)}: a code feature has source, inputs and consumes, not {k}")
-                inputs = {**rest, **(code_inputs or {})}
-        node: Dict[str, Any] = {"id": i, "type": ftype, "label": label if isinstance(label, str) else i}
-        if suppressed is not None:
-            node["disabled"] = suppressed
-        node["inputs"] = inputs
-        if el.source is not None or sources:
-            m: Dict[str, Any] = {}
-            if el.source is not None:
-                m["source"] = el.source
-            if sources:
-                m["sources"] = sources
-            node["meta"] = m
-        nodes[i] = node
-        order.append(i)
+        try:
+            i = _id_of(el)
+            claim(i, f'feature "{i}"')
+            generic = el.tag == "feature"
+            if not generic and "type" in el.props:
+                raise ValueError(f"{_where(el)}: the tag is the feature's type")
+            ftype = el.props["type"] if generic else el.tag
+            rest = _fields(el, ("id", "type") if generic else ("id",))
+            label = rest.pop("name", None)
+            suppressed = rest.pop("suppressed", None)
+            if suppressed is not None and not isinstance(suppressed, bool):
+                raise ValueError(f"{_where(el)}: suppressed is true or false")
+            inputs = rest
+            sources: Optional[Dict[str, Any]] = None
+            if el.tag == "sketch":
+                if "sketch" in rest:
+                    raise ValueError(f"{_where(el)}: a sketch's points, segments and constraints are its child elements")
+                sk, sources = _sketch_of(el)
+                inputs = {**rest, "sketch": sk}
+            # A hole that names a standard size ("M4 close fit") has that size's diameter and head (standards.py).
+            if el.tag == "hole" and isinstance(inputs.get("size"), str):
+                try:
+                    inputs = sized_hole(inputs)
+                except ValueError as e:
+                    raise ValueError(f"{_where(el)}: {e}") from None
+            if not generic:
+                filled = _check_feature(el, {"type": ftype, "id": i, "name": label if label is not None else i,
+                                             **({"suppressed": suppressed} if suppressed is not None else {}), **inputs})
+                inputs = {k: v for k, v in filled.items() if k not in ("type", "id", "name", "suppressed")}
+            if el.tag != "sketch":
+                _no_children(el)
+                if el.tag == "code":
+                    # A code feature's `inputs` are ports of its node, beside `source` and `consumes` (the document graph's rule).
+                    code_inputs = rest.pop("inputs", None)
+                    if code_inputs is not None and not isinstance(code_inputs, dict):
+                        raise ValueError(f"{_where(el)}: inputs is an object")
+                    for k in rest:
+                        if k not in ("source", "consumes"):
+                            raise ValueError(f"{_where(el)}: a code feature has source, inputs and consumes, not {k}")
+                    inputs = {**rest, **(code_inputs or {})}
+            node: Dict[str, Any] = {"id": i, "type": ftype, "label": label if isinstance(label, str) else i}
+            if suppressed is not None:
+                node["disabled"] = suppressed
+            node["inputs"] = inputs
+            if el.source is not None or sources:
+                m: Dict[str, Any] = {}
+                if el.source is not None:
+                    m["source"] = el.source
+                if sources:
+                    m["sources"] = sources
+                node["meta"] = m
+            nodes[i] = node
+            order.append(i)
+        except ValueError as e:
+            refused.append(str(e))
+    if refused:
+        raise ValueError("\n".join(refused))
     for i, p in BUILTIN_PLANES.items():
         if i in owner or i not in builtins:
             continue
