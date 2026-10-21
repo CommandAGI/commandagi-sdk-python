@@ -18,8 +18,14 @@ class TolerancesTests(unittest.TestCase):
         self.assertTrue(h7["source"])
         with self.assertRaisesRegex(ValueError, 'no tolerance class "H77"'):
             tolerance_limits(25, {"class": "H77"})
-        with self.assertRaisesRegex(ValueError, "H7 is tabled over 0 up to 120 mm, not at 900 mm"):
-            tolerance_limits(900, {"class": "H7"})
+        with self.assertRaisesRegex(ValueError, "H7: ISO 286 gives sizes over 0 up to 3150 mm, not 3200 mm"):
+            tolerance_limits(3200, {"class": "H7"})
+        # Any ISO 286 class at any size to 3150 mm, from the fundamental deviation and the grade (ISO 286-2 values).
+        def um(cls, size):
+            t = tolerance_limits(size, {"class": cls})
+            return [round(t["upper"] * 1000), round(t["lower"] * 1000)]
+        self.assertEqual([um("E10", 6), um("H9", 255), um("e8", 250), um("H13", 31.7), um("M6", 300), um("ISO 2768-m", 50)],
+                         [[68, 20], [130, 0], [-100, -172], [390, 0], [-9, -41], [300, -300]])
         self.assertEqual(tolerance_limits(12, {"upper": 0.05, "lower": -0.05}), {"nominal": 12, "upper": 0.05, "lower": -0.05, "min": 11.95, "max": 12.05})
 
     def test_a_fit_is_clearance_transition_or_interference(self):
