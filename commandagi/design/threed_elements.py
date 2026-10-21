@@ -105,7 +105,7 @@ class CombineFeature(_CombineFeatureRequired, _CombineFeatureOptional):
 
 #: WHAT A PART COMPLIES WITH.
 _ComplianceRequired = TypedDict("_ComplianceRequired", {})
-_ComplianceOptional = TypedDict("_ComplianceOptional", {"rohs": Literal["compliant", "exempt", "non-compliant"], "rohsExemption": str, "reach": Literal["compliant", "non-compliant", "svhc"], "conflictMinerals": Literal["none", "reported", "unknown"], "eccn": str, "certifications": List[str]}, total=False)
+_ComplianceOptional = TypedDict("_ComplianceOptional", {"rohs": Literal["compliant", "exempt", "non-compliant", "unknown"], "rohsExemption": str, "reach": Literal["compliant", "non-compliant", "unknown", "svhc"], "conflictMinerals": Literal["none", "unknown", "reported"], "eccn": str, "certifications": List[str]}, total=False)
 class Compliance(_ComplianceRequired, _ComplianceOptional):
     pass
 
@@ -157,7 +157,7 @@ class CopyBodyFeature(_CopyBodyFeatureRequired, _CopyBodyFeatureOptional):
 
 #: A dimension to inspect, with its tolerance.
 _CriticalDimensionRequired = TypedDict("_CriticalDimensionRequired", {"name": str, "nominal": float, "plus": float, "minus": float})
-_CriticalDimensionOptional = TypedDict("_CriticalDimensionOptional", {"unit": Literal["mm", "deg"], "method": str}, total=False)
+_CriticalDimensionOptional = TypedDict("_CriticalDimensionOptional", {"unit": Literal["mm", "um", "nm", "deg"], "method": str}, total=False)
 class CriticalDimension(_CriticalDimensionRequired, _CriticalDimensionOptional):
     pass
 
@@ -269,7 +269,7 @@ class ExtrudeFeature(_ExtrudeFeatureRequired, _ExtrudeFeatureOptional):
 
 #: A FASTENER STACK: `<fastener part length at axis clamped receiver washer nut grip />`. It places a screw of the fastener library (by its part id, `iso-4762-m6`: the library's `mechanical-fasteners` parts, built from the same tables), its washer and its nut, and it records what the screw does: it clamps these parts into this receiver. The fasteners check reads the record.
 _FastenerStackRequired = TypedDict("_FastenerStackRequired", {"id": str, "part": str, "length": float, "at": 'Vec3', "clamped": List[str]})
-_FastenerStackOptional = TypedDict("_FastenerStackOptional", {"axis": 'Vec3', "receiver": str, "washer": str, "nut": str, "grip": float, "fit": 'FastenerFit', "minEngagement": float, "torque": float}, total=False)
+_FastenerStackOptional = TypedDict("_FastenerStackOptional", {"axis": 'Vec3', "receiver": str, "washer": str, "nut": str, "grip": float, "fit": 'FastenerFit', "minEngagement": float, "torque": float, "material": str, "partNumber": str}, total=False)
 class FastenerStack(_FastenerStackRequired, _FastenerStackOptional):
     pass
 
@@ -362,6 +362,12 @@ _JointReferenceOptional = TypedDict("_JointReferenceOptional", {"direction": 'Ve
 class JointReference(_JointReferenceRequired, _JointReferenceOptional):
     pass
 
+#: THE DATA OF LIBRARY FASTENER PIECES, GIVEN ONCE: `<library id match engineering>`. Every screw, washer and nut of the document's `<fastener>` stacks whose designation (with its stack's grade, when the stack states one) matches `match` (`*` matches any text: "ISO 4762 M5*", "ISO 7089 *", "ISO 4017 * A2-70") takes this engineering data (a supplier and its price, compliance, shipping, lifecycle). A piece's own `<body id="f1">` (or `f1.washer`, `f1.nut`) says more where it says it; the first `<library>` that matches is read.
+_LibraryDataRequired = TypedDict("_LibraryDataRequired", {"id": str, "match": str, "engineering": 'PartEngineering'})
+_LibraryDataOptional = TypedDict("_LibraryDataOptional", {}, total=False)
+class LibraryData(_LibraryDataRequired, _LibraryDataOptional):
+    pass
+
 #: WHERE A BOUGHT PART IS IN ITS LIFE, AND HOW MANY ARE ON THE SHELF.
 _LifecycleRequired = TypedDict("_LifecycleRequired", {"status": Literal["active", "nrnd", "eol", "obsolete"]})
 _LifecycleOptional = TypedDict("_LifecycleOptional", {"lastTimeBuy": str, "onHand": int, "reorderPoint": int, "source": str, "date": str}, total=False)
@@ -386,7 +392,7 @@ class MakeHumanFeature(_MakeHumanFeatureRequired, _MakeHumanFeatureOptional):
 
 #: HOW AND WHERE A MADE PART IS MADE: the device or the shop, the process parameters, the time and its rate.
 _MakeSpecRequired = TypedDict("_MakeSpecRequired", {})
-_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "currency": str, "leadTimeDays": float, "setups": List[Tuple[float, float, float]]}, total=False)
+_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "flow": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "currency": str, "leadTimeDays": float, "setups": List[Tuple[float, float, float]]}, total=False)
 class MakeSpec(_MakeSpecRequired, _MakeSpecOptional):
     pass
 
@@ -489,7 +495,7 @@ class ParamRect(_ParamRectRequired, _ParamRectOptional):
 
 #: A part's engineering data: its material grade and finish, how it is made or who sells it, and the logistics a declared check may require (docs/formats.md § logistics).
 _PartEngineeringRequired = TypedDict("_PartEngineeringRequired", {})
-_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle'}, total=False)
+_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "processName": str, "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle', "chemical": 'ProcessChemical'}, total=False)
 class PartEngineering(_PartEngineeringRequired, _PartEngineeringOptional):
     pass
 
@@ -562,8 +568,14 @@ class PointCloudFeature(_PointCloudFeatureRequired, _PointCloudFeatureOptional):
 
 #: The unit price from a quantity up (`@commandagi/core` quantity-terms' PriceBreak).
 _PriceBreakRequired = TypedDict("_PriceBreakRequired", {"quantity": int, "unitPrice": float})
-_PriceBreakOptional = TypedDict("_PriceBreakOptional", {}, total=False)
+_PriceBreakOptional = TypedDict("_PriceBreakOptional", {"unitPriceHigh": float}, total=False)
 class PriceBreak(_PriceBreakRequired, _PriceBreakOptional):
+    pass
+
+#: A PROCESS CHEMICAL a station holds (an etchant, a process gas, a solvent): what it is, its hazard, how much is on hand and what contains, exhausts and guards it. The `chemicals` check reads it (docs/formats.md § logistics).
+_ProcessChemicalRequired = TypedDict("_ProcessChemicalRequired", {"substance": str})
+_ProcessChemicalOptional = TypedDict("_ProcessChemicalOptional", {"cas": str, "hazard": str, "litres": float, "kilograms": float, "containmentLitres": float, "exhaust": str, "interlocks": List[str], "sds": str}, total=False)
+class ProcessChemical(_ProcessChemicalRequired, _ProcessChemicalOptional):
     pass
 
 #: A PART OF THE PRODUCT WITH NO GEOMETRY HERE: `<item>` (a cable in the box, foam tape, or another design by `ref`).
@@ -1281,7 +1293,7 @@ HoleStyle = Literal["simple", "counterbore", "countersink"]
 JointKind = Literal["fixed", "revolute", "prismatic", "cylindrical", "planar", "screw", "spherical", "universal"]
 
 #: How a part is made.
-ManufacturingProcess = Literal["cnc-milling", "cnc-turning", "laser-cutting", "waterjet-cutting", "sheet-metal-bending", "extrusion", "casting", "injection-moulding", "fdm-printing", "sla-printing", "sls-printing", "welding", "grinding", "manual", "purchased", "reference"]
+ManufacturingProcess = Literal["other", "cnc-milling", "cnc-turning", "laser-cutting", "waterjet-cutting", "sheet-metal-bending", "extrusion", "casting", "injection-moulding", "fdm-printing", "sla-printing", "sls-printing", "welding", "grinding", "glass-working", "saw-cutting", "manual", "purchased", "reference"]
 
 #: Mate kinds the assembly solver understands — a real 6-DOF set (translational + rotational).
 MateKind = Literal["coincident", "offset", "parallel", "perpendicular", "distance", "angle", "concentric"]

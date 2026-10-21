@@ -12,7 +12,7 @@ from commandagi.design.element import declarer_of
 from commandagi.design.part_fields import js_json
 from commandagi.design.schematic import part_fields
 
-LCSC = {"name": "LCSC", "sku": "C21264512", "currency": "USD", "priceBreaks": [{"quantity": 1, "unitPrice": 9.4}, {"quantity": 10, "unitPrice": 9.15}],
+LCSC = {"name": "LCSC", "sku": "C21264512", "currency": "USD", "priceBreaks": [{"quantity": 1, "unitPrice": 9.4}, {"quantity": 10, "unitPrice": 9.15, "unitPriceHigh": 9.6}],
         "stock": 1, "leadTimeDays": 3, "source": "lcsc.com", "date": "2026-10-15"}
 LOGISTICS = {
     "suppliers": [LCSC, {"name": "DigiKey", "sku": "A7670G-ND"}],
@@ -25,7 +25,7 @@ LOGISTICS = {
 FORMS = [
     ["MPN", "A7670G-LLSE"],
     ["LCSC Part", "C21264512"],
-    ["LCSC Terms", '{"currency":"USD","priceBreaks":[[1,9.4],[10,9.15]],"leadTimeDays":3,"stock":1,"source":"lcsc.com","date":"2026-10-15"}'],
+    ["LCSC Terms", '{"currency":"USD","priceBreaks":[[1,9.4],[10,9.15,9.6]],"leadTimeDays":3,"stock":1,"source":"lcsc.com","date":"2026-10-15"}'],
     ["DigiKey Part", "A7670G-ND"],
     ["Alternates", '[{"manufacturer":"SIMCom","mpn":"A7670E-LASE"}]'],
     ["Datasheet", "https://www.simcom.com/product/A7670X.html"],
@@ -74,7 +74,7 @@ class LogisticsTests(unittest.TestCase):
     def test_a_wrong_logistics_field_is_refused_by_name_and_attrs_cannot_say_what_an_argument_says(self):
         for kw, message in (
             ({"suppliers": [{"name": "LCSC", "price": 3}]}, r"suppliers\[0\]: price is not a term of an offer"),
-            ({"suppliers": [{"name": "LCSC", "priceBreaks": [{"quantity": 0, "unitPrice": 1}]}]}, r"priceBreaks is a list of \{ quantity, unitPrice \}"),
+            ({"suppliers": [{"name": "LCSC", "priceBreaks": [{"quantity": 0, "unitPrice": 1}]}]}, r"priceBreaks is a list of \{ quantity, unitPrice, unitPriceHigh\? \}"),
             ({"suppliers": [{"name": "LCSC", "currency": "usd"}]}, r"currency is an ISO 4217 code"),
             ({"lifecycle": {"onHand": 3}}, r"lifecycle needs its status"),
             ({"lifecycle": {"status": "dead"}}, r"lifecycle.status is one of active, nrnd, eol, obsolete"),

@@ -18,7 +18,8 @@ form the board editor writes), so the BOM, the KiCad board and a 3D body's join 
 
 The keys inside these dicts are the data's own (camelCase, as the JSON holds them); only the arguments are snake_case.
 A supplier is two properties: ``<name> Part`` (its sku; ``LCSC Part`` is what JLCPCB's assembly BOM reads) and
-``<name> Terms`` (the rest as compact JSON, a price break as [quantity, unitPrice]). ``Datasheet`` is KiCad's own field;
+``<name> Terms`` (the rest as compact JSON, a price break as [quantity, unitPrice], or [quantity, unitPrice,
+unitPriceHigh] for an estimate range). ``Datasheet`` is KiCad's own field;
 ``Alternates`` is JSON; a facet's fields are one property each (``Lifecycle``, ``RoHS``, ``HS Code`` …).
 
 ``datasheet`` says where the part's datasheet is (KiCad's ``Datasheet`` field); it claims nothing. ``pinout_verified``
@@ -191,10 +192,13 @@ def check_offers(where: str, v: Any) -> List[Dict[str, Any]]:
         breaks = s.get("priceBreaks")
         if breaks is not None:
             ok = isinstance(breaks, (list, tuple)) and all(
-                isinstance(b, dict) and len(b) == 2 and _whole(b.get("quantity"), 1) and _number(b.get("unitPrice")) and b["unitPrice"] >= 0
+                isinstance(b, dict) and set(b) <= {"quantity", "unitPrice", "unitPriceHigh"} and _whole(b.get("quantity"), 1)
+                and _number(b.get("unitPrice")) and b["unitPrice"] >= 0
+                and ("unitPriceHigh" not in b or (_number(b["unitPriceHigh"]) and b["unitPriceHigh"] >= b["unitPrice"]))
                 for b in breaks)
             if not ok:
-                raise ValueError(f"{at}: priceBreaks is a list of {{ quantity, unitPrice }} (quantity a whole number from 1, unitPrice 0 or more)")
+                raise ValueError(f"{at}: priceBreaks is a list of {{ quantity, unitPrice, unitPriceHigh? }} (quantity a whole number from 1, "
+                                 "unitPrice 0 or more, unitPriceHigh not under it)")
         out.append({k: copy.deepcopy(x) for k, x in s.items() if x is not None})
     return out
 
@@ -205,7 +209,8 @@ def _offer_forms(where: str, v: Any) -> List[Dict[str, Any]]:
         terms: Dict[str, Any] = {}
         for k in _OFFER_TERMS:
             if s.get(k) is not None:
-                terms[k] = [[b["quantity"], b["unitPrice"]] for b in s[k]] if k == "priceBreaks" else s[k]
+                terms[k] = [[b["quantity"], b["unitPrice"], *([b["unitPriceHigh"]] if "unitPriceHigh" in b else [])] for b in s[k]] \
+                    if k == "priceBreaks" else s[k]
         if s.get("sku") is not None:
             forms.append(field_form(f"{s['name']} Part", s["sku"]))
         if terms or s.get("sku") is None:
@@ -324,7 +329,8 @@ def part_fields(inputs: Mapping[str, Any]) -> Dict[str, Any]:
             s = supplier(name[:-6])
             for k in _OFFER_TERMS:
                 if terms.get(k) is not None:
-                    s[k] = [{"quantity": q, "unitPrice": p} for q, p in terms[k]] if k == "priceBreaks" else terms[k]
+                    s[k] = [{"quantity": b[0], "unitPrice": b[1], **({"unitPriceHigh": b[2]} if len(b) > 2 else {})} for b in terms[k]] \
+                        if k == "priceBreaks" else terms[k]
         elif arg == "alternates":
             out["alternates"] = json.loads(value)
         elif arg == "datasheet":
