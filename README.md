@@ -5,7 +5,7 @@ Drive the whole CommandAGI platform as code: agent threads, memory and integrati
 
 ```bash
 pip install commandagi
-# or, in an environment uv manages: uv pip install commandagi (in a uv project: uv add commandagi)
+# a virtual environment uv made has no pip: uv pip install --python .venv/bin/python commandagi (a uv project: uv add commandagi)
 export COMMANDAGI_API_KEY=cagi_...     # Settings → API keys
 ```
 
@@ -252,7 +252,12 @@ graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"bod
 ## Versions
 
 - A release is the tag `v<version>` in this repository and the same version on PyPI. Pin an exact version:
-  `commandagi==0.6.3`. A range (`^`, `~=`, `>=`) takes the next release without asking you.
+  `pip install commandagi==0.6.3`, or in a virtual environment uv made (it has no pip)
+  `uv pip install --python .venv/bin/python commandagi==0.6.3`. A range (`^`, `~=`, `>=`) takes the next release
+  without asking you.
+- After an upgrade, check what runs: `python -c "import commandagi; print(commandagi.__version__)"`, and
+  `commandagi --version` for the host that runs the local 3D kernel (`npm install -g @commandagi/host@0.6.3`). The two
+  are upgraded apart, and a kernel of another version may read a document differently.
 - The three SDKs (Python, TypeScript, Rust) carry one version number. A vocabulary at version X in one language is
   the vocabulary at version X in the others.
 - A version promises nothing about the next one. CommandAGI keeps no compatibility layers: a release may rename or
