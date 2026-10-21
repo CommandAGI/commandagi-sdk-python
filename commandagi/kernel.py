@@ -52,6 +52,10 @@ import urllib.request
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ._generated import DEFAULT_BASE_URL, ENV_API_KEY, ENV_BASE_URL
+from . import __version__
+
+#: Every request names the SDK: the platform's CDN refuses urllib's own User-Agent (Cloudflare error 1010).
+USER_AGENT = f"commandagi-python/{__version__}"
 
 ENV_THREED = "COMMANDAGI_THREED"
 ENV_THREED_URL = "COMMANDAGI_THREED_URL"
@@ -183,7 +187,7 @@ def _http(url: str, key: str, body: Optional[Dict[str, Any]], timeout: float) ->
     """One request → (status, its JSON). Raises OSError when there was no answer."""
     request = urllib.request.Request(
         url, data=None if body is None else json.dumps(body).encode(), method="GET" if body is None else "POST",
-        headers={"authorization": f"Bearer {key}", **({} if body is None else {"content-type": "application/json"})},
+        headers={"authorization": f"Bearer {key}", "user-agent": USER_AGENT, **({} if body is None else {"content-type": "application/json"})},
     )
     try:
         with urllib.request.urlopen(request, timeout=max(1.0, timeout)) as answer:

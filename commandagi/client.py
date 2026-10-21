@@ -28,6 +28,8 @@ from typing import Any, Dict, Iterator, List, Optional
 import requests
 import websocket  # from the `websocket-client` package
 
+from .kernel import USER_AGENT
+
 from ._generated import (
     DEFAULT_BASE_URL,
     ENV_API_KEY,
@@ -90,6 +92,7 @@ class CommandAGI(GeneratedClient):
                     "authorization": f"Bearer {self.api_key}",
                     "content-type": "application/json",
                     "mcp-protocol-version": "2025-06-18",
+                    "user-agent": USER_AGENT,
                 },
                 data=json.dumps({
                     "jsonrpc": "2.0",
@@ -222,7 +225,7 @@ class Session:
                 }
                 self._lock.notify_all()
 
-        self._ws = websocket.WebSocketApp(url, on_message=on_message)
+        self._ws = websocket.WebSocketApp(url, header={"user-agent": USER_AGENT}, on_message=on_message)
         threading.Thread(
             target=lambda: self._ws.run_forever(ping_interval=20, ping_timeout=10, reconnect=3),
             daemon=True,
@@ -247,7 +250,7 @@ class Session:
         url = self.frame(fresh=fresh, timeout=timeout)["url"]
         if url.startswith("data:"):
             return base64.b64decode(url.split(",", 1)[1])
-        r = self._client._http.get(url, headers={"authorization": f"Bearer {self._client.api_key}"}, timeout=60)
+        r = self._client._http.get(url, headers={"authorization": f"Bearer {self._client.api_key}", "user-agent": USER_AGENT}, timeout=60)
         r.raise_for_status()
         return r.content
 

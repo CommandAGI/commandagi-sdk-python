@@ -23,10 +23,12 @@ FAILED = {"error": "build_failed", "status": "failed", "reason": "the build fail
 def serve(answer):
     """A fake kernel: `answer(path, auth, body)` → (status, body). Returns (server, url, seen)."""
     seen = []
+    agents = []
 
     class Handler(BaseHTTPRequestHandler):
         def reply(self, body):
             seen.append((self.path, self.headers["authorization"], body))
+            agents.append(self.headers["user-agent"])
             status, out = answer(self.path, self.headers["authorization"], body)
             self.send_response(status)
             self.send_header("content-type", "application/json")
@@ -44,6 +46,7 @@ def serve(answer):
 
     server = HTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
+    server.agents = agents
     return server, f"http://127.0.0.1:{server.server_port}", seen
 
 
@@ -206,6 +209,25 @@ class Placed(unittest.TestCase):
                 Kernel().export("{}")
         self.assertIn("commandagi threed install", str(nowhere.exception))
         self.assertNotIn("Expecting value", str(nowhere.exception))
+
+
+class Edge(unittest.TestCase):
+    """The platform's CDN refuses urllib's own User-Agent (Cloudflare 1010, microfab CORE-30): every request names the SDK."""
+
+    def test_every_request_names_the_sdk_and_its_version(self):
+        import commandagi
+        from commandagi import CommandAGI
+
+        server, url, _ = serve(lambda path, auth, body: (200, {"result": {"observation": {"bodies": [], "errors": {}}, "meshes": [], "meshTris": 0},
+                                                              "jsonrpc": "2.0", "id": 1}))
+        try:
+            with mock.patch.dict(os.environ, {"COMMANDAGI_THREED": "cloud"}, clear=True):
+                Kernel(api_key="cagi_account", base_url=url).observe("{}")
+            CommandAGI(api_key="cagi_account", base_url=url).call("whoami")
+        finally:
+            server.shutdown()
+            server.server_close()
+        self.assertEqual(server.agents, [f"commandagi-python/{commandagi.__version__}"] * 2)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,9 @@ Added
   `inner={"clearance": …, "width": …, "minWidth": …}` (the rules on inner copper layers) and `min_spokes` (the fewest
   thermal spokes a pad needs to a pour). `commandagi check` holds the board to them and `commandagi export kicad`
   writes them into the project and its `.kicad_dru` (microfab EDA-07).
+- Every request (the client, a session's frames and its WebSocket, the 3D kernel's cloud and local calls) sends
+  `User-Agent: commandagi-python/<version>`. The platform's CDN refused the kernel's standard-library requests with
+  `error code: 1010` (microfab CORE-30).
 
 ## 0.6.2 (2026-10-16)
 
