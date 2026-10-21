@@ -140,7 +140,7 @@ class ThreeDTests(unittest.TestCase):
             read(body(id="b4", engineering=engineering("sheet-metal")), body(id="b6", engineering=engineering("cnc-milling", notes="x")),
                  extrude(id="e1", profile=profile, distance=-1, operation="new"))()
         self.assertEqual(str(caught.exception), "\n".join([
-            '<body id="b4">: engineering/process: must be one of cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, manual, purchased, reference (got "sheet-metal")',
+            '<body id="b4">: engineering/process: must be one of other, cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, glass-working, saw-cutting, manual, purchased, reference (got "sheet-metal")',
             '<body id="b6">: engineering/notes: is not one of its fields',
             '<extrude id="e1">: distance: must be greater than 0 (got -1)',
         ]))
