@@ -50,9 +50,9 @@ REQUIREMENT_FIELDS = ["id", "text", "rationale", "method", "verifiedBy", "design
 MODE_FIELDS = ["id", "description"]
 RAIL_FIELDS = ["id", "voltage", "description", "source"]
 CONVERTER_FIELDS = ["id", "input", "output", "efficiency", "source"]
-LOAD_FIELDS = ["id", "part", "rail", "mode", "current", "power", "voltage", "source"]
+LOAD_FIELDS = ["id", "part", "rail", "mode", "current", "power", "voltage", "peakCurrent", "peakPower", "source"]
 CONTRIBUTION_FIELDS = ["id", "quantity", "part", "value", "unit", "qty", "mode", "rail", "source"]
-BUDGET_FIELDS = ["id", "quantity", "limit", "unit", "mode", "rail", "per", "currency", "design", "resistance", "margin", "source",
+BUDGET_FIELDS = ["id", "quantity", "limit", "unit", "mode", "rail", "peak", "per", "currency", "design", "resistance", "margin", "source",
                  "description"]
 PIN_FIELDS = ["number", "signal", "dir", "voltage", "gpio", "at", "required", "description"]
 HOLE_FIELDS = ["id", "at", "diameter", "description"]
@@ -150,7 +150,7 @@ def _system(t: DocTree) -> Dict[str, Any]:
             _check(_num(e) and 0 < e <= 1, f"{at}: efficiency is a number in (0, 1] (0.88 for 88 %)")
         if tag == "load":
             _check("current" in a or "power" in a, f"{at}: a load states its current (A) or its power (W)")
-            for k in ("current", "power", "voltage"):
+            for k in ("current", "power", "voltage", "peakCurrent", "peakPower"):
                 _check(k not in a or _num(a[k]), f"{at}: {k} is a number")
         if tag == "contribution":
             _check_quantity(a, at)
@@ -167,6 +167,8 @@ def _system(t: DocTree) -> Dict[str, Any]:
             _check("margin" not in a or (_num(m) and 0 <= m < 1), f"{at}: margin is a fraction of the limit kept free, in [0, 1)")
             if a.get("quantity") == "power":
                 _check(isinstance(a.get("rail"), str) and isinstance(a.get("mode"), str), f"{at}: a power budget names its rail and its mode")
+            _check("peak" not in a or (isinstance(a["peak"], bool) and a.get("quantity") == "power"),
+                   f"{at}: peak is true or false, on a power budget (each load at its peakCurrent or peakPower)")
             if a.get("quantity") == "cost":
                 _check(isinstance(a.get("design"), str) and a["design"].strip(),
                        f'{at}: a cost budget names the design whose logistics roll-up it reads (design="cad/Assembly.3d.py")')

@@ -34,15 +34,20 @@ class SystemsTests(unittest.TestCase):
             rail(id="+5V", voltage=5, source="USB"),
             rail(id="VBAT", voltage=3.8),
             converter(id="U3", input="+5V", output="VBAT", efficiency=0.88, source="estimate"),
-            load(id="modem", part="U4", rail="VBAT", mode="lte", current=0.67, source="datasheet table 35"),
+            load(id="modem", part="U4", rail="VBAT", mode="lte", current=0.67, peak_current=0.9, source="datasheet table 35"),
             contribution(id="shell", quantity="mass", part="P1", value=15.2, unit="g", source="check-fit.mjs"),
             bom(ref="bom.csv"),
             budget(id="power", quantity="power", rail="+5V", mode="lte", limit=10, unit="W", margin=0.2),
+            budget(id="peak", quantity="power", rail="+5V", mode="lte", peak=True, limit=10, unit="W"),
             check(id="link", kind="interface", of="Link.interface.py"),
             name="Cam"))["document"]
         self.assertEqual(list(d), ["name", "modes", "rails", "converters", "loads", "contributions", "boms", "budgets", "checks"])
         self.assertEqual(d["rails"], [{"id": "+5V", "voltage": 5, "source": "USB"}, {"id": "VBAT", "voltage": 3.8}])
+        self.assertEqual(d["loads"][0]["peakCurrent"], 0.9)
+        self.assertEqual(d["budgets"][1]["peak"], True)
         cases = [
+            (budget(id="b", quantity="mass", limit=1, peak=True), "peak is true or false, on a power budget"),
+            (load(id="l", part="U1", rail="r", mode="m", current=1, peak_current="2 A"), "peakCurrent is a number"),
             (budget(id="b", quantity="Exhaust flow", limit=1, unit="m3/h"),
              r"<budget id=\"b\">: quantity must be one of mass, power, cost, thermal, or a quantity's name"),
             (budget(id="b", quantity="exhaust-flow", limit=600), r'<budget id="b">: a quantity of exhaust-flow states its unit'),
