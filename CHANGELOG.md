@@ -4,6 +4,16 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Fixed
+
+- The T-slot sections have the maker's 45° web between two slot cavities: 1.5 mm in the 5 Series (MISUMI's drawing
+  prints it) and 2.0 mm in HFS6-3030 (measured on its drawing), where 0.6.5 drew 1.7 and 2.5 mm. So
+  `cavity_floor_width` is 5.88 (5 Series) and 9.17 (HFS6-3030). 0.6.5 said each section was within 5 % of MISUMI's;
+  HFS5-2080's ix was +5.04 %. Now each section's area, ix, iy and mass are within 3.1 % (the straight walls have no
+  radii or fillets), and the repository's test holds 5 %.
+
 ## 0.6.5 (2026-10-22)
 
 The items still open after 0.6.4 (the microfab team's ids in brackets). `@commandagi/host` 0.6.5 carries the checks.
