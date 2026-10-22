@@ -530,6 +530,118 @@
         ]
       },
       {
+        "name": "tasks",
+        "doc": "Open work mounted to a thread: the thread's agent is prompted with it until it is done (runs/thread-<id>/mounts.tsx).",
+        "factory": null,
+        "methods": [
+          {
+            "name": "mount",
+            "tool": "mount_tasks",
+            "doc": "Mount a task, a task list (a folder or a query) or a project to this thread: the agent is prompted with its open work until it is done.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "task": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A task id, or the address or path of a .task.tsx."
+                  },
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder (a path in your Drive, or an absolute address cloud://home/<uuid>/…): the tasks at or under it."
+                  },
+                  "project": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A project id, or the address or path of a .project.tsx."
+                  },
+                  "assignee": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A query: whose tasks (\"me\", \"user:<id>\" or \"agent:<id>\")."
+                  },
+                  "labels": {
+                    "type": "array",
+                    "enum": null,
+                    "doc": "A query: tasks with these labels."
+                  },
+                  "status": {
+                    "type": "array",
+                    "enum": null,
+                    "doc": "A query: tasks with these statuses."
+                  },
+                  "label": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "The mount's name in the thread. Omitted: made from what it mounts."
+                  },
+                  "threadId": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "The thread to mount it to. Omitted: the thread this code runs in."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": true
+          },
+          {
+            "name": "unmount",
+            "tool": "unmount_tasks",
+            "doc": "Remove a mount from this thread by its label.",
+            "params": [
+              {
+                "name": "label",
+                "key": "label",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "threadId",
+                "key": "threadId",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": true
+          },
+          {
+            "name": "mounts",
+            "tool": "list_mounts",
+            "doc": "This thread's mounts, the open tasks they hold and whether the loop still prompts the agent.",
+            "params": [
+              {
+                "name": "threadId",
+                "key": "threadId",
+                "type": "string",
+                "required": false,
+                "spread": false,
+                "prefix": null,
+                "cli": "flag"
+              }
+            ],
+            "bound": {},
+            "withThread": true
+          }
+        ]
+      },
+      {
         "name": "integrations",
         "doc": "Connected third-party accounts.",
         "factory": null,

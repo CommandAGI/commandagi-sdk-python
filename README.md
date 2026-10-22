@@ -41,13 +41,17 @@ TypeScript SDK's code file, which declares the same document.
 This SDK, the TypeScript SDK (`npm i commandagi`) and the `commandagi` CLI all come from **one
 schema**, `commandagi-sdk.schema.json`, so they can't drift apart:
 
-- **Tools**: `cagi.threads`, `cagi.embodiments`, `cagi.memory`, `cagi.integrations`,
+- **Tools**: `cagi.threads`, `cagi.embodiments`, `cagi.memory`, `cagi.tasks`, `cagi.integrations`,
   `cagi.social(platform, account)`, `whoami`, `search`, `run` and `post`. Each one is a typed wrapper
   over `call(tool, args)`. Options are passed as keyword arguments, e.g. `snapshot_id=…`, and sent
   over the wire as camelCase (`snapshotId`). Where the schema names the options, they are typed
   keyword-only arguments: `cagi.postal.send("Letters/Ada.letter.tsx", provider="click2mail")` (the
   provider is `"lob"`, the default, or `"click2mail"`, US only; omitted, the account's
   `postal.providers` order picks it).
+- **Task mounts**: `cagi.tasks.mount(folder="projects/bracket")` mounts a task list to the thread the
+  code runs in, and the agent is prompted with its open tasks until they are done. Mount one task
+  (`task=…`), a project (`project=…`) or a query (`assignee="me", status=["todo"]`);
+  `cagi.tasks.mounts()` lists them and `cagi.tasks.unmount(label)` removes one.
 - **Control vocabularies** on a live `Session`:
   - `session.desktop` for computers: `click`, `double_click`, `move`, `scroll`, `type`, `key`, `wait`
   - `session.robot` for physical robots: `joint`, `gripper`, `move`, `turn`, `home`, `stop`, …
