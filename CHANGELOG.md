@@ -4,7 +4,12 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
-## Unreleased
+## 0.6.6 (2026-10-22)
+
+Added
+
+- `client.git`: the folder git operations listed under the host below (`merge(branch=…)`, since `from` is a Python keyword).
+- `eda.layout` follows a platform layout job to its end.
 
 Fixed
 
@@ -13,6 +18,26 @@ Fixed
   `cavity_floor_width` is 5.88 (5 Series) and 9.17 (HFS6-3030). 0.6.5 said each section was within 5 % of MISUMI's;
   HFS5-2080's ix was +5.04 %. Now each section's area, ix, iy and mass are within 3.1 % (the straight walls have no
   radii or fillets), and the repository's test holds 5 %.
+
+In the host (`@commandagi/host` 0.6.6)
+
+- The FEA kernel picks its solver for each level from the level's size and the memory it has: PaStiX on every core
+  when it fits, SPOOLES on one thread when it does not. The level's line says which ran and why. `COMMANDAGI_FEA_MEMORY`
+  (for example `96g`) sets the kernel container's memory. A 2.18-million-node level needs about 73 GB with SPOOLES and
+  108 GB with PaStiX.
+- The workbench speaks Japanese, Brazilian Portuguese, French, German, Arabic (right to left) and Indonesian, beside
+  English, Spanish and Simplified Chinese.
+- `commandagi git <op>` works on a folder of this computer or a cloud folder (`cloud://home/<uuid>/…`): status, log,
+  diff, commit, checkpoint, branch, switch, checkout (a commit as a detached HEAD), merge, remotes, fetch, pull, push,
+  and fork (cloud). A remote's credential names an account of the host's secret store and is given to git for one
+  call; it is never written into `.git/config`. A synced folder and its cloud folder share one history.
+
+On the platform
+
+- A cloud file or folder that was renamed or moved is still reached at its old path; the answer names the current one
+  (`x-commandagi-moved-to`). A git remote that names an old folder keeps working.
+- `pcb_layout` on a board larger than the platform runs in place becomes a job (`pcb_layout_status`); no layout ends in
+  a Worker resource error any more.
 
 ## 0.6.5 (2026-10-22)
 
