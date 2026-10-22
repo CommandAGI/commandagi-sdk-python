@@ -161,6 +161,18 @@ _CriticalDimensionOptional = TypedDict("_CriticalDimensionOptional", {"unit": Li
 class CriticalDimension(_CriticalDimensionRequired, _CriticalDimensionOptional):
     pass
 
+#: A CURVE IN SPACE: a path that is not drawn on one plane (a hose, a wire lead, a tendon housing, a braid yarn), what a sweep follows (`path={{ curve: <id> }}`) or points its profile at (`guide`). It makes no body. It is also a plane, under its own id: the plane normal to the curve at its start (origin: the start; normal: the curve's direction there; x-axis: `xAxis`), so a profile sketch drawn on it (`plane={{ type: "datum", plane: <id> }}`) starts the sweep where the curve starts.
+_CurveFeatureRequired = TypedDict("_CurveFeatureRequired", {"type": Literal["curve"], "id": str, "name": str})
+_CurveFeatureOptional = TypedDict("_CurveFeatureOptional", {"kind": Literal["spline", "polyline", "helix"], "points": List['Vec3'], "startTangent": 'Vec3', "endTangent": 'Vec3', "closed": bool, "bendRadius": float, "origin": 'Vec3', "axis": 'Vec3', "radius": float, "pitch": float, "turns": float, "rightHanded": bool, "start": 'Vec3', "xAxis": 'Vec3', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+class CurveFeature(_CurveFeatureRequired, _CurveFeatureOptional):
+    pass
+
+#: A sweep's path given by a `curve` feature: a curve in space.
+_CurveRefRequired = TypedDict("_CurveRefRequired", {"curve": str})
+_CurveRefOptional = TypedDict("_CurveRefOptional", {}, total=False)
+class CurveRef(_CurveRefRequired, _CurveRefOptional):
+    pass
+
 _CylinderFeatureRequired = TypedDict("_CylinderFeatureRequired", {"type": Literal["cylinder"], "id": str, "name": str})
 _CylinderFeatureOptional = TypedDict("_CylinderFeatureOptional", {"center": 'Vec3', "axis": 'Vec3', "radius": float, "height": float, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CylinderFeature(_CylinderFeatureRequired, _CylinderFeatureOptional):
@@ -815,8 +827,8 @@ _SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url":
 class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
     pass
 
-_SweepFeatureRequired = TypedDict("_SweepFeatureRequired", {"type": Literal["sweep"], "profile": 'ProfileRef', "path": 'ProfileRef', "id": str, "name": str})
-_SweepFeatureOptional = TypedDict("_SweepFeatureOptional", {"operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_SweepFeatureRequired = TypedDict("_SweepFeatureRequired", {"type": Literal["sweep"], "profile": 'ProfileRef', "path": 'SweepPath', "id": str, "name": str})
+_SweepFeatureOptional = TypedDict("_SweepFeatureOptional", {"frame": Literal["minimal", "frenet", "up", "guide"], "up": 'Vec3', "guide": str, "twist": float, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SweepFeature(_SweepFeatureRequired, _SweepFeatureOptional):
     pass
 
@@ -970,9 +982,15 @@ class RevolveProps(_RevolvePropsRequired, _RevolvePropsOptional):
     pass
 
 #: The keywords of sweep(…): the SweepFeature fields, in snake_case.
-_SweepPropsRequired = TypedDict("_SweepPropsRequired", {"profile": 'ProfileRef', "path": 'ProfileRef', "id": str})
-_SweepPropsOptional = TypedDict("_SweepPropsOptional", {"operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_SweepPropsRequired = TypedDict("_SweepPropsRequired", {"profile": 'ProfileRef', "path": 'SweepPath', "id": str})
+_SweepPropsOptional = TypedDict("_SweepPropsOptional", {"frame": Literal["minimal", "frenet", "up", "guide"], "up": 'Vec3', "guide": str, "twist": float, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class SweepProps(_SweepPropsRequired, _SweepPropsOptional):
+    pass
+
+#: The keywords of curve(…): the CurveFeature fields, in snake_case.
+_CurvePropsRequired = TypedDict("_CurvePropsRequired", {"id": str})
+_CurvePropsOptional = TypedDict("_CurvePropsOptional", {"kind": Literal["spline", "polyline", "helix"], "points": List['Vec3'], "start_tangent": 'Vec3', "end_tangent": 'Vec3', "closed": bool, "bend_radius": float, "origin": 'Vec3', "axis": 'Vec3', "radius": float, "pitch": float, "turns": float, "right_handed": bool, "start": 'Vec3', "x_axis": 'Vec3', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+class CurveProps(_CurvePropsRequired, _CurvePropsOptional):
     pass
 
 #: The keywords of loft(…): the LoftFeature fields, in snake_case.
@@ -1349,6 +1367,9 @@ SketchSolveStatus = Literal["ok", "over", "under", "inconsistent"]
 
 SourceTexture = Union['SourceImageTexture', 'SourceDataTexture', 'SourceCompressedTexture']
 
+#: What a sweep follows: a sketch's open or closed chain on its plane, or a curve in space.
+SweepPath = Union['ProfileRef', 'CurveRef']
+
 #: What a feature takes where it needs faces or edges: one picked (TopoRef) or the ones a query chooses.
 TopoTarget = Union['TopoRef', 'TopoSelector']
 
@@ -1373,6 +1394,7 @@ THREED_ELEMENTS: Dict[str, type] = {
     "extrude": ExtrudeProps,
     "revolve": RevolveProps,
     "sweep": SweepProps,
+    "curve": CurveProps,
     "loft": LoftProps,
     "fillet": FilletProps,
     "chamfer": ChamferProps,

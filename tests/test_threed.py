@@ -4,9 +4,9 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, chamfer, circle, constraint, cylinder, declare_threed,
+from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, chamfer, circle, constraint, curve, cylinder, declare_threed,
                                       externalPart, extrude, feature, fillet, hole, import_, joint, line, mate, meshBody, parameter, part,
-                                      plane, point, pointCloud, sheet, sketch, slot)
+                                      plane, point, pointCloud, sheet, sketch, slot, sweep)
 
 
 def plate():
@@ -317,6 +317,37 @@ class ThreeDTests(unittest.TestCase):
             run_module(src.replace("'priceBreaks'", "'price'"), "V.3d.py")
         with self.assertRaisesRegex(ValueError, "mountingHoles/0/diameter: is required"):
             run_module(src.replace("'diameter': 5, ", ""), "V.3d.py")
+
+    def test_a_curve_in_space_is_a_sweeps_path_and_its_start_plane(self):
+        # A hose: a spline through points with its end directions, an annulus drawn on the curve's own start plane, swept
+        # along the curve in the Frenet frame. The TypeScript SDK reads the same elements to the same inputs.
+        g = declare_threed(part(
+            curve(id="lead", points=[[0, 0, 0], [20, 5, 10], [40, 0, 30]], start_tangent=[1, 0, 0], end_tangent=[0, 0, 1], x_axis=[0, 0, 1]),
+            sketch(point(id="o", x=0, y=0), circle(id="wall", center="o", radius=2), circle(id="bore", center="o", radius=1.5),
+                   id="section", plane={"type": "datum", "plane": "lead"}),
+            sweep(id="hose", profile={"sketch": "section"}, path={"curve": "lead"}, frame="frenet", operation="new"),
+            curve(id="coil", kind="helix", radius=10, pitch=4, turns=2),
+            name="Hose",
+        ))
+        n = g["nodes"]
+        self.assertEqual(n["lead"]["type"], "curve")
+        # `kind` declares a default, so a spline may leave it out; it reads as "spline".
+        self.assertEqual(n["lead"]["inputs"], {"kind": "spline", "points": [[0, 0, 0], [20, 5, 10], [40, 0, 30]], "startTangent": [1, 0, 0],
+                                               "endTangent": [0, 0, 1], "xAxis": [0, 0, 1]})
+        self.assertEqual(n["hose"]["inputs"]["path"], {"curve": "lead"})
+        self.assertEqual(n["hose"]["inputs"]["frame"], "frenet")
+        self.assertEqual(n["coil"]["inputs"], {"kind": "helix", "radius": 10, "pitch": 4, "turns": 2})
+        self.assertEqual(g["meta"]["presentation"]["order"], ["lead", "section", "hose", "coil"])
+
+        def refused(el):
+            with self.assertRaises(ValueError) as e:
+                declare_threed(part(el, name="P"))
+            return str(e.exception)
+
+        self.assertIn("kind: must be one of spline, polyline, helix", refused(curve(id="c", kind="spiral", points=[[0, 0, 0], [1, 0, 0]])))
+        self.assertIn("points: needs at least 2 items", refused(curve(id="c", points=[[0, 0, 0]])))
+        self.assertIn("bendRadius: must be greater than 0", refused(curve(id="c", kind="polyline", points=[[0, 0, 0], [1, 0, 0]], bend_radius=0)))
+        self.assertIn("frame: must be one of minimal, frenet, up, guide", refused(sweep(id="s", profile={"sketch": "a"}, path={"curve": "c"}, frame="twisted")))
 
 
 if __name__ == "__main__":

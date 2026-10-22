@@ -8,6 +8,12 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.threed`: `curve(...)`, a curve in space (`kind` `"spline"` through `points` with optional
+  `start_tangent` and `end_tangent`, `"polyline"` with `bend_radius`, `"helix"`), and `sweep(...)` along it
+  (`path={"curve": "lead"}`) with `frame` (`"minimal"`, `"frenet"`, `"up"` with `up`, `"guide"` with `guide`) and
+  `twist`. A curve is also the plane normal to it at its start, under its id (`plane={"type": "datum", "plane": "lead"}`).
+  A sweep that would cross itself fails by name (`self_intersection`). Needs a 3D service of this version.
+
 - `commandagi.design.mounts`: a thread's mounted tasks as `mounts.py` in its run folder, `mounts(mount(label=…, …))`,
   the same document as the TypeScript SDK's `mounts.tsx`. A mount names one task (`task`), or a list (`folder`,
   `project`, or a query: `assignee`, `labels`, `status`); a mount that names both, or nothing, is refused.
