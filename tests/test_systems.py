@@ -73,15 +73,18 @@ class SystemsTests(unittest.TestCase):
             param(id="baud", value=115200, unit="Bd"),
             side(id="base", ref="ee/base.circuit.ts", parts=["J1", "J2"], origin=[0, 1.4]),
             side(id="firmware", ref="fw/config.h", defines={"BOARD": 1}, pins={"RX_PIN": 4}, params={"BAUD": "baud"}),
+            side(id="host", ref="devices/cam/definition.tsx", channel="modem", params={"baud": "baud"}),
             name="Header"))["document"]
         self.assertEqual(d["frame"], {"description": "the base board's top, pin 1 at the origin", "unit": "mm"})
         self.assertEqual(d["sides"][1], {"id": "firmware", "ref": "fw/config.h", "defines": {"BOARD": 1}, "pins": {"RX_PIN": 4}, "params": {"BAUD": "baud"}})
+        self.assertEqual(d["sides"][2], {"id": "host", "ref": "devices/cam/definition.tsx", "channel": "modem", "params": {"baud": "baud"}})
         cases = [
             (pin(number=0, signal="x"), "number is the pin's number, 1, 2, 3"),
             (pin(number=1, signal="x", at=[1]), r"at is \[x, y\] mm"),
             (hole(id="h", at=[0, 0, 0]), r'<hole id="h">: at is \[x, y\] mm'),
             (message(id="m"), "a message has its text, its code, or both"),
-            (side(id="s", ref="x", kind="mechanical"), "kind must be one of circuit, 3d, firmware"),
+            (side(id="s", ref="x", kind="mechanical"), "kind must be one of circuit, 3d, firmware, definition"),
+            (side(id="s", ref="x", channel=3), "channel is the id of a channel of the device definition"),
             (frame(unit="in"), "positions are in mm"),
         ]
         for el, msg in cases:

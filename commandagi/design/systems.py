@@ -44,7 +44,7 @@ BUDGET_QUANTITIES = ["mass", "power", "cost", "thermal"]
 #: A declared quantity's name ("exhaust-flow", "floor-area").
 DECLARED_QUANTITY = re.compile(r"[a-z][a-z0-9-]*")
 SYSTEM_CHECK_KINDS = ["interface", "trace"]
-SIDE_KINDS = ["circuit", "3d", "firmware"]
+SIDE_KINDS = ["circuit", "3d", "firmware", "definition"]
 
 REQUIREMENT_FIELDS = ["id", "text", "rationale", "method", "verifiedBy", "design", "parent"]
 MODE_FIELDS = ["id", "description"]
@@ -58,7 +58,7 @@ PIN_FIELDS = ["number", "signal", "dir", "voltage", "gpio", "at", "required", "d
 HOLE_FIELDS = ["id", "at", "diameter", "description"]
 MESSAGE_FIELDS = ["id", "text", "code", "define", "dir", "description"]
 PARAM_FIELDS = ["id", "value", "unit", "description"]
-SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "origin", "defines", "pins", "params", "files", "description"]
+SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "defines", "pins", "params", "files", "description"]
 
 _CHILDREN = {"holds": "children"}
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
@@ -211,6 +211,8 @@ def _interface(t: DocTree) -> Dict[str, Any]:
                    f"{at}: origin is where the interface's frame sits in this side's frame, [x, y] or [x, y, z] mm")
             _check("parts" not in a or (isinstance(a["parts"], list) and all(isinstance(p, str) for p in a["parts"])),
                    f"{at}: parts is a list of part references, whose pins are the interface's in turn")
+            _check("channel" not in a or isinstance(a["channel"], str),
+                   f"{at}: channel is the id of a channel of the device definition")
     rest = [c for c in t["children"] if c["tag"] != "frame"]
     return {**_own(t["attrs"], ["name", "description"]), **({"frame": frame} if frame is not None else {}), **_lists(rest, _INTERFACE_LISTS)}
 
