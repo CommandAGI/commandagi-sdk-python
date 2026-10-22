@@ -4,6 +4,32 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## 0.6.5 (2026-10-22)
+
+The items still open after 0.6.4 (the microfab team's ids in brackets). `@commandagi/host` 0.6.5 carries the checks.
+
+Changed (a document written for 0.6.4 may need an edit)
+
+- A `<fastener at>` is a point on the screw's axis, on or above the first clamped part: the rebuild seats the stack on
+  the face its washer or head bears on (a counterbore's floor, a top face, a countersink), and builds every piece
+  there; `grip` is measured from the seat. A stack that finds no seat stays at `at`, and `head-not-seated` says why
+  (PCBC-06).
+
+Added
+
+- Board fills read KiCad's thermal spoke angle (45° for a round pad, 90° otherwise), relieve heatsink vias as KiCad
+  does, and hold a spoke to the pad's width and the zone's least width: the team's axis node now has KiCad's 5 GND
+  pieces (EDA-27).
+- `<group near maxDistance>` is a hard rule of the placer; a wide net necks to its class's `minWidth` only where full
+  width does not fit, and `pcb_layout` names each neck. The axis node lays out complete: KiCad 0 errors, 0
+  unconnected, 0 parity (EDA-20).
+- A planar face of many edges is triangulated by the kernel itself: the 1136-hole breadboard's mesh in 2.5 s, not 30 s,
+  the same mesh (CORE-23).
+- A syntax error in plain code names `file:line:col` and its token in every runner (the command line, the platform, the
+  page; Python too).
+- The T-slot profiles are drawn as the catalog draws them: each section's area, moments and mass within 5 % of MISUMI's
+  (the table also gains `cavity_floor_width`, and HFS6-3030 its corner holes).
+
 ## 0.6.4 (2026-10-22)
 
 The fixes for the microfab team's re-test on 0.6.3 (66 open items; the ids in brackets are theirs). The vocabulary below
