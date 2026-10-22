@@ -32,7 +32,9 @@ class FakeHttp:
         tool = body["params"]["name"]
         self.urls.append((url, headers["authorization"]))
         self.calls.append((tool, body["params"]["arguments"]))
-        return FakeResponse(self.replies.get(tool, {}), is_error=tool in self.error_tools)
+        reply = self.replies.get(tool, {})
+        # A list answers one call each, in order (a job asked again).
+        return FakeResponse(reply.pop(0) if isinstance(reply, list) else reply, is_error=tool in self.error_tools)
 
 
 def client(replies=None, error_tools=(), thread_id="th_self"):
@@ -83,6 +85,16 @@ class ToolCalls(unittest.TestCase):
         cagi, http = client()
         cagi.social("tiktok", "@brand").post("file_9", caption="hi")
         self.assertEqual(http.calls[0], ("post", {"integration": "tiktok", "account": "@brand", "fileId": "file_9", "caption": "hi"}))
+
+    def test_a_layout_job_is_followed_to_its_end(self):
+        job = {"job": "lj_1", "state": "queued", "pollSeconds": 0}
+        cagi, http = client({"pcb_layout": job, "pcb_layout_status": [{**job, "state": "running"}, {"job": "lj_1", "state": "done", "complete": True}]})
+        self.assertEqual(cagi.eda.layout("file_1", budget_minutes=10), {"job": "lj_1", "state": "done", "complete": True})
+        self.assertEqual(http.calls, [
+            ("pcb_layout", {"fileId": "file_1", "budgetMinutes": 10}),
+            ("pcb_layout_status", {"job": "lj_1"}),
+            ("pcb_layout_status", {"job": "lj_1"}),
+        ])
 
     def test_a_tool_error_raises_naming_the_tool(self):
         cagi, _ = client(error_tools={"get_thread"})

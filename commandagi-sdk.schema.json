@@ -1333,7 +1333,7 @@
           {
             "name": "layout",
             "tool": "pcb_layout",
-            "doc": "Lay out the board by its constraints (<netclass>, <group>, <keepout> …): place the parts with no place, route every net with its class's rules, check, repair, score; again until clean or the budget (budgetMinutes) is spent. Writes the placements and copper into the board's code and says each attempt.",
+            "doc": "Lay out the board by its constraints (<netclass>, <group>, <keepout> …): place the parts with no place, route every net with its class's rules, check, repair, score; again until clean or the budget (budgetMinutes) is spent. Writes the placements and copper into the board's code and says each attempt. A board or a budget too large to lay out in place runs as a job, which this follows to its end (pcb_layout_status).",
             "params": [
               {
                 "name": "fileId",
@@ -1352,6 +1352,25 @@
                 "spread": true,
                 "prefix": null,
                 "cli": "spread"
+              }
+            ],
+            "bound": {},
+            "withThread": false,
+            "follow": "pcb_layout_status"
+          },
+          {
+            "name": "layoutStatus",
+            "tool": "pcb_layout_status",
+            "doc": "A layout job: its state while it runs; when it is done, what layout answers, with the board files written (or why not).",
+            "params": [
+              {
+                "name": "job",
+                "key": "job",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
               }
             ],
             "bound": {},
