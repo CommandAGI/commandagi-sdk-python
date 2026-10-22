@@ -4,6 +4,14 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- `commandagi.design.mounts`: a thread's mounted tasks as `mounts.py` in its run folder, `mounts(mount(label=…, …))`,
+  the same document as the TypeScript SDK's `mounts.tsx`. A mount names one task (`task`), or a list (`folder`,
+  `project`, or a query: `assignee`, `labels`, `status`); a mount that names both, or nothing, is refused.
+
 ## 0.6.6 (2026-10-22)
 
 Added
