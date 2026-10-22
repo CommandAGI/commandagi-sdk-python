@@ -1520,6 +1520,634 @@
             "withThread": false
           }
         ]
+      },
+      {
+        "name": "git",
+        "doc": "Git on a folder of a cloud home, whose files are the working tree (docs/namespace.md § git): the git tab's operations. On a folder of your computer the local host answers the same operations (`commandagi git`).",
+        "factory": null,
+        "methods": [
+          {
+            "name": "status",
+            "tool": "git_status",
+            "doc": "The repository the folder is in: its branch, the commit checked out, each changed file; { repo: false } when it is in none.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "log",
+            "tool": "git_log",
+            "doc": "The commits of a branch, newest first: hash, author, date (the committer's, ISO in UTC), subject.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  },
+                  "branch": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A branch (default: the one checked out)."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "diff",
+            "tool": "git_diff",
+            "doc": "A unified diff as text: every change against the last commit, one path's, or one commit's.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  },
+                  "path": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "One path of the repository."
+                  },
+                  "commit": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "One commit's changes (its id)."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "commit",
+            "tool": "git_commit",
+            "doc": "Commit the folder's changes with a message: the paths named, or every change.",
+            "params": [
+              {
+                "name": "message",
+                "key": "message",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "join"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  },
+                  "paths": {
+                    "type": "array",
+                    "enum": null,
+                    "doc": "The paths to commit (default: every change)."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "checkpoint",
+            "tool": "git_checkpoint",
+            "doc": "Every change in one commit, its message made when none is given.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  },
+                  "message": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A message (default: checkpoint · N files)."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "branch",
+            "tool": "git_create_branch",
+            "doc": "A branch at the commit checked out, switched to; the files stay as they are.",
+            "params": [
+              {
+                "name": "name",
+                "key": "name",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "switch",
+            "tool": "git_switch",
+            "doc": "Switch to a branch: the files become its. Refused (409, the paths named) while a tracked file has changed.",
+            "params": [
+              {
+                "name": "name",
+                "key": "name",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "checkout",
+            "tool": "git_checkout",
+            "doc": "Check out a branch, or a commit as a detached HEAD: the files become that commit's.",
+            "params": [
+              {
+                "name": "rev",
+                "key": "rev",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "merge",
+            "tool": "git_merge",
+            "doc": "Merge a branch into the one checked out; a conflict changes nothing and names its paths.",
+            "params": [
+              {
+                "name": "branch",
+                "key": "from",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "remotes",
+            "tool": "git_remotes",
+            "doc": "The repository's remotes: name, URL, the account each acts as.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "remote",
+            "tool": "git_remote_add",
+            "doc": "Name a remote (a URL with no password in it).",
+            "params": [
+              {
+                "name": "name",
+                "key": "name",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "url",
+                "key": "url",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  },
+                  "account": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "The connected account to fetch and push as (list_integrations)."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "unremote",
+            "tool": "git_remote_remove",
+            "doc": "Remove a remote by name.",
+            "params": [
+              {
+                "name": "name",
+                "key": "name",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "fetch",
+            "tool": "git_fetch",
+            "doc": "Fetch a remote's branches into refs/remotes/<remote>/*; no branch of the folder moves.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  },
+                  "remote": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "The remote (default origin)."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "pull",
+            "tool": "git_pull",
+            "doc": "Fetch, then merge the remote's branch into the one checked out; a conflict changes nothing and names its paths.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  },
+                  "remote": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "The remote (default origin)."
+                  },
+                  "branch": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "The remote's branch (default: the one named as the branch checked out)."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "push",
+            "tool": "git_push",
+            "doc": "Push a branch to the same name on a remote; refused (409) when it is not a fast-forward, unless force.",
+            "params": [
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  },
+                  "remote": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "The remote (default origin)."
+                  },
+                  "branch": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "The branch (default: the one checked out)."
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "enum": null,
+                    "doc": "Replace the remote's branch even when it has commits this one lacks."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          },
+          {
+            "name": "fork",
+            "tool": "git_fork",
+            "doc": "Fork the folder's repository into another folder of the home: a new repository whose remote origin is this one.",
+            "params": [
+              {
+                "name": "to",
+                "key": "to",
+                "type": "string",
+                "required": true,
+                "spread": false,
+                "prefix": null,
+                "cli": "positional"
+              },
+              {
+                "name": "opts",
+                "key": null,
+                "type": "object",
+                "required": false,
+                "spread": true,
+                "prefix": null,
+                "cli": "spread",
+                "options": {
+                  "folder": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "A folder of the home (\"projects/bracket\"; omitted: the home itself). The repository is the one it is in."
+                  },
+                  "home": {
+                    "type": "string",
+                    "enum": null,
+                    "doc": "Whose home: \"me\" (default) or an account id (acct:user:<id>, acct:org:<id>) you manage."
+                  }
+                }
+              }
+            ],
+            "bound": {},
+            "withThread": false
+          }
+        ]
       }
     ]
   },
