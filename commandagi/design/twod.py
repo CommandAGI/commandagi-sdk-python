@@ -66,7 +66,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "exposure": _C, "curves": _C, "hsl": _C, "vibrance": _C, "colorBalance": _C, "blackWhite": _C, "invert": _C, "posterize": _C, "develop": _C,
     "gaussianBlur": _C, "unsharpMask": _C, "sharpen": _C, "noise": _C,
     # nest
-    "sheet": {}, "stock": {}, "options": {}, "part": {},
+    "sheet": {}, "stock": {}, "options": {}, "part": {}, "engrave": {},
 }
 
 __all__ = ["SIGNATURES", "SCHEMA", "TWOD_ROOTS", "PHOTO_ADJUSTMENTS", "PHOTO_FILTERS", "LAYER_STYLES", "subpaths_of", "from_twod",
@@ -543,6 +543,7 @@ def _nest(root: Element, name: str) -> Dict[str, Any]:
     with using(s):
         one: Dict[str, NodeRef] = {}
         parts: List[NodeRef] = []
+        engraves: List[NodeRef] = []
         for el in child_elements(root):
             if el.tag in _NEST_ONE:
                 if el.tag in one:
@@ -552,12 +553,16 @@ def _nest(root: Element, name: str) -> Dict[str, Any]:
                 if not isinstance(el.props.get("id"), str):
                     raise ValueError(f"{_where(el)}: a part has an id (the name its placements and overrides use)")
                 parts.append(_add(s, el, "nest.part", _attrs(el)))
+            elif el.tag == "engrave":
+                if not isinstance(el.props.get("id"), str):
+                    raise ValueError(f"{_where(el)}: an engrave has an id (the name the nest's code uses)")
+                engraves.append(_add(s, el, "nest.engrave", _attrs(el)))
             else:
-                raise ValueError(f"<{el.tag}> is not read in a nest (it has <sheet>, <stock>, <options>, <part>)")
+                raise ValueError(f"<{el.tag}> is not read in a nest (it has <sheet>, <stock>, <options>, <part>, <engrave>)")
         for k in _NEST_ONE:
             if k not in one:
                 raise ValueError(f"a nest needs its <{k}>")
-        doc = s.add("nest.doc", {**a, **one, **channels("parts", parts)}, id="nest", meta=_meta(root))
+        doc = s.add("nest.doc", {**a, **one, **channels("parts", parts), **channels("engraves", engraves)}, id="nest", meta=_meta(root))
         s.output(doc)
     return s.build()
 
