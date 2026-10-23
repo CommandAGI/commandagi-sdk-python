@@ -132,12 +132,12 @@ register_study_kind("structural", {
     "mesh": {"rule": {"parents": ["study"], "single": True, "attrs": ["order", "size", "refine"]}, "field": "mesh"},
     "solver": {"rule": {"parents": ["study"], "single": True, "attrs": ["kind", "analysis", "timeout"]}, "field": "solver"},
 })
-# A flow study (kind="flow", units="m-kg-s"): the fluid is one body of the part; the inlet's and the outlet's faces are
-# picks on it, every other face is a wall (study.ts in the TypeScript SDK says the rest).
+# A flow study (kind="flow", units="m-kg-s"): the fluid is one body of the part; each inlet's and each outlet's faces
+# (one or more of each, by id) are picks on it, every other face is a wall (study.ts in the TypeScript SDK says the rest).
 register_study_kind("flow", {
     "fluid": {"rule": {"parents": ["study"], "single": True, "required": ["nu"], "attrs": ["nu", "body"]}, "field": "fluid"},
-    "inlet": {"rule": {"parents": ["study"], "single": True, "required": [_FACES, "velocity"], "attrs": [_FACES, "velocity"]}, "field": "inlet"},
-    "outlet": {"rule": {"parents": ["study"], "single": True, "required": [_FACES], "attrs": [_FACES]}, "field": "outlet"},
+    "inlet": {"rule": {"parents": ["study"], "key": "id", "required": ["id", _FACES, "velocity"], "attrs": ["id", _FACES, "velocity"]}, "field": "inlets", "list": True},
+    "outlet": {"rule": {"parents": ["study"], "key": "id", "required": ["id", _FACES], "attrs": ["id", _FACES]}, "field": "outlets", "list": True},
     "flowMesh": {"rule": {"parents": ["study"], "single": True, "required": ["cells"], "attrs": ["cells", "levels", "iterations", "wallModel"]}, "field": "flowMesh"},
 })
 __all__ += [n for n in SIGNATURES if n not in __all__]

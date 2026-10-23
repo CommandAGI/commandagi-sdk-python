@@ -99,11 +99,11 @@ def _doc_text(doc: Any) -> str:
 # copy) run. Python cannot run it, so `kernel_places` and `call_kernel` are its port, rule for rule. A change there is
 # a change here.
 
-KERNEL_NAMES = ("3d", "fea", "slicer")
+KERNEL_NAMES = ("3d", "fea", "slicer", "flow")
 # ``page`` is the workbench page's own kernel (``observe`` only): Python has no transport for it and passes it over.
 KERNEL_PLACES = ("page", "local", "cloud")
-# The page holds only the 3D kernel: the fea kernel's and the slicer's places begin on this computer.
-DEFAULT_PLACES = {"3d": ("page", "local", "cloud"), "fea": ("local", "cloud"), "slicer": ("local", "cloud")}
+# The page holds only the 3D kernel: the fea kernel's, the slicer's and the flow kernel's places begin on this computer.
+DEFAULT_PLACES = {"3d": ("page", "local", "cloud"), "fea": ("local", "cloud"), "slicer": ("local", "cloud"), "flow": ("local", "cloud")}
 
 
 class KernelAbsent(Exception):
