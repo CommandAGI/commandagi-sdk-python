@@ -163,7 +163,7 @@ class CriticalDimension(_CriticalDimensionRequired, _CriticalDimensionOptional):
 
 #: A CURVE IN SPACE: a path that is not drawn on one plane (a hose, a wire lead, a tendon housing, a braid yarn), what a sweep follows (`path={{ curve: <id> }}`) or points its profile at (`guide`). It makes no body. It is also a plane, under its own id: the plane normal to the curve at its start (origin: the start; normal: the curve's direction there; x-axis: `xAxis`), so a profile sketch drawn on it (`plane={{ type: "datum", plane: <id> }}`) starts the sweep where the curve starts.
 _CurveFeatureRequired = TypedDict("_CurveFeatureRequired", {"type": Literal["curve"], "id": str, "name": str})
-_CurveFeatureOptional = TypedDict("_CurveFeatureOptional", {"kind": Literal["spline", "polyline", "helix"], "points": List['Vec3'], "startTangent": 'Vec3', "endTangent": 'Vec3', "closed": bool, "bendRadius": float, "origin": 'Vec3', "axis": 'Vec3', "radius": float, "pitch": float, "turns": float, "rightHanded": bool, "start": 'Vec3', "xAxis": 'Vec3', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_CurveFeatureOptional = TypedDict("_CurveFeatureOptional", {"kind": Literal["spline", "polyline", "helix"], "points": List['Vec3'], "startTangent": 'Vec3', "endTangent": 'Vec3', "tangents": List['SplineTangent'], "tangentScale": float, "closed": bool, "bendRadius": float, "origin": 'Vec3', "axis": 'Vec3', "radius": float, "pitch": float, "turns": float, "rightHanded": bool, "start": 'Vec3', "xAxis": 'Vec3', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CurveFeature(_CurveFeatureRequired, _CurveFeatureOptional):
     pass
 
@@ -535,7 +535,7 @@ _PartMassOptional = TypedDict("_PartMassOptional", {}, total=False)
 class PartMass(_PartMassRequired, _PartMassOptional):
     pass
 
-_PathPatternFeatureRequired = TypedDict("_PathPatternFeatureRequired", {"type": Literal["pathPattern"], "seedFeature": str, "path": 'ProfileRef', "id": str, "name": str})
+_PathPatternFeatureRequired = TypedDict("_PathPatternFeatureRequired", {"type": Literal["pathPattern"], "seedFeature": str, "path": 'SweepPath', "id": str, "name": str})
 _PathPatternFeatureOptional = TypedDict("_PathPatternFeatureOptional", {"count": int, "alignToPath": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class PathPatternFeature(_PathPatternFeatureRequired, _PathPatternFeatureOptional):
     pass
@@ -810,6 +810,12 @@ _SphericalSurfaceOptional = TypedDict("_SphericalSurfaceOptional", {}, total=Fal
 class SphericalSurface(_SphericalSurfaceRequired, _SphericalSurfaceOptional):
     pass
 
+#: A spline's direction at one of its inner points.
+_SplineTangentRequired = TypedDict("_SplineTangentRequired", {"at": int, "direction": 'Vec3'})
+_SplineTangentOptional = TypedDict("_SplineTangentOptional", {}, total=False)
+class SplineTangent(_SplineTangentRequired, _SplineTangentOptional):
+    pass
+
 _SplitFeatureRequired = TypedDict("_SplitFeatureRequired", {"type": Literal["split"], "plane": 'PlaneRef', "id": str, "name": str})
 _SplitFeatureOptional = TypedDict("_SplitFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SplitFeature(_SplitFeatureRequired, _SplitFeatureOptional):
@@ -989,7 +995,7 @@ class SweepProps(_SweepPropsRequired, _SweepPropsOptional):
 
 #: The keywords of curve(…): the CurveFeature fields, in snake_case.
 _CurvePropsRequired = TypedDict("_CurvePropsRequired", {"id": str})
-_CurvePropsOptional = TypedDict("_CurvePropsOptional", {"kind": Literal["spline", "polyline", "helix"], "points": List['Vec3'], "start_tangent": 'Vec3', "end_tangent": 'Vec3', "closed": bool, "bend_radius": float, "origin": 'Vec3', "axis": 'Vec3', "radius": float, "pitch": float, "turns": float, "right_handed": bool, "start": 'Vec3', "x_axis": 'Vec3', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_CurvePropsOptional = TypedDict("_CurvePropsOptional", {"kind": Literal["spline", "polyline", "helix"], "points": List['Vec3'], "start_tangent": 'Vec3', "end_tangent": 'Vec3', "tangents": List['SplineTangent'], "tangent_scale": float, "closed": bool, "bend_radius": float, "origin": 'Vec3', "axis": 'Vec3', "radius": float, "pitch": float, "turns": float, "right_handed": bool, "start": 'Vec3', "x_axis": 'Vec3', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class CurveProps(_CurvePropsRequired, _CurvePropsOptional):
     pass
 
@@ -1072,7 +1078,7 @@ class CircularPatternProps(_CircularPatternPropsRequired, _CircularPatternPropsO
     pass
 
 #: The keywords of pathPattern(…): the PathPatternFeature fields, in snake_case.
-_PathPatternPropsRequired = TypedDict("_PathPatternPropsRequired", {"seed_feature": str, "path": 'ProfileRef', "id": str})
+_PathPatternPropsRequired = TypedDict("_PathPatternPropsRequired", {"seed_feature": str, "path": 'SweepPath', "id": str})
 _PathPatternPropsOptional = TypedDict("_PathPatternPropsOptional", {"count": int, "align_to_path": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class PathPatternProps(_PathPatternPropsRequired, _PathPatternPropsOptional):
     pass

@@ -6,7 +6,7 @@ import unittest
 from commandagi.design import run_module
 from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, chamfer, circle, constraint, curve, cylinder, declare_threed,
                                       externalPart, extrude, feature, fillet, hole, import_, joint, line, mate, meshBody, parameter, part,
-                                      plane, point, pointCloud, sheet, sketch, slot, sweep)
+                                      pathPattern, plane, point, pointCloud, sheet, sketch, slot, sphere, sweep)
 
 
 def plate():
@@ -348,6 +348,20 @@ class ThreeDTests(unittest.TestCase):
         self.assertIn("points: needs at least 2 items", refused(curve(id="c", points=[[0, 0, 0]])))
         self.assertIn("bendRadius: must be greater than 0", refused(curve(id="c", kind="polyline", points=[[0, 0, 0], [1, 0, 0]], bend_radius=0)))
         self.assertIn("frame: must be one of minimal, frenet, up, guide", refused(sweep(id="s", profile={"sketch": "a"}, path={"curve": "c"}, frame="twisted")))
+
+    def test_a_splines_inner_tangents_and_a_path_pattern_along_a_curve(self):
+        # The TypeScript and Rust SDKs read the same elements to the same inputs.
+        n = declare_threed(part(
+            curve(id="lead", points=[[0, 0, 0], [20, 5, 10], [40, 0, 30]], tangents=[{"at": 1, "direction": [1, 0, 1]}], tangent_scale=1.5),
+            sphere(id="bead", center=[0, 0, 0], radius=1, operation="new"),
+            pathPattern(id="beads", seed_feature="bead", path={"curve": "lead"}, count=6, align_to_path=True),
+            name="Lead",
+        ))["nodes"]
+        self.assertEqual(n["lead"]["inputs"], {"kind": "spline", "points": [[0, 0, 0], [20, 5, 10], [40, 0, 30]],
+                                               "tangents": [{"at": 1, "direction": [1, 0, 1]}], "tangentScale": 1.5})
+        self.assertEqual(n["beads"]["inputs"], {"seedFeature": "bead", "path": {"curve": "lead"}, "count": 6, "alignToPath": True})
+        with self.assertRaisesRegex(ValueError, "tangentScale: must be greater than 0"):
+            declare_threed(part(curve(id="c", points=[[0, 0, 0], [1, 0, 0]], tangent_scale=0), name="P"))
 
 
 if __name__ == "__main__":
