@@ -138,6 +138,22 @@ class LogisticsTests(unittest.TestCase):
             with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
                 threed.declare_threed(threed.part(el, name="P"))
 
+    def test_a_3d_documents_product_is_a_list_of_the_document_and_stock_and_shutoff_are_engineering_fields(self):
+        product = {"id": "kit", "name": "Sensor kit", "compliance": {"eccn": "EAR99", "certifications": ["CE"]},
+                   "shipping": {"hsCode": "9026.80", "packaged": {"size": [120, 90, 60], "grams": 240}, "packaging": "carton"}}
+        g = threed.declare_threed(threed.part(
+            threed.product(**product),
+            threed.item(id="base", name="Base", engineering={"process": "fdm-printing", "make": {"shop": "S", "stock": {"name": "PETG, 1 kg spool", "perPart": 0.05}}}),
+            threed.item(id="sih4", name="Silane", engineering={"process": "purchased", "chemical": {"substance": "silane", "shutoff": "a detector closes the valve"}}),
+            name="P"))
+        self.assertEqual(g["nodes"]["products"]["inputs"]["value"], [product])
+        for el, message in (
+            (threed.product(id="kit"), "name"),
+            (threed.item(id="b", name="B", engineering={"make": {"stock": {"name": "S", "perPart": 0}}}), "perPart"),
+        ):
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                threed.declare_threed(threed.part(el, name="P"))
+
 
 if __name__ == "__main__":
     unittest.main()

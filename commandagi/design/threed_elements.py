@@ -416,7 +416,7 @@ class MakeHumanFeature(_MakeHumanFeatureRequired, _MakeHumanFeatureOptional):
 
 #: HOW AND WHERE A MADE PART IS MADE: the device or the shop, the process parameters, the time and its rate.
 _MakeSpecRequired = TypedDict("_MakeSpecRequired", {})
-_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "flow": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "ratePerHourHigh": float, "currency": str, "leadTimeDays": float, "setups": List[Tuple[float, float, float]]}, total=False)
+_MakeSpecOptional = TypedDict("_MakeSpecOptional", {"device": str, "shop": str, "flow": str, "parameters": Dict[str, Union[bool, str, float]], "setupMinutes": float, "cycleMinutes": float, "ratePerHour": float, "ratePerHourHigh": float, "currency": str, "leadTimeDays": float, "setups": List[Tuple[float, float, float]], "stock": 'StockMaterial'}, total=False)
 class MakeSpec(_MakeSpecRequired, _MakeSpecOptional):
     pass
 
@@ -610,8 +610,14 @@ class PriceBreak(_PriceBreakRequired, _PriceBreakOptional):
 
 #: A PROCESS CHEMICAL a station holds (an etchant, a process gas, a solvent): what it is, its hazard, how much is on hand and what contains, exhausts and guards it. The `chemicals` check reads it (docs/formats.md § logistics).
 _ProcessChemicalRequired = TypedDict("_ProcessChemicalRequired", {"substance": str})
-_ProcessChemicalOptional = TypedDict("_ProcessChemicalOptional", {"cas": str, "hazard": str, "litres": float, "kilograms": float, "containmentLitres": float, "exhaust": str, "interlocks": List[str], "sds": str}, total=False)
+_ProcessChemicalOptional = TypedDict("_ProcessChemicalOptional", {"cas": str, "hazard": str, "litres": float, "kilograms": float, "containmentLitres": float, "exhaust": str, "interlocks": List[str], "sds": str, "shutoff": str}, total=False)
 class ProcessChemical(_ProcessChemicalRequired, _ProcessChemicalOptional):
+    pass
+
+#: THE PRODUCT AS IT IS SOLD: `<product>`. What no part of it says: the product's own certifications (FCC, CE), its export class, its tariff heading, its packed size and mass and how it is packed. The compliance and shipping checks read it as they read a bought part, and also require its certifications and its package.
+_ProductFactsRequired = TypedDict("_ProductFactsRequired", {"id": str, "name": str})
+_ProductFactsOptional = TypedDict("_ProductFactsOptional", {"partNumber": str, "compliance": 'Compliance', "shipping": 'Shipping'}, total=False)
+class ProductFacts(_ProductFactsRequired, _ProductFactsOptional):
     pass
 
 #: A PART OF THE PRODUCT WITH NO GEOMETRY HERE: `<item>` (a cable in the box, foam tape, or another design by `ref`).
@@ -819,6 +825,12 @@ class SplineTangent(_SplineTangentRequired, _SplineTangentOptional):
 _SplitFeatureRequired = TypedDict("_SplitFeatureRequired", {"type": Literal["split"], "plane": 'PlaneRef', "id": str, "name": str})
 _SplitFeatureOptional = TypedDict("_SplitFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SplitFeature(_SplitFeatureRequired, _SplitFeatureOptional):
+    pass
+
+#: THE STOCK A MADE PART USES, AS ITS SUPPLIER SELLS IT: `make.stock`.
+_StockMaterialRequired = TypedDict("_StockMaterialRequired", {"name": str, "perPart": float})
+_StockMaterialOptional = TypedDict("_StockMaterialOptional", {"partNumber": str, "suppliers": List['SupplierOffer']}, total=False)
+class StockMaterial(_StockMaterialRequired, _StockMaterialOptional):
     pass
 
 #: A subdivision-surface body (Catmull-Clark). Authored in the **sculpt** mode as an editable control cage — a quad mesh you push/pull/subdivide — and committed into the document as a body. The cage is stored verbatim (control points + quad faces); the surface is computed by subdividing `level` times (pure TS subdivision in `cad/model/subdiv.ts`), then meshed for display. Independent of the OCC kernel (which has no native subdivision), so it works everywhere.
