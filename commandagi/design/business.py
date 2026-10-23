@@ -30,7 +30,7 @@ from .element import Element, child_elements, declares, define
 _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
 
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
-    "Company": {"props": {"name": _TEXT, "about": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
+    "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters"},
                 "many": {"registrations": "Registration"}},
     "Entity": {"props": {"jurisdiction": _TEXT, "form": _TEXT, "taxClassification": _TEXT, "name": _TEXT, "formed": _TEXT,
@@ -168,7 +168,8 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
     on = any(one[f] for f in ("books", "captable", "people", "calendar", "matters")) or bool(registrations)
     standard = {"enabled": True, "books": ref("books", "journal"), "captable": ref("captable", "ocf"), "people": ref("people", "folder"),
                 "calendar": ref("calendar", "folder"), "registrations": registrations, "matters": ref("matters", "folder")} if on else {"enabled": False}
-    return {"format": "commandagi-company", "name": p["name"], "about": p.get("about", ""), "files": p.get("files", []),
+    return {"format": "commandagi-company", "name": p["name"], "about": p.get("about", ""),
+            **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
             "dashboard": p.get("dashboard"), "entity": entity, "standard": standard}
 
 
