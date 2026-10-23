@@ -21,6 +21,11 @@ Added
 - `commandagi.design.pcb`: `bus(name, nets, pitch)`, nets that run together: where their tracks run side by side they
   are parallel, `pitch` (mm) apart centre to centre. The same element as the TypeScript SDK's `<bus>` and the Rust
   SDK's `bus()`.
+- `commandagi.design.threed`: `fastener(corner=...)`, the direction from the axis to a corner of each hexagon of the
+  stack (a hexagon head, a nut). Absent, it is the model's X (its Y when the axis is within 26° of X). An assembly that
+  places the file turns it with the placement, so one assembly placed at two turns is one STEP product.
+- The materials data has the fastener grades `A2-70`, `A4-70`, `8.8` and `12.9` (each row's source says where its
+  numbers were read): a screw whose stack names one of them has a mass.
 
 ## 0.6.7 (2026-10-23)
 

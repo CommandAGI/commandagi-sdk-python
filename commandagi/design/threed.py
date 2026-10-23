@@ -66,7 +66,7 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
                                               holes, fasteners, edges, symmetry, or a registered kind
     accept(id=, check=, body=, region=, reason=)   a finding accepted on purpose, in a bounded region of one body
     permitted(id=, check=, body=, process=, edgeDir=, region=, reason=)   findings a process or a purpose permits
-    fastener(id=, part=, length=, at=, axis=, clamped=, receiver=, washer=, nut=, grip=)   a fastener stack: a
+    fastener(id=, part=, length=, at=, axis=, corner=, clamped=, receiver=, washer=, nut=, grip=)   a fastener stack: a
                                               library screw, its washer and nut, and what it clamps into what
     slot(name=, value=)                       any other field of the document, whole
 
