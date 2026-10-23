@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.monitors`: `discover(of=..., into=..., when=..., slug=..., class_=..., props=..., name=..., max=...)`,
+  a monitor's part that gives each thing its records name a folder and a thread of its own; a monitor's `same_as`, a
+  source's `vantage` and a follow's `where`. A monitor's document always has `discovers`. The same as the TypeScript
+  SDK's `<discover>`, `sameAs`, `vantage` and `where`.
 - `commandagi.design.twod`: `engrave(id=..., src="logo.png", x_mm=..., y_mm=..., width_mm=..., height_mm=..., dpi=...,
   dither="ordered")` in a `nest(...)`, an image burned on the first sheet. The same as the TypeScript SDK's
   `<engrave>`.
