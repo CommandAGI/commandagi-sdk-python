@@ -20,7 +20,9 @@ file. A metric's ``pass`` is written ``pass_`` (a Python keyword).
 
 References are refs: a path relative to the eval file's folder, or an absolute address. ``metrics`` names the metric
 files the eval reads; a case's ``task`` names the ``.task.tsx`` whose title and text the agent is handed. A case with no
-task file says its ``instruction`` itself; a case says one of the two. ``frozen`` is the digest an eval is frozen at
+task file says its ``instruction`` itself; a case says one of the two. ``objective`` and ``scoring``'s ``weights`` name
+metric files by ref as well: ``{"kind": "metric", "metric": "<ref>"}``, ``{"kind": "linear", "terms": [{"metric": "<ref>",
+"weight": 2}], "bias": 0}`` or a ``function``; the weights are keyed by ref. ``frozen`` is the digest an eval is frozen at
 (``sha256:<hex>``). Nothing adds a default: what the file does not say, the document does not have. A run gives back
 ``{"format", "document", "sources"}`` beside an empty graph; ``sources`` names each case's call by its slug
 (``case#undock-and-lap``).
@@ -135,12 +137,51 @@ def eval_case_of(t: DocTree) -> Dict[str, Any]:
     return _fields(a, EVAL_CASE_FIELDS)
 
 
+def _metric_named(t: DocTree, at: str, v: Any) -> None:
+    """A metric named in ``objective``: a ref (``metric``), never a node id (``metricId``)."""
+    if not isinstance(v, dict):
+        raise ValueError(f"{_where(t)} {at} is an object, not {_json(v)}")
+    if "metricId" in v:
+        raise ValueError(f"{_where(t)} {at} names its metric file by ref (metric), not by node id (metricId)")
+    if not (isinstance(v.get("metric"), str) and v["metric"].strip()):
+        raise ValueError(f"{_where(t)} {at}.metric is a metric file's ref, not {_said(v, 'metric')}")
+
+
+def _objective(t: DocTree) -> None:
+    o = t["attrs"].get("objective")
+    if o is None:
+        return
+    if not isinstance(o, dict) or not isinstance(o.get("kind"), str):
+        raise ValueError(f'{_where(t)} objective is {{ kind: "metric" | "linear" | "function", … }}, not {_json(o)}')
+    if o["kind"] == "metric":
+        _metric_named(t, "objective", o)
+    if o["kind"] == "linear":
+        terms = o.get("terms")
+        if not isinstance(terms, list) or not terms:
+            raise ValueError(f"{_where(t)} objective.terms is a list of {{ metric, weight }}")
+        for i, term in enumerate(terms):
+            _metric_named(t, f"objective.terms[{i}]", term)
+            if "weight" in term and not _number(term["weight"]):
+                raise ValueError(f"{_where(t)} objective.terms[{i}].weight is a number, not {_json(term['weight'])}")
+
+
+def _weights(t: DocTree) -> None:
+    s = t["attrs"].get("scoring")
+    if not isinstance(s, dict) or "weights" not in s:
+        return
+    w = s["weights"]
+    if not isinstance(w, dict) or not all(_number(v) for v in w.values()):
+        raise ValueError(f'{_where(t)} scoring.weights is {{ "<metric file ref>": <number> }}, not {_json(w)}')
+
+
 def _eval(t: DocTree) -> Dict[str, Any]:
     a = t["attrs"]
     for k in ("slug", "domain", "version", "description", "rung"):
         _text(t, k)
     for k in ("scoring", "objective", "provenance"):
         _object(t, k)
+    _objective(t)
+    _weights(t)
     _texts(t, "metrics")
     _texts(t, "axes")
     _numeric(t, "repeats", True)

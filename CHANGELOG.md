@@ -39,6 +39,13 @@ Added
 - The materials data has the fastener grades `A2-70`, `A4-70`, `8.8` and `12.9` (each row's source says where its
   numbers were read): a screw whose stack names one of them has a mass.
 
+Changed (a document written for 0.6.7 may need an edit)
+
+- `commandagi.design.evals`: an eval's `objective` and its `scoring` weights name metric files by ref, as `metrics`
+  does: `objective={"kind": "metric", "metric": "Lap time.metric.tsx"}`, a linear term's `metric`, and weights keyed
+  by ref. An objective that names a metric by node id (`metricId`) is refused with why. The same as the TypeScript
+  SDK's.
+
 Fixed
 
 - The T-slot sections have the maker's 45° web again: `cavity_floor_width` is 5.88 (5 Series) and 9.17 (HFS6-3030).

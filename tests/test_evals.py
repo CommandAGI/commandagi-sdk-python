@@ -1,6 +1,6 @@
 """An eval and a metric declared in Python give what the TypeScript SDK's JSX gives (evals.test.ts in that SDK, the
-same example): each is its record both ways; a case names its task file or says its instruction (one of the two);
-`frozen` is a digest; what does not read is refused with why. Run: python -m unittest discover -s tests"""
+same example): each is its record both ways; a case names its task file or says its instruction (one of the two); the
+objective's metrics and the scoring's weights are refs; `frozen` is a digest; what does not read is refused with why. Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
@@ -12,7 +12,10 @@ EVAL = {
     "slug": "yard-shakedown",
     "domain": "robot",
     "version": "3",
-    "metrics": ["Fleet availability.metric.tsx"],
+    "metrics": ["Fleet availability.metric.tsx", "Lap time.metric.tsx"],
+    "scoring": {"kind": "weighted", "weights": {"Fleet availability.metric.tsx": 2, "Lap time.metric.tsx": 1}},
+    "objective": {"kind": "linear", "terms": [{"metric": "Fleet availability.metric.tsx", "weight": 2},
+                                              {"metric": "Lap time.metric.tsx", "weight": -0.01}], "bias": 0},
     "repeats": 3,
     "frozen": DIGEST,
     "cases": [
@@ -33,7 +36,11 @@ result = eval(
     case(slug="open-a-terminal", name="Open a terminal", instruction="Open a terminal window.",
          acceptance_metric="Terminal open.metric.tsx", hints=["The dock has a terminal icon."], time_limit_ms=120000,
          environment={"kind": "none"}, tags=["smoke"]),
-    slug="yard-shakedown", domain="robot", version="3", metrics=["Fleet availability.metric.tsx"], repeats=3,
+    slug="yard-shakedown", domain="robot", version="3", metrics=["Fleet availability.metric.tsx", "Lap time.metric.tsx"],
+    scoring={"kind": "weighted", "weights": {"Fleet availability.metric.tsx": 2, "Lap time.metric.tsx": 1}},
+    objective={"kind": "linear", "terms": [{"metric": "Fleet availability.metric.tsx", "weight": 2},
+                                           {"metric": "Lap time.metric.tsx", "weight": -0.01}], "bias": 0},
+    repeats=3,
     frozen="sha256:''' + "ab" * 32 + '''",
 )
 '''
@@ -70,6 +77,14 @@ class EvalTests(unittest.TestCase):
             "frozen is the digest the eval is frozen at": lambda: declare_document(eval(slug="e", frozen=True)),
             "metricIds is not read": lambda: declare_document(eval(slug="e", metric_ids=["m1"])),
             "metrics is a list of texts": lambda: declare_document(eval(slug="e", metrics="m.metric.tsx")),
+            r"objective names its metric file by ref \(metric\), not by node id": lambda: declare_document(
+                eval(slug="e", objective={"kind": "metric", "metricId": "m1"})),
+            r"objective.terms\[1\] names its metric file by ref": lambda: declare_document(eval(slug="e", objective={
+                "kind": "linear", "terms": [{"metric": "a.metric.tsx"}, {"metricId": "m1", "weight": 1}]})),
+            "objective.terms is a list": lambda: declare_document(eval(slug="e", objective={"kind": "linear", "terms": []})),
+            "objective.metric is a metric file's ref": lambda: declare_document(eval(slug="e", objective={"kind": "metric"})),
+            "scoring.weights is": lambda: declare_document(eval(slug="e", scoring={"kind": "weighted",
+                                                                                 "weights": {"a.metric.tsx": "2"}})),
             "probe is what to measure": lambda: declare_document(metric(slug="m", probe={}, aggregation="rate")),
             "<metric> needs probe": lambda: declare_document(metric(slug="m", aggregation="rate")),
         }
