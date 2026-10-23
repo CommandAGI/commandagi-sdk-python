@@ -50,8 +50,9 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(monitor_with_defaults(d["document"])["derives"][0]["since"], None)
         with self.assertRaisesRegex(ValueError, "inputs maps each port"):
             declare_document(monitor(derive(id="d", op="last", inputs={})))
-        with self.assertRaisesRegex(ValueError, "names this monitor"):
-            declare_document(monitor(derive(id="d", op="last", inputs={"records": "."})))
+        # A port may name this monitor (an exploit's lifecycle from its own reads), as in the TypeScript SDK.
+        own = declare_document(monitor(derive(id="d", op="consolidate", inputs={"own": "./"})))
+        self.assertEqual(own["document"]["derives"][0]["inputs"], {"own": "./"})
 
     def test_paths_and_their_fields(self):
         def one(**attrs):

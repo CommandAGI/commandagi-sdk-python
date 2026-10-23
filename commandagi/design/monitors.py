@@ -184,8 +184,6 @@ def _derive(t: DocTree) -> Dict[str, Any]:
             raise ValueError(f"{_where(t)} a port is a word, not {port!r}")
         if not isinstance(ref, str) or not ref:
             raise ValueError(f"{_where(t)} inputs.{port} is a monitor's folder, not {ref!r}")
-        if re.match(r"^\./?$", ref):
-            raise ValueError(f"{_where(t)} inputs.{port} names this monitor; a derive takes other monitors' records")
     p = t["attrs"].get("params")
     if p is not None and not isinstance(p, dict):
         raise ValueError(f"{_where(t)} params is an object ({{'window': '1m'}}), not {p!r}")
