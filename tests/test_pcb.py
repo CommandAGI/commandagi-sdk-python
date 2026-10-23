@@ -3,7 +3,7 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.pcb import (arc, board, component, declare_board_file, diffpair, dimension, graphic, group, keepout, kicad, net, netclass,
+from commandagi.design.pcb import (arc, board, bus, component, declare_board_file, diffpair, dimension, graphic, group, keepout, kicad, net, netclass,
                                    objective, pour, stack, text, thermal, trace, via)
 
 
@@ -16,7 +16,7 @@ class BoardTests(unittest.TestCase):
     def test_a_board_declares_the_board_half(self):
         g = declared(
             component(name="R1", footprint="smd-0805", pcb_x=10, pcb_y=10),
-            component(name="R2", footprint="axial-7.62", pcb_x=25, pcb_y=10, pcb_rotation=90, layer="bottom"),
+            component(name="R2", footprint="axial-7.62", pcb_x=25, pcb_y=10, pcb_rotation=90, layer="bottom", ref_at=[0, -2.5]),
             component(name="V1", footprint="smd-0805"),
             trace(layer="F.Cu", width=0.2, points=[[11, 10], [18, 14], [24, 10]], from_=".R1 > .pin2", to=".R2 > .1"),
             trace(layer="B.Cu", width=0.25, points=[[18, 14], [18, 20]], from_=".VIA1"),
@@ -29,6 +29,7 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["board"]["inputs"]["stack"], {"wire": {"node": "stack", "port": "stack"}})
         self.assertEqual(g["nodes"]["fp_R1"]["inputs"], {"ref": "R1", "footprint": "Authored:smd-0805", "placement": {"x": 10, "y": 10, "rot": 0, "side": "top"}})
         self.assertEqual(g["nodes"]["fp_R2"]["inputs"]["placement"], {"x": 25, "y": 10, "rot": 90, "side": "bottom"})
+        self.assertEqual(g["nodes"]["fp_R2"]["inputs"]["refAt"], [0, -2.5])
         self.assertNotIn("placement", g["nodes"]["fp_V1"]["inputs"])
         self.assertEqual(g["nodes"]["cu_1"]["inputs"], {
             "kind": "run", "points": [{"x": 11, "y": 10, "id": "start"}, {"x": 18, "y": 14, "id": "p1"}, {"x": 24, "y": 10, "id": "end"}],
@@ -124,8 +125,10 @@ class BoardTests(unittest.TestCase):
             netclass(name="supply", nets=["P24", "FIN*"], kind="power", width=0.5, clearance=0.25, current=0.5, criticality=0.8, max_vias=2),
             diffpair(name="usb", positive="D+", negative="D-", gap=0.15, max_skew=0.5),
             group(name="in1", parts=["R1", "U1"], region=[10, 30, 30, 50], near=".J1 > .pin5", max_distance=4, conviction=0.5),
+            group(name="io", parts=["J1"], side="any", edge="left", mating="top"),
             keepout(name="label", points=[[80, 20], [96, 20], [96, 28]], no=["track", "via"]),
             thermal(name="fets", parts=["Q1", "Q2"], watts=0.3, spacing=4, away_from=["U1"], distance=6),
+            bus(name="data", nets=["D*"], pitch=0.6),
             objective(weights={"wirelength": 1, "vias": 3}),
             width=100, height=60,
         )
@@ -134,8 +137,10 @@ class BoardTests(unittest.TestCase):
             {"fact": "netclass", "name": "supply", "nets": ["P24", "FIN*"], "kind": "power", "width": 0.5, "clearance": 0.25, "current": 0.5, "criticality": 0.8, "maxVias": 2},
             {"fact": "diffpair", "name": "usb", "positive": "D+", "negative": "D-", "gap": 0.15, "maxSkew": 0.5},
             {"fact": "group", "name": "in1", "parts": ["R1", "U1"], "region": [10, 30, 30, 50], "near": ".J1 > .pin5", "maxDistance": 4, "conviction": 0.5},
+            {"fact": "group", "name": "io", "parts": ["J1"], "side": "any", "edge": "left", "mating": "top"},
             {"fact": "keepout", "name": "label", "points": [[80, 20], [96, 20], [96, 28]], "no": ["track", "via"]},
             {"fact": "thermal", "name": "fets", "parts": ["Q1", "Q2"], "watts": 0.3, "spacing": 4, "awayFrom": ["U1"], "distance": 6},
+            {"fact": "bus", "name": "data", "nets": ["D*"], "pitch": 0.6},
             {"fact": "objective", "weights": {"wirelength": 1, "vias": 3}},
         ])
         with self.assertRaisesRegex(ValueError, "kind is signal, power"):
@@ -154,8 +159,16 @@ class BoardTests(unittest.TestCase):
             declared(netclass(name="a", nets=["X"], min_spokes=1.5))
         with self.assertRaisesRegex(ValueError, "maxDistance needs near"):
             declared(group(name="g", parts=["R1"], max_distance=3))
+        with self.assertRaisesRegex(ValueError, 'edge is "left", "right", "top", "bottom"'):
+            declared(group(name="g", parts=["J1"], edge="front"))
+        with self.assertRaisesRegex(ValueError, "mating needs edge"):
+            declared(group(name="g", parts=["J1"], mating="top"))
         with self.assertRaisesRegex(ValueError, "give awayFrom and distance together"):
             declared(thermal(name="t", parts=["Q1"], watts=1, away_from=["U1"]))
+        with self.assertRaisesRegex(ValueError, "pitch"):
+            declared(bus(name="b", nets=["D0"], pitch=-1))
+        with self.assertRaisesRegex(ValueError, "width"):
+            declared(bus(name="b", nets=["D0"], width=0.2))
         with self.assertRaisesRegex(ValueError, "one <objective>"):
             declared(objective(weights={"vias": 1}), objective(weights={"vias": 2}))
 

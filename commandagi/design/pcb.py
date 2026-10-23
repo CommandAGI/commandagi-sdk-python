@@ -32,10 +32,11 @@ The calls (children are positional; every attribute is a keyword):
                                       board text, and an aligned dimension (its text is derived, never stored).
     kicad(version, generator, forms)  the KiCad forms the board carries for exchange and nothing else reads.
     net(name, code)                   the KiCad net code of the schematic's net ``name``.
-    component(name, footprint, library, pcb_x, pcb_y, pcb_rotation, layer, chart, uuid, kicad)
+    component(name, footprint, library, pcb_x, pcb_y, pcb_rotation, layer, ref_at, chart, uuid, kicad)
                                       the schematic's part ``name`` on this board: one of the editor's own land
                                       patterns (BOARD_FOOTPRINTS), or a library footprint by its ref
-                                      ("Package_SO:SOIC-8") in the ``.pretty`` folder ``library`` names.
+                                      ("Package_SO:SOIC-8") in the ``.pretty`` folder ``library`` names. ``ref_at``
+                                      [x, y] is where its reference text sits (mm, in the footprint's own frame).
     trace(name, layer, width, points, from_, to, net, surface, uuid, segment_uuids, kicad)
                                       a copper run: its points ([[x, y], …]) on one copper layer, a finished width.
     arc(name, layer, width, points, from_, to, net, uuid, kicad)
@@ -54,11 +55,16 @@ them; the editor and the layout operations write each one back):
                                       board edge and to a hole, the rules on inner layers (``inner``: {"clearance",
                                       "width", "minWidth"}), the fewest thermal spokes a pad needs to a pour.
     diffpair(name, positive, negative, gap, width, impedance, max_skew)
-    group(name, parts, region, near, max_distance, conviction, side)
+    group(name, parts, region, near, max_distance, conviction, side, edge, mating)
                                       parts placed together: in the box ``region`` [x0, y0, x1, y1], within
-                                      ``max_distance`` of ``near`` (".J1 > .pin5"); conviction 1 holds them fixed.
+                                      ``max_distance`` of ``near`` (".J1 > .pin5"); conviction 1 holds them fixed;
+                                      ``side`` "top", "bottom" or "any" (the placer turns a part over where that
+                                      costs less); ``edge`` the board edge they sit against ("left", "right", "top",
+                                      "bottom"), their ``mating`` side (in the footprint's own frame) facing out.
     keepout(name, points, layers, no) a region where ``no`` ("track", "via", "component", "pour") may be.
     thermal(name, parts, watts, spacing, away_from, distance)
+    bus(name, nets, pitch)            nets that run together ("D*" matches by prefix): where their tracks run side by
+                                      side they are parallel, ``pitch`` (mm) apart centre to centre.
     objective(weights)                the weight of each term of the layout score.
 
 How the board is made (docs/formats.md § logistics):
@@ -111,7 +117,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "stack": {}, "graphic": {}, "text": {}, "dimension": {}, "kicad": {}, "net": {},
     "component": {}, "trace": {}, "arc": {}, "via": {}, "pour": {},
     "check": {}, "accept": {},
-    "netclass": {}, "diffpair": {}, "group": {}, "keepout": {}, "thermal": {}, "objective": {}, "fab": {},
+    "netclass": {}, "diffpair": {}, "group": {}, "keepout": {}, "thermal": {}, "bus": {}, "objective": {}, "fab": {},
 }
 
 __all__ = ["BOARD_PART", "CONDUCTOR", "BOARD_FACT", "BOARD_FOOTPRINTS", "BOARD_LAYERS", "SIGNATURES", "trace_point_id",
@@ -223,11 +229,12 @@ def trace_point_id(index: int, count: int) -> str:
 
 
 _CONDUCTORS = {"trace", "arc", "via", "pour"}
-_FACTS = {"graphic", "text", "dimension", "kicad", "net", "netclass", "diffpair", "group", "keepout", "thermal", "objective", "fab"}
+_FACTS = {"graphic", "text", "dimension", "kicad", "net", "netclass", "diffpair", "group", "keepout", "thermal", "bus", "objective", "fab"}
 #: The layout's constraints, each a board fact (``fact`` is its tag), as the TypeScript SDK's.
-_CONSTRAINTS = ("netclass", "diffpair", "group", "keepout", "thermal", "objective")
+_CONSTRAINTS = ("netclass", "diffpair", "group", "keepout", "thermal", "bus", "objective")
 _NET_KINDS = ("signal", "power", "ground", "noisy", "sensitive", "highspeed")
 _KEEPOUT_KINDS = ("track", "via", "component", "pour")
+_EDGES = ("left", "right", "top", "bottom")
 _NEAR = re.compile(r"^\s*\.[A-Za-z0-9_#\-]+(\s*>\s*\.[A-Za-z0-9_+\-]+)?\s*$")
 
 
@@ -293,7 +300,7 @@ def _constraint_fact(el: Element) -> Dict[str, Any]:
         for k in ("gap", "width", "impedance", "maxSkew"):
             put(k, _positive(el, k))
     elif el.tag == "group":
-        _refuse_unknown(el, ["name", "parts", "region", "near", "maxDistance", "conviction", "side"])
+        _refuse_unknown(el, ["name", "parts", "region", "near", "maxDistance", "conviction", "side", "edge", "mating"])
         put("name", _text(el, "name", True))
         put("parts", names("parts", True))
         put("region", _plain(el, "region", _is_box, "[x0, y0, x1, y1] in mm, x0 < x1 and y0 < y1"))
@@ -306,9 +313,16 @@ def _constraint_fact(el: Element) -> Dict[str, Any]:
         if out.get("maxDistance") is not None and near is None:
             raise ValueError(f"{_where(el)}: maxDistance needs near")
         side = el.props.get("side")
-        if side is not None and side not in ("top", "bottom"):
-            raise ValueError(f'{_where(el)}: side is "top" or "bottom"')
+        if side is not None and side not in ("top", "bottom", "any"):
+            raise ValueError(f'{_where(el)}: side is "top", "bottom" or "any"')
         put("side", side)
+        for k in ("edge", "mating"):
+            v = el.props.get(k)
+            if v is not None and v not in _EDGES:
+                raise ValueError(f"{_where(el)}: {k} is {', '.join(json.dumps(e) for e in _EDGES)}")
+            put(k, v)
+        if "mating" in out and "edge" not in out:
+            raise ValueError(f"{_where(el)}: mating needs edge")
     elif el.tag == "keepout":
         _refuse_unknown(el, ["name", "points", "layers", "no"])
         put("name", _text(el, "name"))
@@ -326,6 +340,11 @@ def _constraint_fact(el: Element) -> Dict[str, Any]:
         put("distance", _positive(el, "distance"))
         if ("awayFrom" in out) != ("distance" in out):
             raise ValueError(f"{_where(el)}: give awayFrom and distance together")
+    elif el.tag == "bus":
+        _refuse_unknown(el, ["name", "nets", "pitch"])
+        put("name", _text(el, "name", True))
+        put("nets", names("nets", True))
+        put("pitch", _positive(el, "pitch"))
     elif el.tag == "objective":
         _refuse_unknown(el, ["weights"])
         weights = _plain(el, "weights", lambda v: _is_object(v) and all(_is_num(x) and x >= 0 for x in v.values()), "an object of term → weight (0 or more)")
@@ -601,7 +620,7 @@ def _declare_board(s: Scope, root: Element) -> None:
         if el.tag == "stack":
             continue
         if el.tag == "component":
-            _refuse_unknown(el, ["name", "footprint", "library", "pcbX", "pcbY", "pcbRotation", "layer", "chart", "uuid", "kicad"])
+            _refuse_unknown(el, ["name", "footprint", "library", "pcbX", "pcbY", "pcbRotation", "layer", "refAt", "chart", "uuid", "kicad"])
             ref = el.props["name"]
             fp = el.props.get("footprint")
             library = el.props.get("library")
@@ -625,6 +644,13 @@ def _declare_board(s: Scope, root: Element) -> None:
                 raise ValueError(f"{_where(el)}: give pcbX and pcbY together")
             if x is None and (rot is not None or side is not None):
                 raise ValueError(f"{_where(el)}: pcbRotation and layer need pcbX and pcbY")
+            # Where the reference text sits, in the footprint's own frame (its library's, on the top): the placer moves it
+            # off copper and off other references.
+            ref_at = el.props.get("refAt")
+            if ref_at is not None and not (isinstance(ref_at, (list, tuple)) and len(ref_at) == 2 and all(_is_num(v) for v in ref_at)):
+                raise ValueError(f"{_where(el)}: refAt is [x, y] in mm, in the footprint's own frame")
+            if ref_at is not None and x is None:
+                raise ValueError(f"{_where(el)}: refAt needs pcbX and pcbY")
             chart = _text(el, "chart")
             if chart is not None and surface is None:
                 raise ValueError(f"{_where(el)}: chart names a face of the board's surface, and the <board> has no surface")
@@ -639,6 +665,8 @@ def _declare_board(s: Scope, root: Element) -> None:
                 inputs["footprint"] = f"Authored:{fp}"
             if x is not None:
                 inputs["placement"] = {"x": x, "y": y, "rot": rot if rot is not None else 0, "side": side if side is not None else "top"}
+            if ref_at is not None:
+                inputs["refAt"] = list(ref_at)
             if chart is not None:
                 inputs["surfaceMount"] = {"chart": chart}
             inputs.update(uuid_of(el), **_kicad(el))
