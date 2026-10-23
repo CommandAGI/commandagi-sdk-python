@@ -257,11 +257,11 @@ graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"bod
 ## Versions
 
 - A release is the tag `v<version>` in this repository and the same version on PyPI. Pin an exact version:
-  `pip install commandagi==0.6.6`, or in a virtual environment uv made (it has no pip)
-  `uv pip install --python .venv/bin/python commandagi==0.6.6`. A range (`^`, `~=`, `>=`) takes the next release
+  `pip install commandagi==0.6.7`, or in a virtual environment uv made (it has no pip)
+  `uv pip install --python .venv/bin/python commandagi==0.6.7`. A range (`^`, `~=`, `>=`) takes the next release
   without asking you.
 - After an upgrade, check what runs: `python -c "import commandagi; print(commandagi.__version__)"`, and
-  `commandagi --version` for the host that runs the local 3D kernel (`npm install -g @commandagi/host@0.6.6`). The two
+  `commandagi --version` for the host that runs the local 3D kernel (`npm install -g @commandagi/host@0.6.7`). The two
   are upgraded apart, and a kernel of another version may read a document differently.
 - The three SDKs (Python, TypeScript, Rust) carry one version number. A vocabulary at version X in one language is
   the vocabulary at version X in the others.

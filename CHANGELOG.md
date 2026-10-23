@@ -4,7 +4,7 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
-## Unreleased
+## 0.6.7 (2026-10-23)
 
 Added
 
@@ -17,6 +17,61 @@ Added
 - `commandagi.design.mounts`: a thread's mounted tasks as `mounts.py` in its run folder, `mounts(mount(label=…, …))`,
   the same document as the TypeScript SDK's `mounts.tsx`. A mount names one task (`task`), or a list (`folder`,
   `project`, or a query: `assignee`, `labels`, `status`); a mount that names both, or nothing, is refused.
+
+- `cagi.tasks.mount`, `unmount` and `mounts`: mount a task (`task=…`), a task list (`folder=…`), a project
+  (`project=…`) or a query (`assignee="me", status=["todo"]`) to a thread. With no thread named, they act on the
+  thread the code runs in, and the agent is prompted with the open tasks until they are done.
+- `commandagi.design.systems`: a device definition is a side of an interface (`side(kind="definition", channel=…,
+  params=…)`). `load(...)` takes `peak_current` and `peak_power`; `budget(quantity="power", peak=True)` counts each
+  load at its peak. `peak` on any other budget is refused.
+
+Fixed
+
+- 3D: each face of the view cube carries the name of its view (Front showed "Back"); a thread cuts its whole groove
+  (it removed half a turn); a hole of a sketch (a circle inside a rectangle) is a region of its own, so a profile can
+  extrude the disc alone. Needs a 3D service of this version.
+- PCB: after Lay out, the board view shows the copper that the layout added, with no reload.
+
+In the host (`@commandagi/host` 0.6.7)
+
+- Agent CLIs as instances: a host runs each CLI (Claude Code, Codex, Gemini CLI) and every fork of one found along the
+  search path of the thread's folder (`agents/<folder>/agent.tsx`), each with its own model and a named sign-in.
+  `commandagi agents signin <name> --cli claude-code|codex|gemini-cli` runs the CLI's own login into a config folder of
+  its own; `--save-to-account` keeps the sign-in in your account, sealed, and `--from-account` brings it to another
+  computer. A sign-in at its limit gives its turn only to another provider, never to another sign-in of the same
+  provider. `agents.sandbox` (`os` or `off`) replaces `agents.approvals`; `agents.models` is gone (each instance has
+  its model).
+- A thread with several agent members works a mounted task list in parallel: `commandagi agents start --mount <M>
+  --member <A> …`, `agents join|leave` and `agents tasks`. A claim is a compare-and-set write of the task file,
+  recorded first in the thread's `tasks` stream. Each task gets its own git worktree and branch, which the host never
+  merges. `agents.concurrency` bounds the turns of each sign-in; a dead claim is released. An agent may be a member of
+  several threads.
+- The task loop on the host: the `mounts.tsx` (or `.py`, `.rs`) in a thread's run folder starts each agent turn with
+  the open mounted work, and a write of a mounted task wakes the loop.
+- Site hosting: `commandagi sites deploy|list|logs|rollback|domains|env|build`. A push deploys each branch (the
+  production branch to `<slug>.commandagi.app`, any other branch to a preview). A framework site (Vite, Astro,
+  SvelteKit, Next static export, CRA) is built by `commandagi sites build` on a computer of the account.
+- Interfaces: a device definition's channel is a side of an interface; the check holds the channel's fields (baud) to
+  the interface's parameters.
+- Test plans: each step's `verifies` is read back, and a requirement that it names must name the step.
+  `commandagi testplan check|run|history|results`.
+- Firmware rollouts refuse a rollback: a release below a unit's `minSecurityVersion` goes to no unit, and the wave
+  halts. `commandagi rollout check|start|advance|retry|rollback|status|close`.
+- Budgets: a power budget with `peak` counts each load at its `peakCurrent` or `peakPower`; data and data-rate units
+  (`bit` … `TB`, `bit/s` … `GB/d`); the contributors of a cost budget are the roll-up's lines. A release refuses a
+  pinout or footprint check that names a part from memory.
+
+On the platform
+
+- A thread's mounted tasks: `GET|POST|DELETE /threads/:id/mounts` and the tools `mount_tasks`, `unmount_tasks` and
+  `list_mounts`. Each turn carries the open mounted work, and the thread continues with the next task until the work is
+  done, bounded by no-progress turns, its budget and its run state. A task is named by its drive and its id: an id
+  found in two other drives is refused (`409 ambiguous_task`) with each address.
+- Agent sign-ins kept in the account (`agents signin --save-to-account`), sealed outside the Drive; a person's key only.
+- Sites deploy from a push, with a preview for each branch, env for each target, rollback and deploy logs
+  (`deploy_site { fromFolder, target }`, `site_deploy_log`).
+- An API key never mints a key or seats an agent wider than itself, and every Drive write (a git write too) needs the
+  key's edit scope.
 
 ## 0.6.6 (2026-10-22)
 
