@@ -281,7 +281,7 @@ class ExtrudeFeature(_ExtrudeFeatureRequired, _ExtrudeFeatureOptional):
 
 #: A FASTENER STACK: `<fastener part length at axis clamped receiver washer nut grip />`. It places a screw of the fastener library (by its part id, `iso-4762-m6`: the library's `mechanical-fasteners` parts, built from the same tables), its washer and its nut, and it records what the screw does: it clamps these parts into this receiver. The fasteners check reads the record.
 _FastenerStackRequired = TypedDict("_FastenerStackRequired", {"id": str, "part": str, "length": float, "at": 'Vec3', "clamped": List[str]})
-_FastenerStackOptional = TypedDict("_FastenerStackOptional", {"axis": 'Vec3', "receiver": str, "washer": str, "nut": str, "grip": float, "fit": 'FastenerFit', "minEngagement": float, "torque": float, "material": str, "partNumber": str}, total=False)
+_FastenerStackOptional = TypedDict("_FastenerStackOptional", {"axis": 'Vec3', "corner": 'Vec3', "receiver": str, "washer": str, "nut": str, "grip": float, "fit": 'FastenerFit', "minEngagement": float, "torque": float, "material": str, "partNumber": str}, total=False)
 class FastenerStack(_FastenerStackRequired, _FastenerStackOptional):
     pass
 
