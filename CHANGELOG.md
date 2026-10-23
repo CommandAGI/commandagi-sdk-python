@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.twod`: `engrave(id=..., src="logo.png", x_mm=..., y_mm=..., width_mm=..., height_mm=..., dpi=...,
+  dither="ordered")` in a `nest(...)`, an image burned on the first sheet. The same as the TypeScript SDK's
+  `<engrave>`.
 - `commandagi.design.threed`: `curve(tangents=[{"at": 1, "direction": [...]}], tangent_scale=...)`, a spline's
   direction at an inner point (the spline is C1 there) and how hard every given tangent holds (1 is the natural
   spline). `pathPattern(path={"curve": ...})` places its copies along a curve in space, and `align_to_path` turns each

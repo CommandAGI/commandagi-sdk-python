@@ -6,7 +6,7 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, blur, bucket, drawing, ellipse, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, group, image, layer, line, link, mask, move,
+from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, blur, bucket, drawing, ellipse, engrave, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, group, image, layer, line, link, mask, move,
                                     nest, noise, options, painting, part, path, photo, raster, raster_layer, rect, sheet, sharpen, stock, stroke,
                                     subpaths_of)
 
@@ -189,6 +189,20 @@ class NestTests(unittest.TestCase):
                                                         "options": wire("nest.options"), "parts.1": wire("tab")})
         self.assertEqual(g["nodes"]["tab"], {"id": "tab", "type": "nest.part", "label": "Tab", "inputs": {"quantity": 2, "outline": [[0, 0], [10, 0], [10, 5]]}})
         self.assertEqual(g["nodes"]["nest.sheet"]["inputs"], {"widthMm": 600, "heightMm": 400, "marginMm": 5})
+
+    def test_an_engrave_is_a_nest_engrave_node_on_the_engraves_channel(self):
+        g = from_twod(nest(
+            sheet(width_mm=300, height_mm=200, margin_mm=5),
+            stock(material_id="plywood", thickness_mm=3, machine={"powerW": 40}),
+            options(resolution_mm=1),
+            engrave(id="logo", src="logo.png", x_mm=20, y_mm=20, width_mm=60, height_mm=30, dpi=254, dither="ordered"),
+            safe_z_mm=5,
+        ))
+        self.assertEqual(g["nodes"]["nest"]["inputs"]["engraves.1"], wire("logo"))
+        self.assertEqual(g["nodes"]["logo"]["type"], "nest.engrave")
+        self.assertEqual(g["nodes"]["logo"]["inputs"], {"src": "logo.png", "xMm": 20, "yMm": 20, "widthMm": 60, "heightMm": 30, "dpi": 254, "dither": "ordered"})
+        with self.assertRaisesRegex(ValueError, "an engrave has an id"):
+            from_twod(nest(sheet(), stock(), options(), engrave(src="a.png")))
 
 
 class RefusalTests(unittest.TestCase):
