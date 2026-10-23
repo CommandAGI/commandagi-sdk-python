@@ -196,7 +196,7 @@
           {
             "name": "create",
             "tool": "create_thread",
-            "doc": "Spawn a thread: {intent, snapshotId?, …}, or {agentless: true, snapshotId} for a world you drive.",
+            "doc": "Spawn a thread: {intent, about?, snapshotId?, …} (about: the address of the file the ask is about; the thread's run is of it), or {agentless: true, snapshotId} for a world you drive.",
             "params": [
               {
                 "name": "opts",
