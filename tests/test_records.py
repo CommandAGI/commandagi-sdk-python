@@ -43,16 +43,19 @@ class RecordTests(unittest.TestCase):
             file(path="cad/Plate.3d.py", digest=a),
             check(file="cad/Plate.3d.py", id="interference", kind="interference", status="passed"),
             output(path="outputs/Plate.step", digest=b, from_="cad/Plate.3d.py", kind="step"),
-            id="plate-A", rev="A", of="../..", created_at=1792000000000, note="README.md"))
+            id="plate-A", rev="A", of="../..", frozen="files", created_at=1792000000000, note="README.md"))
         self.assertEqual(d["document"], {
-            "id": "plate-A", "rev": "A", "of": "../..", "createdAt": 1792000000000, "note": "README.md",
+            "id": "plate-A", "rev": "A", "of": "../..", "frozen": "files", "createdAt": 1792000000000, "note": "README.md",
             "files": [{"path": "cad/Plate.3d.py", "digest": a}],
             "checks": [{"file": "cad/Plate.3d.py", "id": "interference", "kind": "interference", "status": "passed"}],
             "outputs": [{"path": "outputs/Plate.step", "digest": b, "from": "cad/Plate.3d.py", "kind": "step"}]})
         with self.assertRaisesRegex(ValueError, "digest is its content's SHA-256"):
-            declare_document(release(file(path="x", digest="abc"), id="r", rev="A", of="."))
+            declare_document(release(file(path="x", digest="abc"), id="r", rev="A", of=".", frozen="files"))
         with self.assertRaisesRegex(ValueError, "status is passed, failed, skipped, accepted"):
-            declare_document(release(check(file="x", id="i", kind="k", status="ok"), id="r", rev="A", of="."))
+            declare_document(release(check(file="x", id="i", kind="k", status="ok"), id="r", rev="A", of=".", frozen="files"))
+        self.assertEqual(declare_document(release(id="r", rev="A", of="../..", frozen="files/product"))["document"]["frozen"], "files/product")
+        with self.assertRaisesRegex(ValueError, "frozen is a folder beside the record"):
+            declare_document(release(id="r", rev="A", of=".", frozen="../files"))
         unit = declare_document(instance(serial="S", product_id="p", release="../releases/A/A.release.py"))
         self.assertEqual(unit["document"]["release"], "../releases/A/A.release.py")
 

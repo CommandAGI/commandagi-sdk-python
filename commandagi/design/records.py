@@ -1,5 +1,5 @@
 """Records, declared in Python: a market contract (``.contract.py``) and a product instance (``.instance.py``), which are
-signed, and a hardware release (``.release.py``: ``release(file(…), check(…), output(…), id=…, rev=…, of=…)``), the
+signed, and a hardware release (``.release.py``: ``release(file(…), check(…), output(…), id=…, rev=…, of=…, frozen=…)``), the
 same documents and the same elements as the TypeScript SDK's JSX (``commandagi/design`` ``records.ts``)::
 
     from commandagi.design.records import contract, event, instance, party
@@ -33,7 +33,7 @@ from .element import define
 CONTRACT_FIELDS = ["id", "terms", "createdAt"]
 INSTANCE_FIELDS = ["serial", "productId", "model", "release"]
 INSTANCE_EVENT_FIELDS = ["seq", "kind", "at", "prev", "by", "to", "contractRef", "attestationRef", "data", "sig"]
-RELEASE_FIELDS = ["id", "rev", "of", "product", "createdAt", "by", "note", "previous"]
+RELEASE_FIELDS = ["id", "rev", "of", "frozen", "product", "createdAt", "by", "note", "previous"]
 RELEASE_FILE_FIELDS = ["path", "digest"]
 RELEASE_CHECK_FIELDS = ["file", "id", "kind", "status", "accepted", "reason"]
 RELEASE_OUTPUT_FIELDS = ["path", "digest", "from", "kind"]
@@ -89,6 +89,9 @@ def _release(t: DocTree) -> Dict[str, Any]:
     for c in listed["check"]:
         if c.get("status") not in RELEASE_CHECK_STATUSES:
             raise ValueError(f"{at}: check {c.get('id')} of {c.get('file')}: status is {', '.join(RELEASE_CHECK_STATUSES)}, not {c.get('status')!r}")
+    frozen = t["attrs"].get("frozen")
+    if not isinstance(frozen, str) or not frozen or frozen.startswith("/") or any(p in ("", ".", "..") for p in frozen.split("/")):
+        raise ValueError(f"{at}: frozen is a folder beside the record (files, files/<the folder's names>), not {frozen!r}")
     created = t["attrs"].get("createdAt")
     if created is not None and (isinstance(created, bool) or not isinstance(created, int)):
         raise ValueError(f"{at}: createdAt is epoch milliseconds, not {created!r}")
@@ -111,7 +114,7 @@ INSTANCE_VOCABULARY = Vocabulary("instance", "a product instance", "instance", {
 }, _instance, _never)
 
 RELEASE_VOCABULARY = Vocabulary("release", "a hardware release", "release", {
-    "release": {"parents": [], "required": ["id", "rev", "of"], "attrs": RELEASE_FIELDS},
+    "release": {"parents": [], "required": ["id", "rev", "of", "frozen"], "attrs": RELEASE_FIELDS},
     "file": {"parents": ["release"], "key": "path", "required": ["path", "digest"], "attrs": RELEASE_FILE_FIELDS},
     "check": {"parents": ["release"], "required": ["file", "id", "kind", "status"], "attrs": RELEASE_CHECK_FIELDS},
     "output": {"parents": ["release"], "key": "path", "required": ["path", "digest"], "attrs": RELEASE_OUTPUT_FIELDS},
