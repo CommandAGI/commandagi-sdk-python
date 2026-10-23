@@ -110,8 +110,8 @@ SKETCH_SEGMENTS: List[str] = ["line", "circle", "arc", "spline", "ellipse", "ell
 _SEGMENTS = set(SKETCH_SEGMENTS)
 #: The datum planes every 3D document has (``3d-core/document.ts`` basePlanes).
 BUILTIN_PLANES: Dict[str, Dict[str, Any]] = {
-    "plane_xy": {"name": "Front (XY)", "origin": [0, 0, 0], "normal": [0, 0, 1], "xAxis": [1, 0, 0], "builtin": "XY"},
-    "plane_xz": {"name": "Top (XZ)", "origin": [0, 0, 0], "normal": [0, 1, 0], "xAxis": [1, 0, 0], "builtin": "XZ"},
+    "plane_xy": {"name": "Top (XY)", "origin": [0, 0, 0], "normal": [0, 0, 1], "xAxis": [1, 0, 0], "builtin": "XY"},
+    "plane_xz": {"name": "Front (XZ)", "origin": [0, 0, 0], "normal": [0, 1, 0], "xAxis": [1, 0, 0], "builtin": "XZ"},
     "plane_yz": {"name": "Right (YZ)", "origin": [0, 0, 0], "normal": [1, 0, 0], "xAxis": [0, 1, 0], "builtin": "YZ"},
 }
 #: The document's view fields a root element may hold (the graph's ``meta``), beside ``name``.
