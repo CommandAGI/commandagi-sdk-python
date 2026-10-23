@@ -4,6 +4,16 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- `commandagi.design.evals` (`commandagi::design::evals`): an eval and a metric in code, `<eval>` with `<case>`
+  children and `<metric>`, the same documents as the TypeScript SDK's `evals.ts`. A case names its task file (`task`,
+  a ref) or says its `instruction`; `metrics` and `acceptanceMetric` are refs; `frozen` is the digest the eval is
+  frozen at. In Python the elements are `eval(...)`, `case(...)` and `metric(...)` (importing `eval` hides the builtin
+  in that file), and a metric's `pass` is written `pass_`.
+
 ## 0.6.7 (2026-10-23)
 
 Added
