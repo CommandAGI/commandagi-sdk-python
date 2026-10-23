@@ -120,6 +120,11 @@ def _issue(path: str, code: str, expected: Any = None, actual: Any = None, has_e
     return out
 
 
+def _types_of(s: Mapping[str, Any]) -> List[str]:
+    t = s.get("type")
+    return [] if t is None else list(t) if isinstance(t, (list, tuple)) else [t]
+
+
 def validate(schema: Mapping[str, Any], value: Any, defs: Optional[Mapping[str, Any]] = None, path: str = "") -> List[Dict[str, Any]]:
     """Every way ``value`` breaks ``schema`` (issues ``{path, code, expected?, actual?}``); empty when it fits."""
     defs = schema.get("$defs", {}) if defs is None else defs
@@ -141,6 +146,10 @@ def validate(schema: Mapping[str, Any], value: Any, defs: Optional[Mapping[str, 
             holds = [i for i, o in enumerate(options) if resolve(o, defs).get("required") and all(k in value for k in resolve(o, defs)["required"])]
             if len(holds) == 1:
                 return results[holds[0]]
+        # A union of kinds (`number | number[]`): when one option only is of the value's kind, it says what is wrong.
+        of_kind = [i for i, o in enumerate(options) if any(_type_matches(x, value) for x in _types_of(resolve(o, defs)))]
+        if len(of_kind) == 1:
+            return results[of_kind[0]]
         return [_issue(path, "anyOf", actual=_kind_of(value), has_actual=True)]
     t = s.get("type")
     types = [] if t is None else list(t) if isinstance(t, (list, tuple)) else [t]

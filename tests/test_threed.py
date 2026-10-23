@@ -362,6 +362,13 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(n["beads"]["inputs"], {"seedFeature": "bead", "path": {"curve": "lead"}, "count": 6, "alignToPath": True})
         with self.assertRaisesRegex(ValueError, "tangentScale: must be greater than 0"):
             declare_threed(part(curve(id="c", points=[[0, 0, 0], [1, 0, 0]], tangent_scale=0), name="P"))
+        # One scale per given tangent, in order along the spline: the start's, the inner one's, the end's.
+        each = dict(id="c", points=[[0, 0, 0], [20, 5, 10], [40, 0, 30]], start_tangent=[1, 0, 0], end_tangent=[0, 0, 1],
+                    tangents=[{"at": 1, "direction": [1, 0, 1]}])
+        c = declare_threed(part(curve(**each, tangent_scale=[2, 1, 0.5]), name="P"))["nodes"]["c"]
+        self.assertEqual(c["inputs"]["tangentScale"], [2, 1, 0.5])
+        with self.assertRaisesRegex(ValueError, "tangentScale/1: must be greater than 0"):
+            declare_threed(part(curve(**each, tangent_scale=[2, 0, 0.5]), name="P"))
 
 
 if __name__ == "__main__":
