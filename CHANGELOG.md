@@ -4,6 +4,18 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Fixed
+
+- 3D: a placed file's `<joint>`s come with it, as `<placement id>/<joint id>` at any depth (`dock_a/palletLift`,
+  `bay_1/dock_a/palletLift`). Each is placed as the file's bodies are (its anchor, axis and references), with its
+  `fixed` chain, so a sweep in any document above moves what the joint moves in its file:
+  `sweep={{ joint: "dock_a/palletLift" }}`. No level restates a joint (CORE-58, IC1-20, PCBC-22, ROUTER-02). A joint
+  whose `a` or `b` the placement leaves out (`omit`) goes with it; a `moves` entry that moves only its `a` along the
+  joint (a latch closed, a lid opened) shifts its `limits` by that value, so the sweep still stops where the file
+  says. Needs a host of this version (`commandagi check` links the placed files).
+
 ## 0.6.8 (2026-10-23)
 
 Added
