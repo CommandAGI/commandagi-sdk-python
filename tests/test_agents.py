@@ -29,9 +29,9 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(single["document"]["tasks"], ["classify", "decide"])
 
     def test_a_base_names_its_harness_and_a_fork_its_parent(self):
-        base = declare_document(agent(harness="anthropic", model="anthropic/claude-opus-5-5", name="Claude Opus 5.5"))
+        base = declare_document(agent(harness="anthropic", model="anthropic/claude-opus-5-5", effort="medium", name="Claude Opus 5.5"))
         self.assertEqual(base, {"format": "agent", "sources": {}, "document": {
-            "harness": "anthropic", "name": "Claude Opus 5.5", "model": "anthropic/claude-opus-5-5"}})
+            "harness": "anthropic", "name": "Claude Opus 5.5", "model": "anthropic/claude-opus-5-5", "effort": "medium"}})
         fork = declare_document(agent(parent="cloud://global/agents/claude-code", name="Joe's secretary",
                                       instructions="Keep Joe's calendar.", tools=["calendar_save_event"], voice_mode="push-to-talk"))
         self.assertEqual(fork["document"], {"parent": "cloud://global/agents/claude-code", "name": "Joe's secretary",

@@ -16,9 +16,14 @@ call::
     # agents/secretary/agent.py in an account's Drive — a fork
     result = agent(parent="cloud://global/agents/claude-code", name="Joe's secretary", instructions="Keep Joe's calendar.")
 
+    # agents/a2/agent.py — a fork on another model, at a reasoning effort its CLI takes
+    result = agent(parent="cloud://global/agents/claude-code", name="A2", model="anthropic/claude-sonnet-5-5", effort="medium")
+
 A harness is the program that runs an agent and talks to a model: a CLI agent, an API provider's loop, or a program
 with no model. A base instance names its harness and has no parent; every other instance is a fork: it names its parent
-and keeps its parent's harness. A file never names itself: a harness's id and an agent's id are their folders' names.
+and keeps its parent's harness. ``effort`` is the reasoning effort it runs at, in its harness's words (``low``,
+``medium``, ``high``, ``xhigh``, ``max``): a CLI harness takes it as the CLI does (Claude Code ``--effort``, Codex
+``model_reasoning_effort``), and a host refuses an agent whose CLI does not take it. A file never names itself: a harness's id and an agent's id are their folders' names.
 
 Attributes are snake_case keywords (``voice_mode`` is ``voiceMode``). ``realtime`` and ``persona`` are plain data,
 written with the TypeScript names as keys (``"videoMinutes"``). Nothing adds a default: what the file does not say,
