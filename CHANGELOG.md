@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A load states its `duty`: the share of time it draws (`duty={0.25}`, a number in (0, 1]). A power budget takes
+  its average draw; a peak budget takes the whole draw at the peak. A load's `inrushCurrent` (A) is its peak at
+  switch-on when it is more than its peak draw.
 - An agent declares its `supervisor` (`<agent supervisor="agent:lead">`, `agent:<id>` or `person:<id>`): a thread's
   membership takes it at join, and a person's supervise of that member overrides it.
 

@@ -48,6 +48,7 @@ class SystemsTests(unittest.TestCase):
         cases = [
             (budget(id="b", quantity="mass", limit=1, peak=True), "peak is true or false, on a power budget"),
             (load(id="l", part="U1", rail="r", mode="m", current=1, peak_current="2 A"), "peakCurrent is a number"),
+            (load(id="l", part="U1", rail="r", mode="m", power=1, duty=0), "duty is the share of time the load draws"),
             (budget(id="b", quantity="Exhaust flow", limit=1, unit="m3/h"),
              r"<budget id=\"b\">: quantity must be one of mass, power, cost, thermal, or a quantity's name"),
             (budget(id="b", quantity="exhaust-flow", limit=600), r'<budget id="b">: a quantity of exhaust-flow states its unit'),
