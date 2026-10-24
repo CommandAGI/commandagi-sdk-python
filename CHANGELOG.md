@@ -10,6 +10,10 @@ Added
 
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 
+- A world unit declares `tilt_deg`: how far its front is raised above level, in degrees (positive up; absent is
+  level). A video channel declares its lens as `fov` (`at_mm`, `diagonal_deg`, `aspect`), which the world view and a
+  world's coverage test read alike.
+
 Added
 
 - A load states its `duty`: the share of time it draws (`duty={0.25}`, a number in (0, 1]). A power budget takes
