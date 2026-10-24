@@ -43,6 +43,13 @@ class PostalTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"<front> is not a tag of a letter \(<letter>, <to>, <from>, <paragraph>\)"):
             declare_document(letter(front(image="x.jpg")))
 
+    def test_a_postcard_names_a_size_a_provider_prints(self):
+        d = declare_document(postcard(front(image="Austin.jpg"), paragraph(text="Greetings!"), size="6x9"))
+        self.assertEqual(d["document"]["size"], "6x9")
+        self.assertEqual(d["document"]["paragraphs"], ["Greetings!"])
+        with self.assertRaisesRegex(ValueError, 'size is "4x6", "6x9" or "6x11"'):
+            declare_document(postcard(front(image="Austin.jpg"), size="5x7"))
+
     def test_a_run_names_each_element_by_its_call(self):
         out = run_module(
             "from commandagi.design.postal import letter, paragraph, to\n"
