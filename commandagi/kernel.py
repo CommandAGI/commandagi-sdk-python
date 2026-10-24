@@ -441,8 +441,9 @@ class Kernel:
         ``setup={"tools": [{"diameter_mm": 3.175}], "stock_top_z"?: z}``): travel, a closed surface, reach, inside
         corners, depth, walls. Each finding is ``pass``, ``fail`` or ``unknown`` (a limit not declared, no tool: never
         ``pass``) with its ``value``, its ``limit`` and ``where`` (the body, the B-rep ``faces``, a point ``at``).
-        ``verdict`` is ``fail`` when any fails, else ``unknown`` when any is unknown, else ``pass``. The part is
-        checked as it stands in the model: Z is the build or spindle axis."""
+        ``verdict`` is ``fail`` when any fails, else ``unknown`` when any is unknown, else ``pass``, and ``limits``
+        says what the answer does not catch. The part is checked as it stands in the model: Z is the build or spindle
+        axis."""
         if process not in ("print", "mill"):
             raise ValueError(f'process is "print" or "mill", not {process!r}')
         return self._op("dfm", doc, {"process": process, "limits": limits, "setup": setup, "part": part, "bodies": bodies, "parts": parts})
