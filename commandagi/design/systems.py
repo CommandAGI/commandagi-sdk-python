@@ -50,7 +50,7 @@ REQUIREMENT_FIELDS = ["id", "text", "rationale", "method", "verifiedBy", "design
 MODE_FIELDS = ["id", "description"]
 RAIL_FIELDS = ["id", "voltage", "description", "source"]
 CONVERTER_FIELDS = ["id", "input", "output", "efficiency", "source"]
-LOAD_FIELDS = ["id", "part", "rail", "mode", "current", "power", "voltage", "peakCurrent", "peakPower", "source"]
+LOAD_FIELDS = ["id", "part", "rail", "mode", "current", "power", "voltage", "peakCurrent", "peakPower", "inrushCurrent", "duty", "source"]
 CONTRIBUTION_FIELDS = ["id", "quantity", "part", "value", "unit", "qty", "mode", "rail", "source"]
 BUDGET_FIELDS = ["id", "quantity", "limit", "unit", "mode", "rail", "peak", "per", "currency", "design", "resistance", "margin", "source",
                  "description"]
@@ -150,8 +150,10 @@ def _system(t: DocTree) -> Dict[str, Any]:
             _check(_num(e) and 0 < e <= 1, f"{at}: efficiency is a number in (0, 1] (0.88 for 88 %)")
         if tag == "load":
             _check("current" in a or "power" in a, f"{at}: a load states its current (A) or its power (W)")
-            for k in ("current", "power", "voltage", "peakCurrent", "peakPower"):
+            for k in ("current", "power", "voltage", "peakCurrent", "peakPower", "inrushCurrent"):
                 _check(k not in a or _num(a[k]), f"{at}: {k} is a number")
+            _check("duty" not in a or (_num(a["duty"]) and 0 < a["duty"] <= 1),
+                   f"{at}: duty is the share of time the load draws, a number in (0, 1] (0.25 for 25 %)")
         if tag == "contribution":
             _check_quantity(a, at)
             _check(a.get("quantity") != "cost",
