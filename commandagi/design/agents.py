@@ -50,7 +50,7 @@ REALTIME_OUT = ["audio", "text", "tools"]
 #: G.711 μ-law (a telephone call) and 16-bit little-endian PCM, mono, at a rate.
 AUDIO_FORMATS = ["g711-ulaw@8000", "pcm16@8000", "pcm16@16000", "pcm16@24000"]
 HARNESS_FIELDS = ["kind", "label", "provider", "cli", "runs", "tasks", "realtime", "family", "experimental", "homepage", "about"]
-AGENT_FIELDS = ["harness", "parent", "name", "model", "effort", "instructions", "voice", "voiceMode", "tools", "persona", "color",
+AGENT_FIELDS = ["harness", "parent", "name", "model", "effort", "supervisor", "instructions", "voice", "voiceMode", "tools", "persona", "color",
                 "icon", "gender"]
 VOICE_MODES = ["off", "push-to-talk", "open-mic"]
 REALTIME_FIELDS = ["in", "out", "audio", "fps", "hz", "minutes", "videoMinutes"]
@@ -152,9 +152,11 @@ def _harness(t: DocTree) -> Dict[str, Any]:
 
 def _agent(t: DocTree) -> Dict[str, Any]:
     a = t["attrs"]
-    for k in ("harness", "parent", "name", "model", "effort", "instructions", "voice", "color", "icon", "gender"):
+    for k in ("harness", "parent", "name", "model", "effort", "supervisor", "instructions", "voice", "color", "icon", "gender"):
         _word(t, k)
     _one_of(t, "voiceMode", VOICE_MODES)
+    if "supervisor" in a and not re.match(r"^(agent|person):\S+$", a["supervisor"]):
+        raise ValueError(f"<agent> supervisor is an agent or a person (\"agent:lead\", \"person:me\"), not {a['supervisor']!r}")
     base, fork = "harness" in a, "parent" in a
     if base == fork:
         raise ValueError("<agent> names a harness (a base instance) or a parent (a fork), not both: a fork keeps its parent's harness" if base
