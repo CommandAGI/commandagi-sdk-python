@@ -270,7 +270,7 @@ class DynamicsJoint(_DynamicsJointRequired, _DynamicsJointOptional):
 
 #: A LINKED (not embedded) part reference. Unlike ImportFeature — which copies the foreign STEP/IGES bytes into the document — an `ExternalPartRef` only records *where* to find another Drive file (by id or name) and reloads it on open. This keeps a part reusable across assemblies and lets a part edit propagate to every place it's used. The reference system (`cad/references.ts`) turns these into `FileRef`s (`role:"part"`); the editor resolves + meshes them. Foreign solids carry an `importer` ("step"/"iges") so the resolver knows to run the import path rather than run a `.3d.tsx`.
 _ExternalPartRefRequired = TypedDict("_ExternalPartRefRequired", {"type": Literal["externalPart"], "id": str, "name": str})
-_ExternalPartRefOptional = TypedDict("_ExternalPartRefOptional", {"fileId": str, "path": str, "fileName": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx"], "unitScaleMm": float, "placement": 'Placement', "component": str, "localPlacement": 'Placement', "footprint": 'ComponentFootprint', "omit": List[str], "moves": List['PlacedMove'], "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ExternalPartRefOptional = TypedDict("_ExternalPartRefOptional", {"fileId": str, "path": str, "fileName": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx"], "unitScaleMm": float, "placement": 'Placement', "component": str, "localPlacement": 'Placement', "footprint": 'ComponentFootprint', "omit": List[str], "moves": List['PlacedMove'], "inputs": Dict[str, float], "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ExternalPartRef(_ExternalPartRefRequired, _ExternalPartRefOptional):
     pass
 
@@ -1049,7 +1049,7 @@ class ImportProps(_ImportPropsRequired, _ImportPropsOptional):
 
 #: The keywords of externalPart(…): the ExternalPartRef fields, in snake_case.
 _ExternalPartPropsRequired = TypedDict("_ExternalPartPropsRequired", {"id": str})
-_ExternalPartPropsOptional = TypedDict("_ExternalPartPropsOptional", {"file_id": str, "path": str, "file_name": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx"], "unit_scale_mm": float, "placement": 'Placement', "component": str, "local_placement": 'Placement', "footprint": 'ComponentFootprint', "omit": List[str], "moves": List['PlacedMove'], "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ExternalPartPropsOptional = TypedDict("_ExternalPartPropsOptional", {"file_id": str, "path": str, "file_name": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx"], "unit_scale_mm": float, "placement": 'Placement', "component": str, "local_placement": 'Placement', "footprint": 'ComponentFootprint', "omit": List[str], "moves": List['PlacedMove'], "inputs": Dict[str, float], "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ExternalPartProps(_ExternalPartPropsRequired, _ExternalPartPropsOptional):
     pass
 
