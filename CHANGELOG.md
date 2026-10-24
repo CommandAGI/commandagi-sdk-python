@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
+
+Added
+
 - A load states its `duty`: the share of time it draws (`duty={0.25}`, a number in (0, 1]). A power budget takes
   its average draw; a peak budget takes the whole draw at the peak. A load's `inrushCurrent` (A) is its peak at
   switch-on when it is more than its peak draw.

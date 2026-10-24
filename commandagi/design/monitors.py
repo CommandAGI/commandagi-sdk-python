@@ -36,7 +36,7 @@ MONITOR_FIELDS = ["title", "class", "about", "readme", "sameAs"]
 #: A subject: ``<scheme>:<id>`` (``cik:0001045810``, ``ticker:NVDA``, ``fomc:``).
 SUBJECT = re.compile(r"^[a-z][a-z0-9-]*:\S*$")
 SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit", "host", "mode", "retain", "since",
-                 "session", "snapshot", "profile", "keep", "maxCostPerDay", "unit", "vantage"]
+                 "session", "snapshot", "profile", "keep", "maxCostPerDay", "unit", "vantage", "connection"]
 FOLLOW_FIELDS = ["monitor", "match", "where"]
 WAKE_FIELDS = ["match", "prompt"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since"]
@@ -103,8 +103,10 @@ def _said(attrs: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
 def _source(t: DocTree) -> Dict[str, Any]:
     a = t["attrs"]
     w = _where(t)
-    for k in ("id", "adapter", "exit", "host", "retain", "since", "session", "snapshot", "profile", "keep", "unit", "vantage"):
+    for k in ("id", "adapter", "exit", "host", "retain", "since", "session", "snapshot", "profile", "keep", "unit", "vantage", "connection"):
         _text(t, k)
+    if a.get("connection") is not None and a.get("via", "worker") != "worker":
+        raise ValueError(f'{w} connection names a connected account, which the api worker reads (via="worker")')
     p = a.get("params")
     if p is not None and not isinstance(p, dict):
         raise ValueError(f'{w} params is an object ({{"series": "CPIAUCSL"}}), not {p!r}')
@@ -313,7 +315,7 @@ def monitor_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
                 "retain": s.get("retain", "derived") if stream else None, "since": s.get("since"),
                 "session": s.get("session"), "snapshot": s.get("snapshot"), "profile": s.get("profile"),
                 "keep": s.get("keep"), "maxCostPerDay": s.get("maxCostPerDay"), "unit": s.get("unit"),
-                "vantage": s.get("vantage")}
+                "vantage": s.get("vantage"), "connection": s.get("connection")}
 
     def disc(d: Dict[str, Any]) -> Dict[str, Any]:
         of = d.get("of")

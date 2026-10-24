@@ -65,6 +65,7 @@ class MonitorTests(unittest.TestCase):
         phone = one(via="phone", unit="../../../worlds/fleet/world.tsx#android-01")
         full = monitor_with_defaults({"sources": [phone], "follows": [], "wakes": []})["sources"][0]
         self.assertEqual(full.pop("vantage"), None)
+        self.assertEqual(full.pop("connection"), None)
         self.assertEqual(full, {"id": "s", "adapter": "x-profile", "params": {}, "every": "1h", "via": "phone", "exit": None,
                                 "host": None, "mode": "poll", "retain": None, "since": None, "session": None,
                                 "snapshot": None, "profile": None, "keep": None, "maxCostPerDay": None,
