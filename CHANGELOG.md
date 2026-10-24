@@ -69,6 +69,17 @@ Fixed
   HFS5-2080's ix was 5.04 % over MISUMI's again. The repository's tables now hold it: each section's area, ix, iy and
   mass are within 3.1 % of MISUMI's, and the repository's test holds 5 %.
 
+- Silent failures are errors (microfab 0.6.6). The vocabulary's descriptions say so; what reads a document does it:
+  - CORE-59: `<externalPart omit moves>` take a placed file's id for everything placed under it (`omit={["pallet"]}`
+    is `pallet/*`, its `<item>`s too), and an entry that names nothing of the file is an error that names it.
+  - CORE-63: an `<accept check>` or a `<permitted check>` that is no check of the document is an error
+    (`accept-unknown-check`, `permitted-unknown-check`); a `<permitted body>` that names no body is one too
+    (`permitted-unknown-body`). A circuit's `<accept check>` of no check is an ERC error.
+  - CORE-64: a placement's `quaternion` is a unit quaternion: within 1e-5 of unit length (6 decimals) it is read as
+    the rotation it rounds; further off it is refused, so a placement never scales a part.
+  - LABS-27: `commandagi task approve | decline` is a person's own act: refused from an agent's shell or with an
+    agent's key, and typed at a terminal; the record names the person.
+
 ## 0.6.7 (2026-10-23)
 
 Added
