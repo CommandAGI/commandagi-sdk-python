@@ -45,6 +45,9 @@ BUDGET_QUANTITIES = ["mass", "power", "cost", "thermal"]
 DECLARED_QUANTITY = re.compile(r"[a-z][a-z0-9-]*")
 SYSTEM_CHECK_KINDS = ["interface", "trace"]
 SIDE_KINDS = ["circuit", "3d", "firmware", "definition"]
+#: A channel's direction, and what it carries: the channel vocabulary of a device definition (docs/devices.md).
+CHANNEL_DIRS = ["in", "out", "duplex"]
+CHANNEL_MEDIA = ["records", "video", "audio", "bytes"]
 
 REQUIREMENT_FIELDS = ["id", "text", "rationale", "method", "verifiedBy", "design", "parent"]
 MODE_FIELDS = ["id", "description"]
@@ -58,14 +61,16 @@ PIN_FIELDS = ["number", "signal", "dir", "voltage", "gpio", "at", "required", "d
 HOLE_FIELDS = ["id", "at", "diameter", "description"]
 MESSAGE_FIELDS = ["id", "text", "code", "define", "dir", "description"]
 PARAM_FIELDS = ["id", "value", "unit", "description"]
-SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "defines", "pins", "params", "files", "description"]
+SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "rotate", "flip", "defines", "pins", "params", "files",
+               "description"]
+CHANNEL_FIELDS = ["format", "dir", "medium", "dialect", "transport", "description"]
 
 _CHILDREN = {"holds": "children"}
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "requirements": _CHILDREN, "requirement": {},
     "system": _CHILDREN, "mode": {}, "rail": {}, "converter": {}, "load": {}, "contribution": {}, "bom": {}, "budget": {}, "check": {},
-    "interface": _CHILDREN, "frame": {}, "pin": {}, "hole": {}, "message": {}, "param": {}, "side": {},
+    "interface": _CHILDREN, "frame": {}, "pin": {}, "hole": {}, "message": {}, "param": {}, "channel": {}, "side": {},
 }
 
 __all__ = ["VERIFICATION_METHODS", "BUDGET_QUANTITIES", "SYSTEM_CHECK_KINDS", "SIDE_KINDS", "SIGNATURES",
@@ -187,7 +192,7 @@ _INTERFACE_LISTS = {"pin": "pins", "hole": "holes", "message": "messages", "para
 
 
 def _interface(t: DocTree) -> Dict[str, Any]:
-    frame = None
+    frame = channel = None
     for c in t["children"]:
         a, tag = c["attrs"], c["tag"]
         at = _where(tag, "number" if tag == "pin" else "id", a)
@@ -213,12 +218,27 @@ def _interface(t: DocTree) -> Dict[str, Any]:
                    f"{at}: kind must be one of {', '.join(SIDE_KINDS)} (got {json.dumps(a.get('kind'))})")
             _check("origin" not in a or _pair(a["origin"], 2) or _pair(a["origin"], 3),
                    f"{at}: origin is where the interface's frame sits in this side's frame, [x, y] or [x, y, z] mm")
+            _check("rotate" not in a or _num(a["rotate"]),
+                   f"{at}: rotate is the interface's frame turned as this side has it, in degrees counter-clockwise")
+            _check("flip" not in a or isinstance(a["flip"], bool),
+                   f"{at}: flip is true or false (true: this side is seen from the mating board, its x the other way)")
             _check("parts" not in a or (isinstance(a["parts"], list) and all(isinstance(p, str) for p in a["parts"])),
                    f"{at}: parts is a list of part references, whose pins are the interface's in turn")
             _check("channel" not in a or isinstance(a["channel"], str),
                    f"{at}: channel is the id of a channel of the device definition")
-    rest = [c for c in t["children"] if c["tag"] != "frame"]
-    return {**_own(t["attrs"], ["name", "description"]), **({"frame": frame} if frame is not None else {}), **_lists(rest, _INTERFACE_LISTS)}
+        if tag == "channel":
+            channel = dict(a)
+            _check(isinstance(a.get("format"), str) and a["format"].strip(),
+                   f'{at}: format is the channel\'s format, a name ("state", "lines", "gcode-chat")')
+            _check("dir" not in a or a["dir"] in CHANNEL_DIRS,
+                   f"{at}: dir must be one of {', '.join(CHANNEL_DIRS)} (got {json.dumps(a.get('dir'))})")
+            _check("medium" not in a or a["medium"] in CHANNEL_MEDIA,
+                   f"{at}: medium must be one of {', '.join(CHANNEL_MEDIA)} (got {json.dumps(a.get('medium'))})")
+            for k in ("dialect", "transport"):
+                _check(k not in a or (isinstance(a[k], str) and a[k].strip()), f'{at}: {k} is a name ({k}="usb-serial")')
+    rest = [c for c in t["children"] if c["tag"] not in ("frame", "channel")]
+    return {**_own(t["attrs"], ["name", "description"]), **({"frame": frame} if frame is not None else {}),
+            **({"channel": channel} if channel is not None else {}), **_lists(rest, _INTERFACE_LISTS)}
 
 
 REQUIREMENTS_VOCABULARY = Vocabulary("requirements", "a requirements document", "requirements", {
@@ -245,6 +265,7 @@ INTERFACE_VOCABULARY = Vocabulary("interface", "an interface", "interface", {
     "hole": {"parents": ["interface"], "key": "id", "required": ["id", "at"], "attrs": HOLE_FIELDS},
     "message": {"parents": ["interface"], "key": "id", "required": ["id"], "attrs": MESSAGE_FIELDS},
     "param": {"parents": ["interface"], "key": "id", "required": ["id", "value"], "attrs": PARAM_FIELDS},
+    "channel": {"parents": ["interface"], "single": True, "attrs": CHANNEL_FIELDS},
     "side": {"parents": ["interface"], "key": "id", "required": ["id", "ref"], "attrs": SIDE_FIELDS},
 }, _interface, _never, lambda name: {"name": name})
 

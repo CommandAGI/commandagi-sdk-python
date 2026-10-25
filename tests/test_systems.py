@@ -5,7 +5,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.systems import (bom, budget, check, contribution, converter, frame, hole, interface, load, message,
+from commandagi.design.systems import (bom, budget, channel, check, contribution, converter, frame, hole, interface, load, message,
                                        mode, param, pin, rail, requirement, requirements, side, system)
 
 
@@ -77,11 +77,15 @@ class SystemsTests(unittest.TestCase):
             hole(id="m2-a", at=[0, 0], diameter=2.2),
             message(id="lte-only", text="AT+CNMP=38"),
             param(id="baud", value=115200, unit="Bd"),
-            side(id="base", ref="ee/base.circuit.ts", parts=["J1", "J2"], origin=[0, 1.4]),
+            channel(format="lines", dir="duplex", medium="records", dialect="at", transport="usb-serial"),
+            side(id="base", ref="ee/base.circuit.ts", parts=["J1", "J2"], origin=[0, 1.4], rotate=90, flip=True),
             side(id="firmware", ref="fw/config.h", defines={"BOARD": 1}, pins={"RX_PIN": 4}, params={"BAUD": "baud"}),
             side(id="host", ref="devices/cam/definition.tsx", channel="modem", params={"baud": "baud"}),
             name="Header"))["document"]
         self.assertEqual(d["frame"], {"description": "the base board's top, pin 1 at the origin", "unit": "mm"})
+        self.assertEqual(d["channel"], {"format": "lines", "dir": "duplex", "medium": "records", "dialect": "at", "transport": "usb-serial"},
+                         "the link's own channel, one element")
+        self.assertEqual(d["sides"][0], {"id": "base", "ref": "ee/base.circuit.ts", "parts": ["J1", "J2"], "origin": [0, 1.4], "rotate": 90, "flip": True})
         self.assertEqual(d["sides"][1], {"id": "firmware", "ref": "fw/config.h", "defines": {"BOARD": 1}, "pins": {"RX_PIN": 4}, "params": {"BAUD": "baud"}})
         self.assertEqual(d["sides"][2], {"id": "host", "ref": "devices/cam/definition.tsx", "channel": "modem", "params": {"baud": "baud"}})
         cases = [
@@ -91,6 +95,12 @@ class SystemsTests(unittest.TestCase):
             (message(id="m"), "a message has its text, its code, or both"),
             (side(id="s", ref="x", kind="mechanical"), "kind must be one of circuit, 3d, firmware, definition"),
             (side(id="s", ref="x", channel=3), "channel is the id of a channel of the device definition"),
+            (side(id="s", ref="x", rotate="90"), "rotate is the interface's frame turned as this side has it"),
+            (side(id="s", ref="x", flip="yes"), "flip is true or false"),
+            (channel(dir="duplex"), r"<channel>: format is the channel's format"),
+            (channel(format="lines", dir="sideways"), 'dir must be one of in, out, duplex \\(got "sideways"\\)'),
+            (channel(format="lines", medium="light"), "medium must be one of records, video, audio, bytes"),
+            (channel(format="lines", transport=3), "transport is a name"),
             (frame(unit="in"), "positions are in mm"),
         ]
         for el, msg in cases:
@@ -98,6 +108,8 @@ class SystemsTests(unittest.TestCase):
                 declare_document(interface(el))
         with self.assertRaisesRegex(ValueError, "<interface> has one <frame>"):
             declare_document(interface(frame(), frame()))
+        with self.assertRaisesRegex(ValueError, "<interface> has one <channel>"):
+            declare_document(interface(channel(format="lines"), channel(format="state")))
 
     def test_a_run_names_each_record_by_its_call(self):
         out = run_module(

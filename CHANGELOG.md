@@ -8,6 +8,11 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- An interface states the channel both ends open (`<channel format="state" transport="serial" />`) and a
+  definition or a unit side is held to its `dir`, `medium`, `format`, `dialect` and `transport`: a field they do not
+  share is named, and a field the side does not state is unknown, never a pass.
+- A side is placed turned and on the far face of its board: `rotate` (degrees, counter-clockwise) and `flip` (seen
+  from the mating board, its x the other way) place the interface's pins and holes in the side's frame.
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 
 Added
