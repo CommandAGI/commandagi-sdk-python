@@ -40,6 +40,11 @@ class PostalTests(unittest.TestCase):
             declare_document(postcard(front()))
         with self.assertRaisesRegex(ValueError, "color is not read"):
             declare_document(postcard(color=True))
+        # A size is one the printers know (Lob's 6x9 and 6x11, Click2Mail's 4.25 x 6); one nobody prints does not run.
+        big = declare_document(postcard(front(image="Austin.jpg"), size="6x9"))
+        self.assertEqual(big["document"]["size"], "6x9")
+        with self.assertRaisesRegex(ValueError, r'size is "4x6", "6x9", "6x11"'):
+            declare_document(postcard(size="5x7"))
         with self.assertRaisesRegex(ValueError, r"<front> is not a tag of a letter \(<letter>, <to>, <from>, <paragraph>\)"):
             declare_document(letter(front(image="x.jpg")))
 

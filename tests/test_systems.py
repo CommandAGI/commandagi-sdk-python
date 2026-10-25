@@ -77,7 +77,8 @@ class SystemsTests(unittest.TestCase):
             hole(id="m2-a", at=[0, 0], diameter=2.2),
             message(id="lte-only", text="AT+CNMP=38"),
             param(id="baud", value=115200, unit="Bd"),
-            side(id="base", ref="ee/base.circuit.ts", parts=["J1", "J2"], origin=[0, 1.4]),
+            param(id="framing", value="8N1"),
+            side(id="base", ref="ee/base.circuit.ts", parts=["J1", "J2"], origin=[0, 1.4], rotation=90, face="back"),
             side(id="firmware", ref="fw/config.h", defines={"BOARD": 1}, pins={"RX_PIN": 4}, params={"BAUD": "baud"}),
             side(id="host", ref="devices/cam/definition.tsx", channel="modem", params={"baud": "baud"}),
             name="Header"))["document"]
@@ -89,8 +90,13 @@ class SystemsTests(unittest.TestCase):
             (pin(number=1, signal="x", at=[1]), r"at is \[x, y\] mm"),
             (hole(id="h", at=[0, 0, 0]), r'<hole id="h">: at is \[x, y\] mm'),
             (message(id="m"), "a message has its text, its code, or both"),
+            (param(id="p", value=""), "value is a number with its unit in unit, or a text"),
+            (param(id="p", value="8N1", unit="Bd"), "a text value has no unit"),
             (side(id="s", ref="x", kind="mechanical"), "kind must be one of circuit, 3d, firmware, definition"),
             (side(id="s", ref="x", channel=3), "channel is the id of a channel of the device definition"),
+            (side(id="s", ref="x", rotation="90"), "rotation is the angle the side is turned"),
+            (side(id="s", ref="x", face="sideways"), 'face must be one of top, bottom \\(got "sideways"\\)'),
+            (side(id="s", ref="x.circuit.ts", face="bottom"), 'face must be one of front, back \\(got "bottom"\\)'),
             (frame(unit="in"), "positions are in mm"),
         ]
         for el, msg in cases:

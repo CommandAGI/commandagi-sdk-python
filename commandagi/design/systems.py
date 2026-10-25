@@ -58,7 +58,17 @@ PIN_FIELDS = ["number", "signal", "dir", "voltage", "gpio", "at", "required", "d
 HOLE_FIELDS = ["id", "at", "diameter", "description"]
 MESSAGE_FIELDS = ["id", "text", "code", "define", "dir", "description"]
 PARAM_FIELDS = ["id", "value", "unit", "description"]
-SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "defines", "pins", "params", "files", "description"]
+SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "rotation", "face", "defines", "pins", "params", "files", "description"]
+#: A circuit file's name (``turned.circuit.ts``, ``Board.sch.tsx``, ``Board.pcb.tsx``): its board has a front and a back.
+_CIRCUIT_FILE = re.compile(r"\.(?:sch|pcb)\.(?:[jt]sx|py|rs)$|\.circuit\.(?:[jt]sx?|py|rs)$", re.I)
+
+
+def _faces_of(a: Dict[str, Any]) -> List[str]:
+    """The faces a side may name, by its kind: a circuit board has a front and a back, a part a top and a bottom."""
+    kind = a.get("kind")
+    if not isinstance(kind, str):
+        kind = "circuit" if _CIRCUIT_FILE.search(str(a.get("ref", ""))) else ""
+    return ["front", "back"] if kind == "circuit" else ["top", "bottom"]
 
 _CHILDREN = {"holds": "children"}
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
@@ -207,12 +217,21 @@ def _interface(t: DocTree) -> Dict[str, Any]:
         if tag == "message":
             _check("text" in a or "code" in a, f"{at}: a message has its text, its code, or both")
         if tag == "param":
-            _check(_num(a.get("value")), f"{at}: value is a number (its unit in unit)")
+            # A text is a format, a dialect or a transport (8N1, serial); a number is a quantity with its unit in `unit`.
+            text = isinstance(a.get("value"), str) and bool(a["value"].strip())
+            _check(_num(a.get("value")) or text,
+                   f"{at}: value is a number with its unit in unit, or a text (a format, a dialect, a transport)")
+            _check(not text or "unit" not in a, f"{at}: a text value has no unit")
         if tag == "side":
             _check("kind" not in a or a["kind"] in SIDE_KINDS,
                    f"{at}: kind must be one of {', '.join(SIDE_KINDS)} (got {json.dumps(a.get('kind'))})")
             _check("origin" not in a or _pair(a["origin"], 2) or _pair(a["origin"], 3),
                    f"{at}: origin is where the interface's frame sits in this side's frame, [x, y] or [x, y, z] mm")
+            _check("rotation" not in a or _num(a["rotation"]),
+                   f"{at}: rotation is the angle the side is turned in its frame, in degrees counter-clockwise")
+            faces = _faces_of(a)
+            _check("face" not in a or a["face"] in faces,
+                   f"{at}: face must be one of {', '.join(faces)} (got {json.dumps(a.get('face'))})")
             _check("parts" not in a or (isinstance(a["parts"], list) and all(isinstance(p, str) for p in a["parts"])),
                    f"{at}: parts is a list of part references, whose pins are the interface's in turn")
             _check("channel" not in a or isinstance(a["channel"], str),
