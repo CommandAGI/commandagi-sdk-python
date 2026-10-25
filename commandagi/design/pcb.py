@@ -620,7 +620,7 @@ def _declare_board(s: Scope, root: Element) -> None:
         if el.tag == "stack":
             continue
         if el.tag == "component":
-            _refuse_unknown(el, ["name", "footprint", "library", "pcbX", "pcbY", "pcbRotation", "layer", "refAt", "chart", "uuid", "kicad"])
+            _refuse_unknown(el, ["name", "footprint", "library", "pcbX", "pcbY", "pcbRotation", "layer", "refAt", "refRot", "chart", "uuid", "kicad"])
             ref = el.props["name"]
             fp = el.props.get("footprint")
             library = el.props.get("library")
@@ -651,6 +651,10 @@ def _declare_board(s: Scope, root: Element) -> None:
                 raise ValueError(f"{_where(el)}: refAt is [x, y] in mm, in the footprint's own frame")
             if ref_at is not None and x is None:
                 raise ValueError(f"{_where(el)}: refAt needs pcbX and pcbY")
+            # How far the reference text is turned where it sits: the placer turns a text it has no upright place for.
+            ref_rot = _num(el, "refRot")
+            if ref_rot is not None and x is None:
+                raise ValueError(f"{_where(el)}: refRot needs pcbX and pcbY")
             chart = _text(el, "chart")
             if chart is not None and surface is None:
                 raise ValueError(f"{_where(el)}: chart names a face of the board's surface, and the <board> has no surface")
@@ -667,6 +671,8 @@ def _declare_board(s: Scope, root: Element) -> None:
                 inputs["placement"] = {"x": x, "y": y, "rot": rot if rot is not None else 0, "side": side if side is not None else "top"}
             if ref_at is not None:
                 inputs["refAt"] = list(ref_at)
+            if ref_rot is not None:
+                inputs["refRot"] = ref_rot
             if chart is not None:
                 inputs["surfaceMount"] = {"chart": chart}
             inputs.update(uuid_of(el), **_kicad(el))
