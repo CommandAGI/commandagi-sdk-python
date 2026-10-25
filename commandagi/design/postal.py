@@ -15,9 +15,9 @@ postal mail prints and mails. The same documents and the same elements as the Ty
 The rule of the ontology's files: a record is an element and its fields are the element's attributes (snake_case
 keywords: ``postal_code`` is ``postalCode``). The addresses are one ``to`` and one ``from_`` (``<from>``: ``from`` is a
 Python keyword); the body is ``paragraph(text=…)`` children, in order. A postcard has no options and one
-``front(image=…)``: a ref to a JPEG or PNG relative to the postcard's folder. Nothing adds a default. A run gives back
-``{"format", "document", "sources"}`` beside an empty graph; ``sources`` names each element's call by its path (``""``,
-``to``, ``paragraph@0``).
+``front(image=…)``: a ref to a JPEG or PNG relative to the postcard's folder. Its ``size`` is 4x6 unless it says 6x9
+or 6x11. Nothing adds a default. A run gives back ``{"format", "document", "sources"}`` beside an empty graph;
+``sources`` names each element's call by its path (``""``, ``to``, ``paragraph@0``).
 """
 from __future__ import annotations
 
@@ -28,6 +28,8 @@ from .element import define
 
 ADDRESS_FIELDS = ["name", "company", "line1", "line2", "city", "region", "postalCode", "country"]
 LETTER_FIELDS = ["color", "doubleSided", "mailClass"]
+POSTCARD_FIELDS = ["size"]
+POSTCARD_SIZES = ("4x6", "6x9", "6x11")
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
@@ -39,8 +41,8 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "paragraph": {},
 }
 
-__all__ = ["ADDRESS_FIELDS", "LETTER_FIELDS", "SIGNATURES", "LETTER_VOCABULARY", "POSTCARD_VOCABULARY",
-           *define(globals(), "postal", SIGNATURES)]
+__all__ = ["ADDRESS_FIELDS", "LETTER_FIELDS", "POSTCARD_FIELDS", "POSTCARD_SIZES", "SIGNATURES", "LETTER_VOCABULARY",
+           "POSTCARD_VOCABULARY", *define(globals(), "postal", SIGNATURES)]
 
 
 def _fields(o: Dict[str, Any], keys: Any) -> Dict[str, Any]:
@@ -85,7 +87,10 @@ def _postcard(t: DocTree) -> Dict[str, Any]:
     front = next((c for c in t["children"] if c["tag"] == "front"), None)
     if front is not None and not isinstance(front["attrs"].get("image"), str):
         raise ValueError("<front> image is the ref of a JPEG or PNG")
-    return _piece(t)
+    size = t["attrs"].get("size")
+    if size is not None and size not in POSTCARD_SIZES:
+        raise ValueError("<postcard> size is " + ", ".join(POSTCARD_SIZES))
+    return {**_fields(t["attrs"], POSTCARD_FIELDS), **_piece(t)}
 
 
 def _never(_: Any) -> DocTree:
@@ -105,7 +110,7 @@ def _tags(root: str, root_attrs: Any, front: bool) -> Dict[str, Dict[str, Any]]:
 
 
 LETTER_VOCABULARY = Vocabulary("letter", "a letter", "letter", _tags("letter", LETTER_FIELDS, False), _letter, _never)
-POSTCARD_VOCABULARY = Vocabulary("postcard", "a postcard", "postcard", _tags("postcard", [], True), _postcard, _never)
+POSTCARD_VOCABULARY = Vocabulary("postcard", "a postcard", "postcard", _tags("postcard", POSTCARD_FIELDS, True), _postcard, _never)
 
 for _v in (LETTER_VOCABULARY, POSTCARD_VOCABULARY):
     register_vocabulary(_v, "postal")

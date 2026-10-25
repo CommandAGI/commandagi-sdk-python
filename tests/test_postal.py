@@ -36,6 +36,10 @@ class PostalTests(unittest.TestCase):
         self.assertEqual(d["document"], {
             "to": {"name": "Ada Lovelace", "line1": "12 St James's Square", "city": "London", "postalCode": "SW1Y 4JH", "country": "GB"},
             "front": "Austin.jpg", "paragraphs": ["Greetings from Austin!"]})
+        big = declare_document(postcard(front(image="Austin.jpg"), size="6x9"))
+        self.assertEqual(big["document"]["size"], "6x9")
+        with self.assertRaisesRegex(ValueError, "size is 4x6, 6x9, 6x11"):
+            declare_document(postcard(front(image="Austin.jpg"), size="5x7"))
         with self.assertRaisesRegex(ValueError, "needs image"):
             declare_document(postcard(front()))
         with self.assertRaisesRegex(ValueError, "color is not read"):
