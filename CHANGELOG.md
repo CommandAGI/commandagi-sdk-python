@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- The scouts' two documents are declared in Python: `<name>.scout.py` (a comparison: its configurations, its workloads with their cases, its judges) and `<name>.replacement.py` (a replacement-cost analysis: its layers of capabilities with their evidence, and its decision). They are the same documents as the TypeScript SDK's `scouts.ts` (`docs/scouts.md`). A case's `from` is `from_`; a replacement's `by` is `by_`.
+
+Added
+
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 
 Added
