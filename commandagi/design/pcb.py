@@ -25,6 +25,9 @@ The calls (children are positional; every attribute is a keyword):
     stack(name, label, domain, units, process, layers, overall_thickness)
                                       the cross-section, layer by layer (top first), when it is more than core and
                                       copper.
+    masks(name, label, lib_name, unit_um_per_db, polygons)
+                                      an IC mask layout, flattened: each polygon {layer, datatype, points} with
+                                      points in micrometres, the stream's units and the library it names.
     graphic(kind, layer, points, width, filled, id, kicad)
                                       a board drawing (line, arc, circle, rect, poly) on a layer.
     text(text|field, at, rotation, layer, size, size_x, thickness, kind, id, kicad)
@@ -114,7 +117,7 @@ _CHILDREN: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the board: what it holds (the TypeScript SDK's ``SIGNATURES``; absent: a leaf).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "board": _CHILDREN,
-    "stack": {}, "graphic": {}, "text": {}, "dimension": {}, "kicad": {}, "net": {},
+    "stack": {}, "masks": {}, "graphic": {}, "text": {}, "dimension": {}, "kicad": {}, "net": {},
     "component": {}, "trace": {}, "arc": {}, "via": {}, "pour": {},
     "check": {}, "accept": {},
     "netclass": {}, "diffpair": {}, "group": {}, "keepout": {}, "thermal": {}, "bus": {}, "objective": {}, "fab": {},
@@ -221,6 +224,24 @@ def _plain(el: Element, prop: str, check: Any, what: str) -> Any:
 
 def _is_object(v: Any) -> bool:
     return isinstance(v, dict)
+
+
+def _is_mask_polygons(v: Any) -> bool:
+    """A flattened mask layout's polygons: each ``{ layer, datatype, points }``, its points ``[x, y]`` in micrometres."""
+    if not isinstance(v, (list, tuple)) or not v:
+        return False
+    for p in v:
+        if not _is_object(p) or any(k not in ("layer", "datatype", "points") for k in p):
+            return False
+        layer, datatype, points = p.get("layer"), p.get("datatype"), p.get("points")
+        if not (isinstance(layer, int) and not isinstance(layer, bool) and layer >= 0 and isinstance(datatype, int) and not isinstance(datatype, bool) and datatype >= 0):
+            return False
+        if not isinstance(points, (list, tuple)) or len(points) < 3:
+            return False
+        for q in points:
+            if not isinstance(q, (list, tuple)) or len(q) != 2 or not all(_is_num(c) for c in q):
+                return False
+    return True
 
 
 def trace_point_id(index: int, count: int) -> str:
@@ -553,7 +574,7 @@ def _declare_board(s: Scope, root: Element) -> None:
                 raise ValueError("a board has one <objective>" if el.tag == "objective" else f"two <{el.tag}> elements are called {nm}")
             if key is not None:
                 constraint_names.add(key)
-        elif el.tag != "stack" and el.tag not in _FACTS:
+        elif el.tag not in ("stack", "masks") and el.tag not in _FACTS:
             raise ValueError(f"<{el.tag}> is not read on a board (see commandagi.design.pcb)")
     id_of: Dict[int, str] = {id(c["el"]): c["id"] for c in conductors.values()}
     taken = {c["id"] for c in conductors.values()}
@@ -619,8 +640,22 @@ def _declare_board(s: Scope, root: Element) -> None:
     for el in children:
         if el.tag == "stack":
             continue
+        if el.tag == "masks":
+            _refuse_unknown(el, ["name", "label", "libName", "unitUmPerDb", "polygons"])
+            mask_polygons = _plain(el, "polygons", _is_mask_polygons,
+                                   "the mask layout's polygons: [{ layer, datatype, points: [[x, y], …] }, …], points in micrometres")
+            if mask_polygons is None:
+                raise ValueError("<masks> needs polygons")
+            lib_name = _text(el, "libName")
+            mask_inputs: Dict[str, Any] = {"polygons": mask_polygons, "unitUmPerDb": _positive(el, "unitUmPerDb", True)}
+            if lib_name is not None:
+                mask_inputs["libName"] = lib_name
+            label = _text(el, "label")
+            s.add("eda.masks", mask_inputs, id=_text(el, "name") or "masks",
+                  label=label if label is not None else (lib_name if lib_name is not None else "Masks"), meta=_meta(el))
+            continue
         if el.tag == "component":
-            _refuse_unknown(el, ["name", "footprint", "library", "pcbX", "pcbY", "pcbRotation", "layer", "refAt", "chart", "uuid", "kicad"])
+            _refuse_unknown(el, ["name", "footprint", "library", "pcbX", "pcbY", "pcbRotation", "layer", "refAt", "refRot", "chart", "uuid", "kicad"])
             ref = el.props["name"]
             fp = el.props.get("footprint")
             library = el.props.get("library")
@@ -651,6 +686,10 @@ def _declare_board(s: Scope, root: Element) -> None:
                 raise ValueError(f"{_where(el)}: refAt is [x, y] in mm, in the footprint's own frame")
             if ref_at is not None and x is None:
                 raise ValueError(f"{_where(el)}: refAt needs pcbX and pcbY")
+            # How far the reference text is turned where it sits: the placer turns a text it has no upright place for.
+            ref_rot = _num(el, "refRot")
+            if ref_rot is not None and x is None:
+                raise ValueError(f"{_where(el)}: refRot needs pcbX and pcbY")
             chart = _text(el, "chart")
             if chart is not None and surface is None:
                 raise ValueError(f"{_where(el)}: chart names a face of the board's surface, and the <board> has no surface")
@@ -667,6 +706,8 @@ def _declare_board(s: Scope, root: Element) -> None:
                 inputs["placement"] = {"x": x, "y": y, "rot": rot if rot is not None else 0, "side": side if side is not None else "top"}
             if ref_at is not None:
                 inputs["refAt"] = list(ref_at)
+            if ref_rot is not None:
+                inputs["refRot"] = ref_rot
             if chart is not None:
                 inputs["surfaceMount"] = {"chart": chart}
             inputs.update(uuid_of(el), **_kicad(el))
