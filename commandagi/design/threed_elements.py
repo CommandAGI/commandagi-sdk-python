@@ -610,7 +610,7 @@ class PriceBreak(_PriceBreakRequired, _PriceBreakOptional):
 
 #: A PROCESS CHEMICAL a station holds (an etchant, a process gas, a solvent): what it is, its hazard, how much is on hand and what contains, exhausts and guards it. The `chemicals` check reads it (docs/formats.md § logistics).
 _ProcessChemicalRequired = TypedDict("_ProcessChemicalRequired", {"substance": str})
-_ProcessChemicalOptional = TypedDict("_ProcessChemicalOptional", {"cas": str, "hazard": str, "litres": float, "kilograms": float, "containmentLitres": float, "exhaust": str, "interlocks": List[str], "sds": str, "shutoff": str}, total=False)
+_ProcessChemicalOptional = TypedDict("_ProcessChemicalOptional", {"cas": str, "hazard": str, "litres": float, "kilograms": float, "containmentLitres": float, "exhaust": str, "exhaustFlow": float, "interlocks": List[str], "sds": str, "shutoff": str}, total=False)
 class ProcessChemical(_ProcessChemicalRequired, _ProcessChemicalOptional):
     pass
 
