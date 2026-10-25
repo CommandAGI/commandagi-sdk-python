@@ -10,10 +10,11 @@ as the elements their editors edit. The same elements as the TypeScript SDK's ``
     )
 
 A record is an element and its fields are the element's attributes; a list of records is the parent's children
-(``units`` -> ``unit(...)``, ``channels`` -> ``channel(...)``, a scene's ``bodies`` -> ``body(...)``). The tags:
+(``units`` -> ``unit(...)``, ``channels`` -> ``channel(...)``, a scene's ``bodies`` -> ``body(...)`` and
+``cameras`` -> ``camera(...)``). The tags:
 
-    world(name, kind, description?, from_?, model?,   world.py             space, unit(uid …), view, scene (body children)
-          links?)
+    world(name, kind, description?, from_?, model?,   world.py             space, unit(uid …), view, scene (body and
+          links?)                                                            camera children)
     device(name …, firmware?, revision?)              definition.py        channel(id, dir, medium, format, transport …)
     dashboard(name …)                                 <name>.dashboard.py  param(id, type …), one layout: split(axis,
                                                                            ratio) of two split|pane(id, kind …), or one
@@ -48,9 +49,11 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the ontology's files: what it holds (the TypeScript SDK's ``SIGNATURES``; absent: a leaf).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "world": _HOLDS, "space": {"snake": ["origin_mm", "size_mm"]}, "unit": {"snake": ["size_mm"]}, "view": {}, "scene": _HOLDS, "body": {},
+    # A camera of a scene (where it stands and what it looks at): its own field names have underscores.
+    "camera": {"snake": ["look_at", "fov_deg"]},
     "device": {**_HOLDS, "snake": ["model_number", "product_url", "price_usd", "record_hz", "spec_check", "dimensions_mm"]}, "channel": {},
     "dashboard": _HOLDS, "param": {}, "split": _HOLDS, "pane": {}, "region": {},
-    "geoproject": _HOLDS, "dateRange": {}, "camera": {}, "reference": {},
+    "geoproject": _HOLDS, "dateRange": {}, "reference": {},
     "opgraph": _HOLDS, "node": {}, "wire": {},
 }
 
@@ -62,6 +65,9 @@ UNIT_FIELDS = ["uid", "name", "device", "serial", "revision", "domain", "size_mm
 #: link grammar with the unit named in each joint and emit; ``node`` is the id of the model's feature that makes the part.
 WORLD_FIELDS = ["name", "kind", "description", "from", "model", "links"]
 GEO_FIELDS = ["id", "name", "createdAt", "updatedAt", "description", "defaultWorkspace", "metadata"]
+#: A camera of a world's scene (packages/domain/world/sim.js CAMERA_FIELDS): where it stands and what it looks at
+#: (metres), and the picture it records. Its ``id`` is the uid of the unit whose ``video`` channel records it.
+CAMERA_FIELDS = ["id", "at", "look_at", "up", "fov_deg", "width", "height"]
 #: A node's attributes that are not its ports.
 _NODE_ATTRS = ["id", "type", "label", "x", "y", "disabled", "output", "meta", "inputs"]
 _DASHBOARD_STRUCTURE = ["format", "layout", "panes", "params", "regions"]
@@ -102,7 +108,8 @@ def _world(t: DocTree) -> Dict[str, Any]:
         out["view"] = _attrs(view_)
     if scene_ is not None:
         bodies = [_attrs(b) for b in _kids(scene_, "body")]
-        out["scene"] = {**_attrs(scene_), **({"bodies": bodies} if bodies else {})}
+        cameras = [_attrs(c) for c in _kids(scene_, "camera")]
+        out["scene"] = {**_attrs(scene_), **({"bodies": bodies} if bodies else {}), **({"cameras": cameras} if cameras else {})}
     return out
 
 
@@ -113,6 +120,7 @@ _WORLD = Vocabulary("world", "a world", "world", {
     "view": {"parents": ["world"], "single": True},
     "scene": {"parents": ["world"], "single": True},
     "body": {"parents": ["scene"], "key": "id", "required": ["id"]},
+    "camera": {"parents": ["scene"], "key": "id", "required": ["id"], "attrs": CAMERA_FIELDS},
 }, _world, lambda doc: _unsupported("world"))
 
 

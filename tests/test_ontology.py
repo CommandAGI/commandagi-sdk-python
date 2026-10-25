@@ -19,13 +19,15 @@ def declared(root):
 class OntologyTests(unittest.TestCase):
     def test_a_world_is_its_world_json(self):
         d = declared(world(unit(uid="arm", name="arm", device="../../devices/so-101/definition.tsx", position=[100, 0, 0], rotation=90),
-                           scene(body(id="cube", shape={"type": "box", "hx": 0.02}, at=[0, 0, 1]), hz=240),
+                           scene(body(id="cube", shape={"type": "box", "hx": 0.02}, at=[0, 0, 1]),
+                                 camera(id="cam", at=[0, -0.7, 1], look_at=[0, 0, 0.76], fov_deg=50), hz=240),
                            name="Shop", kind="simulation"))["document"]
         self.assertEqual(d, {"format": "world", "sources": {}, "document": {
             "name": "Shop",
             "kind": "simulation",
             "units": [{"uid": "arm", "name": "arm", "device": "../../devices/so-101/definition.tsx", "position": [100, 0, 0], "rotation": 90}],
-            "scene": {"hz": 240, "bodies": [{"id": "cube", "shape": {"type": "box", "hx": 0.02}, "at": [0, 0, 1]}]},
+            "scene": {"hz": 240, "bodies": [{"id": "cube", "shape": {"type": "box", "hx": 0.02}, "at": [0, 0, 1]}],
+                      "cameras": [{"id": "cam", "at": [0, -0.7, 1], "look_at": [0, 0, 0.76], "fov_deg": 50}]},
         }})
         # The world's model and the parts of it a run moves: attributes of world(), as the TypeScript SDK writes them.
         links = [{"node": "ram", "joint": {"unit": "press-1", "channel": "axes", "name": "z", "type": "prismatic", "axis": "z", "origin_mm": [0, 0, 0], "home": 0}}]
@@ -37,6 +39,10 @@ class OntologyTests(unittest.TestCase):
             declared(world(unit(uid="a", name="a", device="d"), unit(uid="a", name="b", device="d"), name="W", kind="physical"))
         with self.assertRaisesRegex(ValueError, "speed is not read"):
             declared(world(unit(uid="a", name="a", device="d", speed=3), name="W", kind="physical"))
+        with self.assertRaisesRegex(ValueError, "focus is not read"):
+            declared(world(scene(camera(id="cam", at=[0, 0, 1], look_at=[0, 1, 1], focus=2), hz=240), name="W", kind="simulation"))
+        with self.assertRaisesRegex(ValueError, "stands in <scene>"):
+            declared(world(camera(id="cam"), name="W", kind="simulation"))
         with self.assertRaisesRegex(TypeError, "<unit> holds nothing"):
             unit(world(name="W", kind="physical"))
 
