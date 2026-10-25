@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A process chemical states the flow its exhaust class needs (`chemical.exhaustFlow`, m3/h): the `chemicals`
+  check names a chemical that states the class and not its flow (`no-exhaust-flow`).
+
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 
 Added
