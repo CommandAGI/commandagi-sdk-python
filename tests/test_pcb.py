@@ -3,7 +3,7 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.pcb import (arc, board, bus, component, declare_board_file, diffpair, dimension, graphic, group, keepout, kicad, net, netclass,
+from commandagi.design.pcb import (arc, board, bus, component, declare_board_file, diffpair, dimension, graphic, group, keepout, kicad, masks, net, netclass,
                                    objective, pour, stack, text, thermal, trace, via)
 
 
@@ -16,7 +16,7 @@ class BoardTests(unittest.TestCase):
     def test_a_board_declares_the_board_half(self):
         g = declared(
             component(name="R1", footprint="smd-0805", pcb_x=10, pcb_y=10),
-            component(name="R2", footprint="axial-7.62", pcb_x=25, pcb_y=10, pcb_rotation=90, layer="bottom", ref_at=[0, -2.5], value_at=[0, 2.5]),
+            component(name="R2", footprint="axial-7.62", pcb_x=25, pcb_y=10, pcb_rotation=90, layer="bottom", ref_at=[0, -2.5], value_at=[0, 2.5], ref_rot=90),
             component(name="V1", footprint="smd-0805"),
             trace(layer="F.Cu", width=0.2, points=[[11, 10], [18, 14], [24, 10]], from_=".R1 > .pin2", to=".R2 > .1"),
             trace(layer="B.Cu", width=0.25, points=[[18, 14], [18, 20]], from_=".VIA1"),
@@ -31,6 +31,7 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["fp_R2"]["inputs"]["placement"], {"x": 25, "y": 10, "rot": 90, "side": "bottom"})
         self.assertEqual(g["nodes"]["fp_R2"]["inputs"]["refAt"], [0, -2.5])
         self.assertEqual(g["nodes"]["fp_R2"]["inputs"]["valueAt"], [0, 2.5])
+        self.assertEqual(g["nodes"]["fp_R2"]["inputs"]["refRot"], 90, "the reference text is turned a quarter where it sits")
         self.assertNotIn("placement", g["nodes"]["fp_V1"]["inputs"])
         self.assertEqual(g["nodes"]["cu_1"]["inputs"], {
             "kind": "run", "points": [{"x": 11, "y": 10, "id": "start"}, {"x": 18, "y": 14, "id": "p1"}, {"x": 24, "y": 10, "id": "end"}],
@@ -101,6 +102,25 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["V1"]["inputs"]["pads"], [{"ref": "C1", "number": "2"}])
         self.assertEqual(g["nodes"]["cu_1"]["inputs"]["terminals"], [{"point": 0, "via": "V1"}])
 
+    def test_an_ic_mask_layout_is_declared_by_its_polygons_units_and_library(self):
+        polygons = [{"layer": 1, "datatype": 0, "points": [[0, 0], [4, 0], [4, 2], [0, 2]]},
+                    {"layer": 2, "datatype": 1, "points": [[1, 1], [3, 1], [2, 1.5]]}]
+        g = declared(masks(polygons=polygons, unit_um_per_db=0.001, lib_name="Inverter"), width=10, height=10)
+        self.assertEqual(g["nodes"]["masks"]["inputs"], {"polygons": polygons, "unitUmPerDb": 0.001, "libName": "Inverter"})
+        self.assertEqual(g["nodes"]["masks"]["label"], "Inverter")
+        # A die is its layout alone: with no board fact the file declares the layout and no board.
+        die = declared(masks(polygons=polygons, unit_um_per_db=0.001))
+        self.assertNotIn("board", die["nodes"])
+        self.assertEqual(die["nodes"]["masks"]["label"], "Masks")
+        with self.assertRaisesRegex(ValueError, "<masks> needs polygons"):
+            declared(masks(unit_um_per_db=0.001))
+        with self.assertRaisesRegex(ValueError, "polygons is the mask layout's polygons"):
+            declared(masks(polygons=[{"layer": 1, "datatype": 0, "points": [[0, 0], [1, 1]]}], unit_um_per_db=0.001))
+        with self.assertRaisesRegex(ValueError, "unitUmPerDb is more than 0"):
+            declared(masks(polygons=polygons, unit_um_per_db=0))
+        with self.assertRaisesRegex(ValueError, "<masks> needs unitUmPerDb"):
+            declared(masks(polygons=polygons))
+
     def test_refusals(self):
         with self.assertRaisesRegex(ValueError, "footprint is one of smd-0805"):
             declared(component(name="R1", footprint="0603"))
@@ -110,6 +130,8 @@ class BoardTests(unittest.TestCase):
             declared(component(name="R1", footprint="smd-0805", pcb_x=3))
         with self.assertRaisesRegex(ValueError, "valueAt needs pcbX and pcbY"):
             declared(component(name="R1", footprint="smd-0805", value_at=[0, 1]))
+        with self.assertRaisesRegex(ValueError, "refRot needs pcbX and pcbY"):
+            declared(component(name="R1", footprint="smd-0805", ref_rot=90))
         with self.assertRaisesRegex(ValueError, "a list of 3 \\[x, y\\]"):
             declared(arc(layer="F.Cu", width=0.2, points=[[0, 0], [1, 0]]))
         with self.assertRaisesRegex(ValueError, "no component or trace R9"):
