@@ -8,8 +8,8 @@ import unittest
 from commandagi.design import run_module
 from commandagi.design.element import declarer_of
 from commandagi.design import firmware as fw
-from commandagi.design.ontology import (body, camera, channel, dashboard, dateRange, device, geoproject, node, opgraph, pane, region,
-                                        scene, split, unit, wire, world)
+from commandagi.design.ontology import (body, camera, channel, dashboard, dateRange, device, geoproject, group, node, opgraph, pane,
+                                        region, scene, split, unit, wire, world)
 
 
 def declared(root):
@@ -39,6 +39,19 @@ class OntologyTests(unittest.TestCase):
             declared(world(unit(uid="a", name="a", device="d", speed=3), name="W", kind="physical"))
         with self.assertRaisesRegex(TypeError, "<unit> holds nothing"):
             unit(world(name="W", kind="physical"))
+        # A group is what a unit stands in or on: a shelf and its level, the level in the shelf, the unit naming its level.
+        shelved = declared(world(group(uid="shelf", name="machine shelf", size_mm=[2440, 760, 2600], position=[0, 3600, 0], rotation=0),
+                                 group(uid="shelf-1", name="level 1", group="shelf", size_mm=[2440, 760, 650], position=[0, 3600, 150], rotation=0),
+                                 unit(uid="cnc-01", name="router", device="../../devices/cnc/definition.tsx", group="shelf-1",
+                                      position=[-900, 3600, 150], rotation=0),
+                                 name="Shop", kind="physical"))["document"]["document"]
+        self.assertEqual(shelved["groups"], [
+            {"uid": "shelf", "name": "machine shelf", "size_mm": [2440, 760, 2600], "position": [0, 3600, 0], "rotation": 0},
+            {"uid": "shelf-1", "name": "level 1", "group": "shelf", "size_mm": [2440, 760, 650], "position": [0, 3600, 150], "rotation": 0},
+        ])
+        self.assertEqual(shelved["units"][0]["group"], "shelf-1")
+        with self.assertRaisesRegex(ValueError, "device is not read"):
+            declared(world(group(uid="g", name="g", device="d"), name="W", kind="physical"))
 
     def test_a_definition_names_its_firmware_and_a_firmware_declares_its_channels(self):
         d = declared(device(channel(id="cam", dir="out", medium="video", format="video"), name="Cam", firmware="../../firmware/cam", revision="rev-a"))["document"]

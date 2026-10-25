@@ -47,7 +47,7 @@ from .element import declares, define
 _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the ontology's files: what it holds (the TypeScript SDK's ``SIGNATURES``; absent: a leaf).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
-    "world": _HOLDS, "space": {"snake": ["origin_mm", "size_mm"]}, "unit": {"snake": ["size_mm"]}, "view": {}, "scene": _HOLDS, "body": {},
+    "world": _HOLDS, "space": {"snake": ["origin_mm", "size_mm"]}, "group": {"snake": ["size_mm"]}, "unit": {"snake": ["size_mm"]}, "view": {}, "scene": _HOLDS, "body": {},
     "device": {**_HOLDS, "snake": ["model_number", "product_url", "price_usd", "record_hz", "spec_check", "dimensions_mm"]}, "channel": {},
     "dashboard": _HOLDS, "param": {}, "split": _HOLDS, "pane": {}, "region": {},
     "geoproject": _HOLDS, "dateRange": {}, "camera": {}, "reference": {},
@@ -57,7 +57,11 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 NODE_GRAPH_ID = "nodegraph"
 #: The fields of a unit in a world's file (packages/domain/world/worlds.js). ``serial``: the serial number of the one physical
 #: thing a unit is; ``revision``: its hardware revision (a firmware release says which it supports).
-UNIT_FIELDS = ["uid", "name", "device", "serial", "revision", "domain", "size_mm", "support", "channels", "manualUrl", "position", "rotation", "tilt_deg", "release"]
+UNIT_FIELDS = ["uid", "name", "device", "serial", "revision", "domain", "group", "size_mm", "support", "channels", "manualUrl", "position", "rotation", "tilt_deg", "release"]
+#: The fields of a group in a world's file: what one unit stands in (a shelf level, a bench, a rack, a desk). ``group``
+#: nests a group in another; ``size_mm`` with ``position`` and ``rotation`` is the box the world view draws. A group has no
+#: device and no channel: nothing runs or is granted on it.
+GROUP_FIELDS = ["uid", "name", "description", "group", "size_mm", "position", "rotation"]
 #: ``links``: the parts of the world's model that a run moves (packages/domain/world/pose.js modelPose), a definition's
 #: link grammar with the unit named in each joint and emit; ``node`` is the id of the model's feature that makes the part.
 WORLD_FIELDS = ["name", "kind", "description", "from", "model", "links"]
@@ -67,7 +71,7 @@ _NODE_ATTRS = ["id", "type", "label", "x", "y", "disabled", "output", "meta", "i
 _DASHBOARD_STRUCTURE = ["format", "layout", "panes", "params", "regions"]
 _ATTRIBUTE_NAME = re.compile(r"^[A-Za-z_$][\w$-]*$")
 
-__all__ = ["SIGNATURES", "NODE_GRAPH_ID", "UNIT_FIELDS", "ONTOLOGY", "port_is_attribute", *define(globals(), "ontology", SIGNATURES)]
+__all__ = ["SIGNATURES", "NODE_GRAPH_ID", "UNIT_FIELDS", "GROUP_FIELDS", "ONTOLOGY", "port_is_attribute", *define(globals(), "ontology", SIGNATURES)]
 
 
 def _own(o: Dict[str, Any], keys: Sequence[str]) -> Dict[str, Any]:
@@ -97,6 +101,9 @@ def _world(t: DocTree) -> Dict[str, Any]:
     out: Dict[str, Any] = _own(t["attrs"], WORLD_FIELDS)
     if space_ is not None:
         out["space"] = _attrs(space_)
+    groups = [_attrs(g) for g in _kids(t, "group")]
+    if groups:
+        out["groups"] = groups
     out["units"] = [_attrs(u) for u in _kids(t, "unit")]
     if view_ is not None:
         out["view"] = _attrs(view_)
@@ -109,6 +116,7 @@ def _world(t: DocTree) -> Dict[str, Any]:
 _WORLD = Vocabulary("world", "a world", "world", {
     "world": {"parents": [], "required": ["name", "kind"], "attrs": WORLD_FIELDS},
     "space": {"parents": ["world"], "single": True, "required": ["origin_mm", "size_mm"], "attrs": ["origin_mm", "size_mm"]},
+    "group": {"parents": ["world"], "key": "uid", "required": ["uid", "name"], "attrs": GROUP_FIELDS},
     "unit": {"parents": ["world"], "key": "uid", "required": ["uid", "name", "device"], "attrs": UNIT_FIELDS},
     "view": {"parents": ["world"], "single": True},
     "scene": {"parents": ["world"], "single": True},
