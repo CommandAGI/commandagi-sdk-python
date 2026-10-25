@@ -58,7 +58,10 @@ PIN_FIELDS = ["number", "signal", "dir", "voltage", "gpio", "at", "required", "d
 HOLE_FIELDS = ["id", "at", "diameter", "description"]
 MESSAGE_FIELDS = ["id", "text", "code", "define", "dir", "description"]
 PARAM_FIELDS = ["id", "value", "unit", "description"]
-SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "defines", "pins", "params", "files", "description"]
+SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "rotation", "face", "defines", "pins", "params", "files",
+               "description"]
+#: The faces a side states: ``front`` (as drawn), or ``back`` (read from the mating part: the frame mirrored through its y axis).
+SIDE_FACES = ["front", "back"]
 
 _CHILDREN = {"holds": "children"}
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
@@ -213,6 +216,9 @@ def _interface(t: DocTree) -> Dict[str, Any]:
                    f"{at}: kind must be one of {', '.join(SIDE_KINDS)} (got {json.dumps(a.get('kind'))})")
             _check("origin" not in a or _pair(a["origin"], 2) or _pair(a["origin"], 3),
                    f"{at}: origin is where the interface's frame sits in this side's frame, [x, y] or [x, y, z] mm")
+            _check("rotation" not in a or _num(a["rotation"]), f"{at}: rotation is degrees counter-clockwise")
+            _check("face" not in a or a["face"] in SIDE_FACES,
+                   f"{at}: face must be one of {', '.join(SIDE_FACES)} (got {json.dumps(a.get('face'))})")
             _check("parts" not in a or (isinstance(a["parts"], list) and all(isinstance(p, str) for p in a["parts"])),
                    f"{at}: parts is a list of part references, whose pins are the interface's in turn")
             _check("channel" not in a or isinstance(a["channel"], str),
