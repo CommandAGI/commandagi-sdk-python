@@ -64,6 +64,8 @@ class EvalTests(unittest.TestCase):
         self.assertEqual(d, {"format": "metric", "sources": {}, "document": METRIC})
         self.assertEqual(EVALS["metric"].from_tree(EVALS["metric"].to_tree(METRIC)), METRIC, "both ways")
         self.assertEqual(declare_document(metric(slug="m", probe={"kind": "event"}, aggregation="rate", pass_={"min": 1}))["document"]["pass"], {"min": 1})
+        probe = {"kind": "alignment", "reference": {"task": "../Tasks/Dock.task.tsx"}}
+        self.assertEqual(declare_document(metric(slug="m", probe=probe, aggregation="rate"))["document"]["probe"], probe, "the refs read")
 
     def test_what_does_not_read_is_refused_with_why(self):
         def kase(**attrs):
@@ -87,6 +89,13 @@ class EvalTests(unittest.TestCase):
                                                                                  "weights": {"a.metric.tsx": "2"}})),
             "probe is what to measure": lambda: declare_document(metric(slug="m", probe={}, aggregation="rate")),
             "<metric> needs probe": lambda: declare_document(metric(slug="m", aggregation="rate")),
+            # A probe names a task or another metric by ref from the metric file, never by node id (as the reader refuses it).
+            r"probe names its task file by ref \(task\), not by node id \(taskId\)": lambda: declare_document(
+                metric(slug="m", probe={"kind": "task", "taskId": "m1"}, aggregation="rate")),
+            r"probe names its task file by ref \(reference\.task\), not by node id": lambda: declare_document(
+                metric(slug="m", probe={"kind": "alignment", "reference": {"taskId": "m1"}}, aggregation="rate")),
+            r"probe names each input's metric file by ref \(metric\), not by node id \(metricId\)": lambda: declare_document(
+                metric(slug="m", probe={"kind": "composite", "inputs": [{"metricId": "m1", "weight": 2}]}, aggregation="rate")),
         }
         for why, declare in bad.items():
             with self.assertRaisesRegex(ValueError, why, msg=why):

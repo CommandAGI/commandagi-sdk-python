@@ -75,6 +75,12 @@ Added
   (`top`, or `bottom` for the side seen from the mating board, whose frame is mirrored): a 3D deck turned a
   quarter turn, or read from underneath, matches the same hole pattern.
 
+Changed (a document written for 0.6.8 may need an edit)
+
+- `commandagi.design.evals`: a metric's `probe` names a task file (`{"kind": "task", "task": "<ref>"}`, an
+  `alignment`'s `reference.task`) or another metric file (a `composite` input's `metric`) by ref; a probe that names
+  one by node id (`taskId`, `metricId`) is refused with why, as the platform's routes and reader refuse it.
+
 Fixed
 
 - 3D: a placed file's `<joint>`s come with it, as `<placement id>/<joint id>` at any depth (`dock_a/palletLift`,
