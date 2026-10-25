@@ -18,6 +18,12 @@ Added
 - An agent declares its `supervisor` (`<agent supervisor="agent:lead">`, `agent:<id>` or `person:<id>`): a thread's
   membership takes it at join, and a person's supervise of that member overrides it.
 
+Changed (a document written for 0.6.8 may need an edit)
+
+- `commandagi.design.evals`: a metric's `probe` names a task file (`{"kind": "task", "task": "<ref>"}`, an
+  `alignment`'s `reference.task`) or another metric file (a `composite` input's `metric`) by ref; a probe that names
+  one by node id (`taskId`, `metricId`) is refused with why, as the platform's routes and reader refuse it.
+
 Fixed
 
 - 3D: a placed file's `<joint>`s come with it, as `<placement id>/<joint id>` at any depth (`dock_a/palletLift`,

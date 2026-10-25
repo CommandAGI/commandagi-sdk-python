@@ -22,7 +22,10 @@ References are refs: a path relative to the eval file's folder, or an absolute a
 files the eval reads; a case's ``task`` names the ``.task.tsx`` whose title and text the agent is handed. A case with no
 task file says its ``instruction`` itself; a case says one of the two. ``objective`` and ``scoring``'s ``weights`` name
 metric files by ref as well: ``{"kind": "metric", "metric": "<ref>"}``, ``{"kind": "linear", "terms": [{"metric": "<ref>",
-"weight": 2}], "bias": 0}`` or a ``function``; the weights are keyed by ref. ``frozen`` is the digest an eval is frozen at
+"weight": 2}], "bias": 0}`` or a ``function``; the weights are keyed by ref. A metric's ``probe`` names a task file
+(``{"kind": "task", "task": "<ref>"}``, an ``alignment``'s ``reference.task``) or another metric file (a ``composite``
+input's ``metric``) by ref too; a probe that names one by node id (``taskId``, ``metricId``) is refused, as the platform's
+routes and reader refuse it. ``frozen`` is the digest an eval is frozen at
 (``sha256:<hex>``). Nothing adds a default: what the file does not say, the document does not have. A run gives back
 ``{"format", "document", "sources"}`` beside an empty graph; ``sources`` names each case's call by its slug
 (``case#undock-and-lap``).
@@ -193,6 +196,22 @@ def _eval(t: DocTree) -> Dict[str, Any]:
     return {**_fields(a, EVAL_FIELDS), "cases": cases}
 
 
+def _probe_refs(t: DocTree) -> None:
+    """A probe names a task or another metric by ref from the metric file (``task``, ``reference.task``, an input's
+    ``metric``), never by node id."""
+    p = t["attrs"].get("probe")
+    if not isinstance(p, dict):
+        return
+    if "taskId" in p:
+        raise ValueError(f"{_where(t)} probe names its task file by ref (task), not by node id (taskId)")
+    reference = p.get("reference")
+    if isinstance(reference, dict) and "taskId" in reference:
+        raise ValueError(f"{_where(t)} probe names its task file by ref (reference.task), not by node id (taskId)")
+    inputs = p.get("inputs")
+    if isinstance(inputs, list) and any(isinstance(i, dict) and "metricId" in i for i in inputs):
+        raise ValueError(f"{_where(t)} probe names each input's metric file by ref (metric), not by node id (metricId)")
+
+
 def _metric(t: DocTree) -> Dict[str, Any]:
     a = t["attrs"]
     for k in ("slug", "description", "aggregation", "role", "direction", "unit", "threadId"):
@@ -201,6 +220,7 @@ def _metric(t: DocTree) -> Dict[str, Any]:
         _object(t, k)
     if not isinstance(a.get("probe"), dict) or not isinstance(a["probe"].get("kind"), str):
         raise ValueError(f'{_where(t)} probe is what to measure ({{ kind: "event", eventKind: "telemetry" }}), not {_said(a, "probe")}')
+    _probe_refs(t)
     _numeric(t, "target")
     return _fields(a, METRIC_FIELDS)
 
