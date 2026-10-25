@@ -9,6 +9,7 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 Added
 
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
+- A world's furniture is a `<group>`: a shelf, a bench, a rack or a desk a unit or another group stands in or on (`<group uid name size_mm position rotation group?>`), named by a unit's `group`. A group is not a unit: it takes no device, grant, run or driver.
 
 Added
 

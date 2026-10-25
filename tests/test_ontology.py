@@ -8,7 +8,7 @@ import unittest
 from commandagi.design import run_module
 from commandagi.design.element import declarer_of
 from commandagi.design import firmware as fw
-from commandagi.design.ontology import (body, camera, channel, dashboard, dateRange, device, geoproject, node, opgraph, pane, region,
+from commandagi.design.ontology import (body, camera, channel, dashboard, dateRange, device, geoproject, group, node, opgraph, pane, region,
                                         scene, split, unit, wire, world)
 
 
@@ -39,6 +39,23 @@ class OntologyTests(unittest.TestCase):
             declared(world(unit(uid="a", name="a", device="d", speed=3), name="W", kind="physical"))
         with self.assertRaisesRegex(TypeError, "<unit> holds nothing"):
             unit(world(name="W", kind="physical"))
+
+    def test_a_world_s_furniture_is_its_groups(self):
+        d = declared(world(group(uid="shelf", name="machine shelf", size_mm=[2440, 760, 2600], position=[0, 3600, 0], rotation=0),
+                           group(uid="level-2", name="shelf level 2", size_mm=[2440, 760, 650], position=[0, 3600, 800], rotation=0, group="shelf"),
+                           unit(uid="printer-01", name="printer", device="../../devices/ender/definition.tsx", position=[-900, 3600, 800], rotation=0, group="level-2"),
+                           name="Shop", kind="physical"))["document"]["document"]
+        self.assertEqual(d["groups"], [
+            {"uid": "shelf", "name": "machine shelf", "size_mm": [2440, 760, 2600], "position": [0, 3600, 0], "rotation": 0},
+            {"uid": "level-2", "name": "shelf level 2", "size_mm": [2440, 760, 650], "position": [0, 3600, 800], "rotation": 0, "group": "shelf"},
+        ])
+        self.assertEqual(d["units"], [{"uid": "printer-01", "name": "printer", "device": "../../devices/ender/definition.tsx", "position": [-900, 3600, 800], "rotation": 0, "group": "level-2"}])
+        with self.assertRaisesRegex(ValueError, 'stands in a group "nowhere" that is not in <world>'):
+            declared(world(group(uid="a", name="a", size_mm=[1, 1, 1], position=[0, 0, 0], rotation=0, group="nowhere"), name="W", kind="physical"))
+        with self.assertRaisesRegex(ValueError, 'a <unit> and a <group> in <world> share the uid "a"'):
+            declared(world(unit(uid="a", name="a", device="d"), group(uid="a", name="a", size_mm=[1, 1, 1], position=[0, 0, 0], rotation=0), name="W", kind="physical"))
+        with self.assertRaisesRegex(ValueError, "device is not read"):
+            declared(world(group(uid="a", name="a", size_mm=[1, 1, 1], position=[0, 0, 0], rotation=0, device="d"), name="W", kind="physical"))
 
     def test_a_definition_names_its_firmware_and_a_firmware_declares_its_channels(self):
         d = declared(device(channel(id="cam", dir="out", medium="video", format="video"), name="Cam", firmware="../../firmware/cam", revision="rev-a"))["document"]
