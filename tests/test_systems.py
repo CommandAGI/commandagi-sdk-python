@@ -50,7 +50,7 @@ class SystemsTests(unittest.TestCase):
             (load(id="l", part="U1", rail="r", mode="m", current=1, peak_current="2 A"), "peakCurrent is a number"),
             (load(id="l", part="U1", rail="r", mode="m", power=1, duty=0), "duty is the share of time the load draws"),
             (budget(id="b", quantity="Exhaust flow", limit=1, unit="m3/h"),
-             r"<budget id=\"b\">: quantity must be one of mass, power, cost, thermal, or a quantity's name"),
+             r"<budget id=\"b\">: quantity must be one of mass, power, cost, thermal, rf-link, or a quantity's name"),
             (budget(id="b", quantity="exhaust-flow", limit=600), r'<budget id="b">: a quantity of exhaust-flow states its unit'),
             (contribution(id="c", quantity="exhaust-flow", part="P", value=35, source="datasheet"),
              r'<contribution id="c">: a quantity of exhaust-flow states its unit'),
@@ -68,6 +68,15 @@ class SystemsTests(unittest.TestCase):
         for el, message in cases:
             with self.assertRaisesRegex(ValueError, message):
                 declare_document(system(el))
+        # A link budget is a margin in dB: two power levels in dBm and the gains and losses in dB between them.
+        link = declare_document(system(
+            contribution(id="tx", quantity="rf-link", part="U4", value=23, unit="dBm", source="modem datasheet"),
+            contribution(id="antenna", quantity="rf-link", part="A1", value=2, unit="dB", source="antenna datasheet"),
+            contribution(id="path", quantity="rf-link", part="the room", value=-70, unit="dB", source="estimate: free space at 30 m"),
+            contribution(id="rx", quantity="rf-link", part="the network", value=-100, unit="dBm", source="estimate"),
+            budget(id="link", quantity="rf-link", limit=6, unit="dB")))
+        self.assertEqual(link["format"], "system")
+        self.assertEqual(link["document"]["budgets"], [{"id": "link", "quantity": "rf-link", "limit": 6, "unit": "dB"}])
 
     def test_an_interface(self):
         d = declare_document(interface(

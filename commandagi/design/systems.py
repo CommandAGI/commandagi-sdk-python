@@ -26,7 +26,9 @@ The rule of the ontology's files: a record is an element and its fields are the 
 keywords: ``verified_by`` is ``verifiedBy``). A requirement is named by a ref, never by an id alone
 (``Rover.req.py#mass``). Nothing adds a default. A ``bom`` gives masses; a cost budget reads the logistics roll-up of
 the design it names (``design``: a 3D document, a schematic or a board with a cost check), the one source of cost, so
-no contribution is a cost. The checks are the host's (``commandagi check``, ``commandagi trace``).
+no contribution is a cost. A link budget (``quantity="rf-link"``) is its margin in dB: two contributions in dBm (the
+transmitter's power and the receiver's sensitivity) and the gains (positive) and losses (negative) in dB between them.
+The checks are the host's (``commandagi check``, ``commandagi trace``).
 """
 from __future__ import annotations
 
@@ -40,7 +42,7 @@ from .element import define
 
 VERIFICATION_METHODS = ["test", "analysis", "inspection", "demonstration"]
 #: What a budget sums from the design's own records; any other quantity is declared by its contributions, with a unit.
-BUDGET_QUANTITIES = ["mass", "power", "cost", "thermal"]
+BUDGET_QUANTITIES = ["mass", "power", "cost", "thermal", "rf-link"]
 #: A declared quantity's name ("exhaust-flow", "floor-area").
 DECLARED_QUANTITY = re.compile(r"[a-z][a-z0-9-]*")
 SYSTEM_CHECK_KINDS = ["interface", "trace"]

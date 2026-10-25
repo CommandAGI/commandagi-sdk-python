@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- An RF link budget: `<budget id="link" quantity="rf-link" limit={6} unit="dB" />` with two contributions in `dBm`
+  (the transmitter's power and the receiver's sensitivity) and the gains (positive) and losses (negative) in `dB`
+  between them. Its total is the margin the link keeps, so it passes over its limit and fails under it.
 - An interface states the channel both ends open (`<channel format="state" transport="serial" />`) and a
   definition or a unit side is held to its `dir`, `medium`, `format`, `dialect` and `transport`: a field they do not
   share is named, and a field the side does not state is unknown, never a pass.
