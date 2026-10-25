@@ -3,7 +3,7 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.pcb import (arc, board, bus, component, declare_board_file, diffpair, dimension, graphic, group, keepout, kicad, net, netclass,
+from commandagi.design.pcb import (arc, board, bus, component, declare_board_file, diffpair, dimension, graphic, group, keepout, kicad, masks, net, netclass,
                                    objective, pour, stack, text, thermal, trace, via)
 
 
@@ -100,6 +100,25 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["A1"]["inputs"]["terminals"], [{"point": 2, "ref": "C1", "number": "1"}])
         self.assertEqual(g["nodes"]["V1"]["inputs"]["pads"], [{"ref": "C1", "number": "2"}])
         self.assertEqual(g["nodes"]["cu_1"]["inputs"]["terminals"], [{"point": 0, "via": "V1"}])
+
+    def test_an_ic_mask_layout_is_declared_by_its_polygons_units_and_library(self):
+        polygons = [{"layer": 1, "datatype": 0, "points": [[0, 0], [4, 0], [4, 2], [0, 2]]},
+                    {"layer": 2, "datatype": 1, "points": [[1, 1], [3, 1], [2, 1.5]]}]
+        g = declared(masks(polygons=polygons, unit_um_per_db=0.001, lib_name="Inverter"), width=10, height=10)
+        self.assertEqual(g["nodes"]["masks"]["inputs"], {"polygons": polygons, "unitUmPerDb": 0.001, "libName": "Inverter"})
+        self.assertEqual(g["nodes"]["masks"]["label"], "Inverter")
+        # A die is its layout alone: with no board fact the file declares the layout and no board.
+        die = declared(masks(polygons=polygons, unit_um_per_db=0.001))
+        self.assertNotIn("board", die["nodes"])
+        self.assertEqual(die["nodes"]["masks"]["label"], "Masks")
+        with self.assertRaisesRegex(ValueError, "<masks> needs polygons"):
+            declared(masks(unit_um_per_db=0.001))
+        with self.assertRaisesRegex(ValueError, "polygons is the mask layout's polygons"):
+            declared(masks(polygons=[{"layer": 1, "datatype": 0, "points": [[0, 0], [1, 1]]}], unit_um_per_db=0.001))
+        with self.assertRaisesRegex(ValueError, "unitUmPerDb is more than 0"):
+            declared(masks(polygons=polygons, unit_um_per_db=0))
+        with self.assertRaisesRegex(ValueError, "<masks> needs unitUmPerDb"):
+            declared(masks(polygons=polygons))
 
     def test_refusals(self):
         with self.assertRaisesRegex(ValueError, "footprint is one of smd-0805"):
