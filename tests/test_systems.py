@@ -68,6 +68,8 @@ class SystemsTests(unittest.TestCase):
         for el, message in cases:
             with self.assertRaisesRegex(ValueError, message):
                 declare_document(system(el))
+        # A load that names a circuit part states no current or power: the check reads the draw the part states.
+        declare_document(system(mode(id="m"), rail(id="r", voltage=3.3), load(id="l", part="board.sch.tsx#U1", rail="r", mode="m")))
         # A link budget is a margin in dB: two power levels in dBm and the gains and losses in dB between them.
         link = declare_document(system(
             contribution(id="tx", quantity="rf-link", part="U4", value=23, unit="dBm", source="modem datasheet"),

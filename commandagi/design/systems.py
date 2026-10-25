@@ -156,7 +156,8 @@ def _system(t: DocTree) -> Dict[str, Any]:
             e = a.get("efficiency")
             _check(_num(e) and 0 < e <= 1, f"{at}: efficiency is a number in (0, 1] (0.88 for 88 %)")
         if tag == "load":
-            _check("current" in a or "power" in a, f"{at}: a load states its current (A) or its power (W)")
+            _check("current" in a or "power" in a or ("part" in a and "#" in str(a["part"])),
+                   f'{at}: a load states its current (A) or its power (W), or names a circuit part whose draw it reads (part="board.sch.tsx#U1")')
             for k in ("current", "power", "voltage", "peakCurrent", "peakPower", "inrushCurrent"):
                 _check(k not in a or _num(a[k]), f"{at}: {k} is a number")
             _check("duty" not in a or (_num(a["duty"]) and 0 < a["duty"] <= 1),

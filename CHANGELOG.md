@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A part states its steady `draw`: `component(draw="120 mA", …)` in a circuit, or `draw="1.2 W"` on a schematic's part
+  (the number with the unit it measures). A system's `<load>` may name a circuit part (`part="ee/sensor.circuit.ts#U1"`)
+  and state no current or power, and the check reads the part's draw.
 - An RF link budget: `<budget id="link" quantity="rf-link" limit={6} unit="dB" />` with two contributions in `dBm`
   (the transmitter's power and the receiver's sensitivity) and the gains (positive) and losses (negative) in `dB`
   between them. Its total is the margin the link keeps, so it passes over its limit and fails under it.
