@@ -5,7 +5,7 @@ call::
     from commandagi.design.agents import agent, harness
 
     # cloud://global/agents/harnesses/claude-code/harness.py — a CLI agent program
-    result = harness(kind="cli", label="Claude Code", provider="anthropic", cli="claude", runs=["host", "vm"])
+    result = harness(kind="cli", label="Claude Code", provider="anthropic", cli="claude", runs=["host", "cloud"])
 
     # cloud://global/agents/harnesses/openai-realtime/harness.py — a model that converses live
     result = harness(kind="api", label="OpenAI Realtime API", provider="openai", runs=["worker", "host"], realtime={
@@ -40,8 +40,9 @@ from .element import define
 
 #: What runs an agent: a CLI program, an API provider's loop, or a program with no model.
 HARNESS_KINDS = ["cli", "api", "program"]
-#: Where a harness runs: this machine's host, a cloud computer (the thread's VM kernel), or the api worker's loop.
-HARNESS_RUNTIMES = ["host", "vm", "worker"]
+#: Where a harness runs: this machine's host, a computer in the cloud (a `scripted` program on the thread's computer),
+#: a container in the cloud (a CLI's turn per thread member), or the api worker's loop.
+HARNESS_RUNTIMES = ["host", "vm", "cloud", "worker"]
 #: What a single-task model does in one turn.
 HARNESS_TASKS = ["classify", "decide", "extract", "summarize", "act"]
 #: What a realtime harness's model takes live, and gives live (docs/realtime-agents.md).

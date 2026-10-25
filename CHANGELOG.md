@@ -6,6 +6,12 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 ## Unreleased
 
+Changed
+
+- A harness says `cloud` for a container in the cloud (`runs={["host", "cloud"]}` on a CLI): a CLI's turns run in a
+  container per thread member (`docs/agent-clis.md` § a turn in the cloud). `vm` stays for a computer in the cloud (a
+  `scripted` program on the thread's computer).
+
 Added
 
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).

@@ -18,9 +18,9 @@ def api(realtime, **more):
 
 class AgentTests(unittest.TestCase):
     def test_a_harness_of_each_kind(self):
-        cli = declare_document(harness(kind="cli", label="Claude Code", provider="anthropic", cli="claude", runs=["host", "vm"]))
+        cli = declare_document(harness(kind="cli", label="Claude Code", provider="anthropic", cli="claude", runs=["host", "cloud"]))
         self.assertEqual(cli, {"format": "harness", "sources": {}, "document": {
-            "kind": "cli", "label": "Claude Code", "provider": "anthropic", "cli": "claude", "runs": ["host", "vm"]}})
+            "kind": "cli", "label": "Claude Code", "provider": "anthropic", "cli": "claude", "runs": ["host", "cloud"]}})
         program = declare_document(harness(kind="program", label="Symbolic Planner 001", family="symbolic", experimental=True, runs=["host"]))
         self.assertEqual(program["document"], {"kind": "program", "label": "Symbolic Planner 001", "runs": ["host"], "family": "symbolic",
                                                "experimental": True})
@@ -71,7 +71,7 @@ class AgentTests(unittest.TestCase):
             (lambda: harness(kind="cli", label="X"), "names the program it starts"),
             (lambda: harness(kind="api", label="X"), "names its provider"),
             (lambda: harness(kind="program", label="X", cli="x"), 'cli is for kind="cli" only'),
-            (lambda: harness(kind="api", label="X", provider="p", runs=["cloud"]), "runs is a list of"),
+            (lambda: harness(kind="api", label="X", provider="p", runs=["laptop"]), "runs is a list of"),
             (lambda: harness(kind="robot", label="X"), "kind is"),
             (lambda: harness(kind="program", label="X", experimental="yes"), "experimental is True or False"),
             (lambda: harness(kind="api", label="X", provider="p", tasks=["chat"]), "tasks is a list of"),
