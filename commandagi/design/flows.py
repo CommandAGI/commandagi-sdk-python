@@ -117,7 +117,7 @@ def _bound(value: Any, at: str, inputs: set) -> None:
 #: What an action step must state, per kind.
 _ACTION_NEEDS = {
     "message": ["channel", "instruction"], "command": ["channel", "command"], "computer": ["channel", "instruction"],
-    "robot": ["channel", "command"], "chain": ["ref"], "workflow": ["ref"], "decision": ["instruction"],
+    "robot": ["channel", "command"], "chain": ["ref", "channel"], "workflow": ["ref"], "decision": ["instruction"],
     "agent": ["ref", "instruction"],
 }
 
