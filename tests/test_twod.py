@@ -160,6 +160,21 @@ class StackTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "holds one layer"):
             from_twod(photo(exposure(mask())))
 
+    def test_a_mask_that_names_a_layer_of_the_stack_is_wired_to_it(self):
+        g = from_twod(photo(
+            exposure(mask(of="Brush", enabled=False), name="Mood", ev=-0.5),
+            fill(name="Brush"),
+        ))
+        self.assertEqual(g["nodes"]["photo.adjust"]["inputs"]["mask"], wire("photo.fill"))
+        self.assertEqual(g["nodes"]["photo.adjust"]["inputs"]["maskEnabled"], False)
+        self.assertNotIn("mask", g["nodes"]["photo.fill"]["inputs"])
+        with self.assertRaisesRegex(ValueError, "no layer is named that"):
+            from_twod(photo(exposure(mask(of="Gone"))))
+        with self.assertRaisesRegex(ValueError, "2 layers are named that"):
+            from_twod(photo(exposure(mask(of="B")), fill(name="B"), fill(name="B")))
+        with self.assertRaisesRegex(ValueError, "holds no layer"):
+            from_twod(photo(exposure(mask(fill(color=[1, 1, 1, 1]), of="B")), fill(name="B")))
+
     def test_a_masked_node_names_its_masks_call_in_meta_sources(self):
         out = run_module(textwrap.dedent("""\
             from commandagi.design.twod import exposure, gradient, mask, photo
