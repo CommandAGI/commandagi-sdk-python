@@ -9,6 +9,7 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 Added
 
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
+- `<component refRot={90}>`: how far a part's reference text is turned where it sits, in degrees, in the footprint's own frame (the placer turns a text it has no upright place for).
 
 Added
 
