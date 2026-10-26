@@ -10,7 +10,7 @@ from commandagi.design.monitors import derive, discover, follows, monitor, monit
 
 def corporation(cik, ticker, name):
     return monitor(source(id="filings", adapter="sec-filings", params={"cik": cik}, every="15m"),
-                   follows(monitor="../../central-banks/fed", match="fomc.*"),
+                   follows(monitor="../../central-banks/fed", when={"class": "fomc.*"}),
                    wake(match="sec.filing.8-k*", prompt="Say what the report changes."),
                    title=f"{name} ({ticker})", class_="corporation", about=f"cik:{cik}", same_as=[f"ticker:{ticker}"])
 
@@ -22,11 +22,11 @@ class MonitorTests(unittest.TestCase):
         self.assertEqual(d["document"], {
             "title": "NVIDIA (NVDA)", "class": "corporation", "about": "cik:0001045810", "sameAs": ["ticker:NVDA"],
             "sources": [{"id": "filings", "adapter": "sec-filings", "params": {"cik": "0001045810"}, "every": "15m"}],
-            "follows": [{"monitor": "../../central-banks/fed", "match": "fomc.*"}],
+            "follows": [{"monitor": "../../central-banks/fed", "when": {"class": "fomc.*"}}],
             "derives": [],
             "wakes": [{"match": "sec.filing.8-k*", "prompt": "Say what the report changes."}],
             "discovers": []})
-        self.assertEqual(monitor_with_defaults(d["document"])["follows"], [{"monitor": "../../central-banks/fed", "match": "fomc.*", "where": None}])
+        self.assertEqual(monitor_with_defaults(d["document"])["follows"], [{"monitor": "../../central-banks/fed", "when": {"class": "fomc.*"}}])
         with self.assertRaisesRegex(ValueError, "sameAs is a list of subjects"):
             declare_document(monitor(same_as=["NVDA"]))
 
@@ -97,7 +97,7 @@ class MonitorTests(unittest.TestCase):
         """The TypeScript SDK's mirror case: a source names its vantage, a follow filters, a discover writes one folder
         per conversation; the exploit's discover reads three feeds and says when in data."""
         def conversation(conv, title):
-            return monitor(follows(monitor="../", match="message.*", where=f"conversation={conv}"), title=title, class_="conversation")
+            return monitor(follows(monitor="../", when={"class": "message.*", "data.conversation": conv}), title=title, class_="conversation")
         mirror = declare_document(monitor(
             source(id="user-api", adapter="telegram-user", params={"account": "commandagi"}, every="1m", via="host",
                    vantage="../../../infra/vantages/laptop-linux"),
@@ -110,7 +110,7 @@ class MonitorTests(unittest.TestCase):
                                               "props": {"conversation": "conversation", "title": "fromName"}, "name": "fromName", "max": 5}])
         self.assertEqual(full["sources"][0]["vantage"], "../../../infra/vantages/laptop-linux")
         self.assertEqual(declare_document(conversation("4412", "Alice"))["document"]["follows"],
-                         [{"monitor": "../", "match": "message.*", "where": "conversation=4412"}])
+                         [{"monitor": "../", "when": {"class": "message.*", "data.conversation": "4412"}}])
 
         def refuse(**attrs):
             return declare_document(monitor(discover(**{"slug": "conversation", "class_": "../c.tsx#Conversation", **attrs})))
@@ -133,8 +133,8 @@ class MonitorTests(unittest.TestCase):
         for attrs, words in refused:
             with self.subTest(attrs=attrs), self.assertRaisesRegex(ValueError, re.escape(words)):
                 refuse(**attrs)
-        with self.assertRaisesRegex(ValueError, "where is name=value terms"):
-            declare_document(monitor(follows(monitor="../x", where="conversation")))
+        with self.assertRaisesRegex(ValueError, "when: a condition is an object of terms"):
+            declare_document(monitor(follows(monitor="../x", when="conversation")))
 
 
 if __name__ == "__main__":
