@@ -6,7 +6,7 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, blur, bucket, drawing, ellipse, engrave, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, group, image, layer, line, link, mask, move,
+from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, blur, bucket, drawing, ellipse, engrave, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, erase, freeTransform, group, image, layer, line, link, mask, move,
                                     nest, noise, options, painting, part, path, photo, raster, raster_layer, rect, sheet, sharpen, stock, stroke,
                                     subpaths_of)
 
@@ -117,6 +117,8 @@ class StackTests(unittest.TestCase):
                 bucket(x=5, y=6, tolerance=20, contiguous=True, color=[1, 0, 0, 1]),
                 gradientFill(shape="linear", from_=[0, 0], to=[100, 0], stops=[{"at": 0, "color": [0, 0, 0, 1]}, {"at": 1, "color": [1, 1, 1, 1]}]),
                 move(dx=12, dy=-3, selection=[{"wand": [5, 6], "tolerance": 32, "contiguous": False}]),
+                erase(selection=selection),
+                freeTransform(cx=60, cy=40, scale_x=1.5, angle=15),
                 name="Paint",
             ),
             rect(name="Rectangle 1", x=4, y=5, w=30, h=20, fill=[0, 0, 1, 1], stroke=[0, 0, 0, 1], stroke_width=2),
@@ -128,7 +130,11 @@ class StackTests(unittest.TestCase):
         self.assertEqual(n["paint.bucket"]["inputs"], {"name": "Paint", "visible": True, "opacity": 1, "blend": "normal", "x": 5, "y": 6,
                                                        "tolerance": 20, "contiguous": True, "color": [1, 0, 0, 1], "src": wire("paint.stroke")})
         self.assertEqual(n["paint.gradientFill"]["inputs"]["from"], [0, 0])
-        self.assertEqual(n["doc"]["inputs"]["layers.1"], wire("paint.move"))
+        self.assertEqual(n["paint.erase"]["inputs"], {"name": "Paint", "visible": True, "opacity": 1, "blend": "normal", "selection": selection,
+                                                      "src": wire("paint.move")})
+        self.assertEqual(n["paint.freeTransform"]["inputs"], {"name": "Paint", "visible": True, "opacity": 1, "blend": "normal", "cx": 60, "cy": 40,
+                                                              "scaleX": 1.5, "angle": 15, "src": wire("paint.erase")})
+        self.assertEqual(n["doc"]["inputs"]["layers.1"], wire("paint.freeTransform"))
         self.assertEqual(n["paint.shape"]["inputs"], {"name": "Rectangle 1", "x": 4, "y": 5, "w": 30, "h": 20, "fill": [0, 0, 1, 1],
                                                       "stroke": [0, 0, 0, 1], "strokeWidth": 2, "shape": "rect"})
         self.assertEqual(n["paint.shape_2"]["inputs"]["shape"], "line")
@@ -159,6 +165,26 @@ class StackTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["doc"]["inputs"]["layers.1"], wire("photo.adjust"))
         with self.assertRaisesRegex(ValueError, "holds one layer"):
             from_twod(photo(exposure(mask())))
+
+    def test_a_mask_of_names_a_layer_the_stack_shows(self):
+        # The named layer is declared AFTER the layer it masks: the whole stack is read before a name is resolved.
+        g = from_twod(painting(
+            layer(mask(of="Fade"), name="Ink"),
+            layer(stroke(points=[]), name="Fade"),
+        ))
+        self.assertEqual(g["nodes"]["paint.layer"]["inputs"]["mask"], wire("paint.stroke"))
+        self.assertEqual(g["nodes"]["paint.stroke"]["inputs"]["name"], "Fade")
+        self.assertEqual(len([n for n in g["nodes"].values() if n["type"] == "paint.layer"]), 2)
+        off = from_twod(painting(layer(mask(of="Fade", enabled=False), name="Ink"), layer(name="Fade")))
+        self.assertIs(off["nodes"]["paint.layer"]["inputs"]["maskEnabled"], False)
+        with self.assertRaisesRegex(ValueError, 'no layer is called "Nowhere"'):
+            from_twod(painting(layer(mask(of="Nowhere"), name="Ink")))
+        with self.assertRaisesRegex(ValueError, '2 layers are called "Same"'):
+            from_twod(painting(layer(mask(of="Same"), name="Ink"), layer(name="Same"), layer(name="Same")))
+        with self.assertRaisesRegex(ValueError, "cannot be its own mask"):
+            from_twod(painting(layer(mask(of="Ink"), name="Ink")))
+        with self.assertRaisesRegex(ValueError, "names a layer; it holds none"):
+            from_twod(painting(layer(mask(gradient(), of="Fade"), name="Ink"), layer(name="Fade")))
 
     def test_a_masked_node_names_its_masks_call_in_meta_sources(self):
         out = run_module(textwrap.dedent("""\
