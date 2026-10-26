@@ -160,6 +160,23 @@ class StackTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "holds one layer"):
             from_twod(photo(exposure(mask())))
 
+    def test_a_mask_that_is_also_a_layer_of_the_stack_names_it_by_id(self):
+        g = from_twod(photo(
+            raster(id="Sky", src="a.png"),
+            exposure(mask(of="Sky"), name="Mood", ev=0.2),
+        ))
+        self.assertEqual(g["nodes"]["photo.adjust"]["inputs"]["mask"], wire("Sky"), "the mask is the stack's own layer")
+        self.assertEqual(g["nodes"]["doc"]["inputs"]["layers.1"], wire("Sky"))
+        self.assertEqual(sorted(k for k in g["nodes"] if k != "doc"), ["Sky", "photo.adjust"], "one node per layer")
+        # The target may be written after the layer it masks, and a mask may be turned off.
+        g2 = from_twod(photo(exposure(mask(of="Ink", enabled=False)), fill(id="Ink", color=[1, 1, 1, 1])))
+        self.assertEqual(g2["nodes"]["photo.adjust"]["inputs"]["mask"], wire("Ink"))
+        self.assertIs(g2["nodes"]["photo.adjust"]["inputs"]["maskEnabled"], False)
+        with self.assertRaisesRegex(ValueError, 'names the layer "nope", and no layer of this photo has that id'):
+            from_twod(photo(exposure(mask(of="nope"))))
+        with self.assertRaisesRegex(ValueError, "holds no layer"):
+            from_twod(photo(exposure(mask(fill(), of="x"))))
+
     def test_a_masked_node_names_its_masks_call_in_meta_sources(self):
         out = run_module(textwrap.dedent("""\
             from commandagi.design.twod import exposure, gradient, mask, photo
