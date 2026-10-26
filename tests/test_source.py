@@ -109,6 +109,14 @@ class KeywordTests(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "frozenRows is written frozen_rows"):
             attr_name("frozenRows")
 
+    def test_a_name_with_an_underscore_is_written_with_two_at_the_end(self):
+        # The snake case of `origin_mm` is `origin_mm`, which the rule above reads as `originMm`: the name itself is
+        # written `origin_mm__`, so a field of a document, or a port of a node type of the file's own, has a spelling.
+        self.assertEqual(attr_name("origin_mm__"), "origin_mm")
+        self.assertEqual(attr_name("lead_time__"), "lead_time")
+        from commandagi.design.ontology import node
+        self.assertEqual(node(lead_time__=4).props, {"lead_time": 4})
+
 
 if __name__ == "__main__":
     unittest.main()

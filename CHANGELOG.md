@@ -8,6 +8,12 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A keyword whose name has an underscore of its own is written with a trailing `__`: `lead_time__=7` is the attribute
+  `lead_time`, where `lead_time` alone would name `leadTime`. So a field of a document, or a port of a node type of
+  your own, has a spelling whatever its name.
+
+Added
+
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 
 Added
