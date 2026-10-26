@@ -35,11 +35,12 @@ The calls (children are positional; every attribute is a keyword):
                                       board text, and an aligned dimension (its text is derived, never stored).
     kicad(version, generator, forms)  the KiCad forms the board carries for exchange and nothing else reads.
     net(name, code)                   the KiCad net code of the schematic's net ``name``.
-    component(name, footprint, library, pcb_x, pcb_y, pcb_rotation, layer, ref_at, chart, uuid, kicad)
+    component(name, footprint, library, pcb_x, pcb_y, pcb_rotation, layer, ref_at, value_at, chart, uuid, kicad)
                                       the schematic's part ``name`` on this board: one of the editor's own land
                                       patterns (BOARD_FOOTPRINTS), or a library footprint by its ref
                                       ("Package_SO:SOIC-8") in the ``.pretty`` folder ``library`` names. ``ref_at``
-                                      [x, y] is where its reference text sits (mm, in the footprint's own frame).
+                                      and ``value_at`` [x, y] are where its reference and value texts sit (mm, in
+                                      the footprint's own frame).
     trace(name, layer, width, points, from_, to, net, surface, uuid, segment_uuids, kicad)
                                       a copper run: its points ([[x, y], …]) on one copper layer, a finished width.
     arc(name, layer, width, points, from_, to, net, uuid, kicad)
@@ -655,7 +656,7 @@ def _declare_board(s: Scope, root: Element) -> None:
                   label=label if label is not None else (lib_name if lib_name is not None else "Masks"), meta=_meta(el))
             continue
         if el.tag == "component":
-            _refuse_unknown(el, ["name", "footprint", "library", "pcbX", "pcbY", "pcbRotation", "layer", "refAt", "refRot", "chart", "uuid", "kicad"])
+            _refuse_unknown(el, ["name", "footprint", "library", "pcbX", "pcbY", "pcbRotation", "layer", "refAt", "refRot", "valueAt", "chart", "uuid", "kicad"])
             ref = el.props["name"]
             fp = el.props.get("footprint")
             library = el.props.get("library")
@@ -690,6 +691,13 @@ def _declare_board(s: Scope, root: Element) -> None:
             ref_rot = _num(el, "refRot")
             if ref_rot is not None and x is None:
                 raise ValueError(f"{_where(el)}: refRot needs pcbX and pcbY")
+            # Where its value text sits, in the same frame: the layout moves it too where the footprint draws it on a
+            # silkscreen.
+            value_at = el.props.get("valueAt")
+            if value_at is not None and not (isinstance(value_at, (list, tuple)) and len(value_at) == 2 and all(_is_num(v) for v in value_at)):
+                raise ValueError(f"{_where(el)}: valueAt is [x, y] in mm, in the footprint's own frame")
+            if value_at is not None and x is None:
+                raise ValueError(f"{_where(el)}: valueAt needs pcbX and pcbY")
             chart = _text(el, "chart")
             if chart is not None and surface is None:
                 raise ValueError(f"{_where(el)}: chart names a face of the board's surface, and the <board> has no surface")
@@ -708,6 +716,8 @@ def _declare_board(s: Scope, root: Element) -> None:
                 inputs["refAt"] = list(ref_at)
             if ref_rot is not None:
                 inputs["refRot"] = ref_rot
+            if value_at is not None:
+                inputs["valueAt"] = list(value_at)
             if chart is not None:
                 inputs["surfaceMount"] = {"chart": chart}
             inputs.update(uuid_of(el), **_kicad(el))
