@@ -7,7 +7,7 @@ account's Drive, never written in the file::
 
     def corporation(cik, ticker, name):  # a class of things is a function; an instance is one call
         return monitor(source(id="filings", adapter="sec-filings", params={"cik": cik}, every="15m"),
-                       follows(monitor="../../central-banks/fed", match="fomc.*"),
+                       follows(monitor="../../central-banks/fed", when={"class": "fomc.*"}),
                        title=f"{name} ({ticker})", class_="corporation", about=f"cik:{cik}")
 
     result = corporation("0001045810", "NVDA", "NVIDIA")
@@ -37,7 +37,7 @@ MONITOR_FIELDS = ["title", "class", "about", "readme", "sameAs"]
 SUBJECT = re.compile(r"^[a-z][a-z0-9-]*:\S*$")
 SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit", "host", "mode", "retain", "since",
                  "session", "snapshot", "profile", "keep", "maxCostPerDay", "unit", "vantage", "connection"]
-FOLLOW_FIELDS = ["monitor", "match", "where"]
+FOLLOW_FIELDS = ["monitor", "when"]
 WAKE_FIELDS = ["match", "prompt"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since"]
 DISCOVER_FIELDS = ["into", "of", "when", "slug", "class", "props", "name", "max"]
@@ -196,7 +196,6 @@ def _derive(t: DocTree) -> Dict[str, Any]:
 
 
 _DATA_PATH = re.compile(r"^[A-Za-z_]\w*(\.[A-Za-z_]\w*)*$")
-_WHERE = re.compile(r"^[A-Za-z][\w.]*=[^,]+(,\s*[A-Za-z][\w.]*=[^,]+)*$")
 #: A term's name in a ``when``: a record field, or a path of its data.
 _WHEN_NAME = re.compile(r"^(class|about|key|title|data(\.[A-Za-z_]\w*)+)$")
 _WHEN_OPS = ["eq", "ne", "gt", "gte", "lt", "lte", "in", "glob", "contains", "exists"]
@@ -272,10 +271,10 @@ def _monitor(t: DocTree) -> Dict[str, Any]:
     follows = []
     for c in parts("follows"):
         _text(c, "monitor", "monitor")
-        _text(c, "match", "monitor")
-        _text(c, "where", "monitor")
-        if c["attrs"].get("where") is not None and not _WHERE.match(c["attrs"]["where"]):
-            raise ValueError(f'<follows monitor="{c["attrs"].get("monitor")}"> where is name=value terms joined by "," (conversation=123), not {json.dumps(c["attrs"]["where"])}')
+        if c["attrs"].get("when") is not None:
+            bad = _when_shape(c["attrs"]["when"])
+            if bad:
+                raise ValueError(f'<follows monitor="{c["attrs"].get("monitor")}"> when: {bad}')
         if re.match(r"^\./?$", c["attrs"].get("monitor") or ""):
             raise ValueError(f'<follows monitor="{c["attrs"]["monitor"]}"> names this monitor; a follow names another monitor\'s folder')
         follows.append(_said(c["attrs"], FOLLOW_FIELDS))
@@ -324,7 +323,7 @@ def monitor_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
                 "name": d.get("name"), "max": d.get("max", 10)}
     return {"title": m.get("title"), "class": m.get("class"), "about": m.get("about"), "readme": m.get("readme"),
             "sameAs": m.get("sameAs", []), "sources": [src(s) for s in m.get("sources", [])],
-            "follows": [{"monitor": f["monitor"], "match": f.get("match"), "where": f.get("where")} for f in m.get("follows", [])],
+            "follows": [{"monitor": f["monitor"], "when": f.get("when")} for f in m.get("follows", [])],
             "derives": [{"id": d["id"], "op": d["op"], "inputs": d["inputs"], "params": d.get("params", {}),
                          "since": d.get("since")} for d in m.get("derives", [])],
             "wakes": [{"match": w.get("match"), "prompt": w["prompt"]} for w in m.get("wakes", [])],
