@@ -17,6 +17,12 @@ Added
   switch-on when it is more than its peak draw.
 - An agent declares its `supervisor` (`<agent supervisor="agent:lead">`, `agent:<id>` or `person:<id>`): a thread's
   membership takes it at join, and a person's supervise of that member overrides it.
+- An interface's `<param>` states a number with its unit, or a text a channel states (a `format`, a `dialect`,
+  a `transport`: `<param id="framing" value="8N1" />`) and then no unit. A side's `params` maps such a field
+  to it, and the check compares the texts: a definition's channel and a firmware `#define` alike.
+- A side states where the interface's frame sits on it with `rotation` (degrees counter-clockwise) and `face`
+  (`top`, or `bottom` for the side seen from the mating board, whose frame is mirrored): a 3D deck turned a
+  quarter turn, or read from underneath, matches the same hole pattern.
 
 Fixed
 
