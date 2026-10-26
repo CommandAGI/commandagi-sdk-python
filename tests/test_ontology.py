@@ -78,6 +78,15 @@ class OntologyTests(unittest.TestCase):
         })
         with self.assertRaisesRegex(ValueError, "a <split> has two sides"):
             declared(dashboard(split(pane(id="a"), axis="x", ratio=0.5), name="d"))
+        # A repeating pane is one pane per live stream (the shell grows it), and names no file of its own.
+        live = declared(dashboard(pane(id="live", kind="files", repeat="live-stream"), name="everything live"))["document"]
+        self.assertEqual(live["document"]["panes"], {"live": {"kind": "files", "repeat": "live-stream"}})
+        with self.assertRaisesRegex(ValueError, 'repeat is "live-stream"'):
+            declared(dashboard(pane(id="live", kind="files", repeat="runs"), name="x"))
+        with self.assertRaisesRegex(ValueError, "names no file of its own"):
+            declared(dashboard(pane(id="live", kind="files", repeat="live-stream", selected="runs/r/run.json"), name="x"))
+        with self.assertRaisesRegex(ValueError, "shows files"):
+            declared(dashboard(pane(id="live", kind="devices", repeat="live-stream"), name="x"))
         p = declared(geoproject(dateRange(start="2015-01", end="2030-01"), camera(center_lng=40, center_lat=25, scale=320),
                                 id="p1", name="Chokepoints"))["document"]
         self.assertEqual(p["document"], {"type": "geoeconomics/project", "schemaVersion": "1.0", "id": "p1", "name": "Chokepoints",

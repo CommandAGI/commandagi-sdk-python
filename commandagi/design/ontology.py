@@ -17,7 +17,8 @@ A record is an element and its fields are the element's attributes; a list of re
     device(name …, firmware?, revision?)              definition.py        channel(id, dir, medium, format, transport …)
     dashboard(name …)                                 <name>.dashboard.py  param(id, type …), one layout: split(axis,
                                                                            ratio) of two split|pane(id, kind …), or one
-                                                                           pane; region(side, tab …)
+                                                                           pane (repeat="live-stream": one pane per live
+                                                                           stream); region(side, tab …)
     geoproject(id, name …)                            <name>.geo.py        dateRange(start, end), camera, reference
     opgraph(name)                                     <name>.opgraph.py    node(id, type, x, y, …ports), wire(from_, to)
 
@@ -158,7 +159,11 @@ def _dashboard(t: DocTree) -> Dict[str, Any]:
             pid = str(n["attrs"]["id"])
             if pid in panes:
                 raise ValueError(f'two <pane> have id "{pid}"')
-            panes[pid] = _omit(n["attrs"], ["id"])
+            pane = _omit(n["attrs"], ["id"])
+            # A repeating pane is one pane per live stream (the shell grows it): it is what it repeats, never a file.
+            if "repeat" in pane and (pane["repeat"] != "live-stream" or pane.get("kind") != "files" or "selected" in pane or "path" in pane):
+                raise ValueError(f'<pane {pid}>: repeat is "live-stream", and a repeating pane shows files and names no file of its own (it is filled from what is live)')
+            panes[pid] = pane
             return {"kind": "leaf", "paneId": pid}
         sides = [c for c in n["children"] if c["tag"] in ("split", "pane")]
         if len(sides) != 2:
