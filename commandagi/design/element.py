@@ -9,7 +9,9 @@ A document is a tree of elements. A call writes one: ``tag(*positional_attribute
   ``layer(*[rect(x=i * 10) for i in range(3)])``); ``None`` and booleans are skipped, as JSX skips them. A tag that
   holds text takes texts and inline elements (``p("The run ", b("passed"), ".")``); a leaf takes nothing.
 - Attributes: keywords in snake_case of the TypeScript name (``frozen_rows`` is ``frozenRows``: each ``_x`` is ``X``;
-  a trailing ``_`` is dropped). A keyword with an uppercase letter is refused by name.
+  a trailing ``_`` is dropped). A keyword ending in ``__`` names the attribute as it is written (``origin_mm__`` is
+  ``origin_mm``, ``lead_time__`` is ``lead_time``), so a field whose own name has an underscore has a spelling on
+  every tag. A keyword with an uppercase letter is refused by name.
 
 Each element asks ``source.here()`` which call of the running file made it and keeps that index (``source``); a
 declaration copies it where the TypeScript SDK copies an element's ``source``.
@@ -34,7 +36,10 @@ _SNAKE = re.compile(r"_([a-z0-9])")
 
 
 def attr_name(written: str, where: str = "") -> str:
-    """The TypeScript attribute name of a keyword as written (``frozen_rows`` -> ``frozenRows``, ``from_`` -> ``from``)."""
+    """The TypeScript attribute name of a keyword as written (``frozen_rows`` -> ``frozenRows``, ``from_`` -> ``from``,
+    ``origin_mm__`` -> ``origin_mm``)."""
+    if written.endswith("__") and len(written) > 2:
+        return written[:-2]
     if _UPPER.search(written):
         snake = _UPPER.sub(lambda m: "_" + m.group(0).lower(), written)
         raise TypeError(f"{where}{written} is written {snake} (keywords are snake_case of the attribute's name)")
@@ -90,7 +95,8 @@ def _make(module: str, tag: str, signature: Dict[str, Any]) -> Callable[..., Ele
     args: Sequence[str] = tuple(signature.get("args") or ())
     holds: Optional[str] = signature.get("holds")
     # An attribute whose TypeScript name is itself snake_case (a world's `size_mm`) is written as it is: the snake_case
-    # of `size_mm` is `size_mm`, so a writer needs nothing more; only the reading needs the tag's list.
+    # of `size_mm` is `size_mm`, so a writer needs nothing more; only the reading needs the tag's list. A tag that does
+    # not list the name is reached by the `__` spelling (`size_mm__`), which any tag takes.
     keep = frozenset(signature.get("snake") or ())
 
     def make(*given: Any, **attributes: Any) -> Element:

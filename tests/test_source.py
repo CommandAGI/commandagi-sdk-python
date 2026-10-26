@@ -109,6 +109,13 @@ class KeywordTests(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "frozenRows is written frozen_rows"):
             attr_name("frozenRows")
 
+    def test_a_keyword_ending_in_two_underscores_is_the_attribute_as_it_is(self):
+        from commandagi.design.ontology import node
+        self.assertEqual([attr_name(k) for k in ("lead_time__", "origin_mm__", "sch_x__", "frozenRows__")],
+                         ["lead_time", "origin_mm", "sch_x", "frozenRows"])
+        # A tag that does not list the name takes it too: a node's custom port keeps its underscore.
+        self.assertEqual(node(id="n", type_="custom", cutoff_hz__=6).props, {"id": "n", "type": "custom", "cutoff_hz": 6})
+
 
 if __name__ == "__main__":
     unittest.main()

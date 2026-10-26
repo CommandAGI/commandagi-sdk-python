@@ -24,9 +24,10 @@ A record is an element and its fields are the element's attributes; a list of re
 Every attribute is a keyword (``commandagi.design.element``: snake_case of the field's name). A field whose own name
 has an underscore is listed on its tag (``SIGNATURES``' ``snake``: a world's ``origin_mm`` and ``size_mm``; a
 definition's ``model_number``, ``product_url``, ``price_usd``, ``record_hz``, ``spec_check`` and ``dimensions_mm``) and
-is written as it is. Another such field has no keyword spelling: the keyword ``lead_time`` names the field
-``leadTime``. A node graph is the editor's op graph itself: ``node(id="blur", type="blur", x=300, y=80, radius=6)``
-is the node ``{id: "blur", type: "blur", inputs: {radius: 6}, meta: {x: 300, y: 80}}``, and
+is written as it is. Another such field is written with the keyword's ``__`` spelling (``lead_time__`` is the field
+``lead_time``, not ``leadTime``), which every tag takes. A node graph is the editor's op graph itself:
+``node(id="blur", type="blur", x=300, y=80, radius=6)`` is the node
+``{id: "blur", type: "blur", inputs: {radius: 6}, meta: {x: 300, y: 80}}``, and
 ``wire(from_="gradient:out", to="blur:in")`` the wire into its ``in`` port. ``output=True`` marks a terminal. A port
 whose name is not an attribute name (``layers.3``) is written in ``inputs={"layers.3": None}``.
 

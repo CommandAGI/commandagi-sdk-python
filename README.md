@@ -123,7 +123,8 @@ The rules of a call, the same in every module:
   `p("The run ", b("passed"), ".")`. A loop is a starred argument: `layer(*[rect(x=i * 10) for i in range(3)])`.
   A leaf takes no children.
 - Attributes are keywords in snake_case of the TypeScript name: `frozen_rows=1` is `frozenRows`, `sch_x=114.3` is
-  `schX`. A keyword with an uppercase letter is refused by name.
+  `schX`. A keyword ending in `__` names the attribute as it is written (`origin_mm__=5` is `origin_mm`), so a field
+  whose own name has an underscore has a spelling on every tag. A keyword with an uppercase letter is refused by name.
 - Only the schematic has positional attributes: `resistor("R1", …)`, `group("Divider", …)`, `trace(from, to)`,
   `netlabel(net, connection)`, `unit(part, unit)`.
 - The file's result is `result = <root>(…)` (or `main()`, or `show_object`).

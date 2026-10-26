@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A keyword ending in `__` names the attribute as it is written: `node(cutoff_hz__=6)` is the field `cutoff_hz`, which
+  the snake-case rule would otherwise read as `cutoffHz`. Every tag takes the spelling, so a field whose own name has
+  an underscore no longer needs its tag to list it (`element.attr_name`).
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 
 Added
