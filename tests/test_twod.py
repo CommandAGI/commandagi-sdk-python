@@ -6,8 +6,9 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, blur, bucket, drawing, ellipse, engrave, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, group, image, layer, line, link, mask, move,
-                                    nest, noise, options, painting, part, path, photo, raster, raster_layer, rect, sheet, sharpen, stock, stroke,
+from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, bevelEmboss, blur, bucket, colorOverlay, drawing, dropShadow, ellipse, engrave, exposure, fill, from_twod, fx, gaussianBlur, gradient,
+                                    gradientFill, gradientOverlay, group, image, innerGlow, innerShadow, layer, line, link, mask, move,
+                                    nest, noise, options, outerGlow, painting, part, path, patternOverlay, photo, raster, raster_layer, rect, satin, sheet, sharpen, stock, stroke,
                                     subpaths_of)
 
 
@@ -147,6 +148,26 @@ class StackTests(unittest.TestCase):
     def test_a_gradients_from_is_written_from_(self):
         g = from_twod(photo(gradient(shape="linear", from_=[0, 0], to=[1, 1], stops=[])), "Photo")
         self.assertEqual(g["nodes"]["photo.gradient"]["inputs"], {"shape": "linear", "from": [0, 0], "to": [1, 1], "stops": []})
+
+    def test_a_layers_fx_holds_the_ten_styles_in_order(self):
+        g = from_twod(painting(layer(
+            fx(
+                dropShadow(distance=4), innerShadow(), outerGlow(), innerGlow(source="center"),
+                bevelEmboss(depth=2), satin(invert=True), colorOverlay(), gradientOverlay(align="layer"),
+                patternOverlay(pattern="dots"), stroke(position="inside"),
+            ),
+            name="Layer 1",
+        ), name="Poster", width=100, height=80))
+        node = g["nodes"]["paint.layer"]
+        self.assertEqual(node["inputs"]["fx"], [
+            {"type": "dropShadow", "distance": 4}, {"type": "innerShadow"}, {"type": "outerGlow"},
+            {"type": "innerGlow", "source": "center"}, {"type": "bevelEmboss", "depth": 2},
+            {"type": "satin", "invert": True}, {"type": "colorOverlay"}, {"type": "gradientOverlay", "align": "layer"},
+            {"type": "patternOverlay", "pattern": "dots"}, {"type": "stroke", "position": "inside"},
+        ])
+        self.assertIn("fx", node["meta"]["sources"])
+        with self.assertRaisesRegex(ValueError, "not a layer style"):
+            from_twod(painting(layer(fx(blur(radius=2)))))
 
     def test_a_mask_is_the_one_layer_it_holds_wired_to_the_node_it_masks(self):
         g = from_twod(photo(
