@@ -162,7 +162,8 @@ class VideoVocabularyTests(unittest.TestCase):
         from commandagi.design.media import artboard, composition, intro
         n = declare_video(video(track(
             composition(intro(preset="fade"), src="parts/Intro.vid.tsx", start=1, in_=0.5, out=2.5, inputs={"hue": 30}),
-            artboard(src="Poster.draw.tsx", start=3, duration=2, view="page_2", fit="cover", opacity=0.5), name="V1")))["nodes"]
+            artboard(src="Poster.draw.tsx", start=3, duration=2, view="page_2", fit="cover", opacity=0.5,
+                     crop={"x": 1, "y": 2, "width": 30, "height": 40}, inputs={"hue": 30}), name="V1")))["nodes"]
         self.assertEqual(n["comp_Intro.vid.tsx"], {"id": "comp_Intro.vid.tsx", "type": "video.instance", "label": "Intro.vid.tsx",
                                                    "inputs": {"__instance": {"path": "parts/Intro.vid.tsx", "name": "Intro.vid.tsx"}, "hue": 30}})
         comp = n["clip_Intro.vid.tsx"]
@@ -174,7 +175,8 @@ class VideoVocabularyTests(unittest.TestCase):
         self.assertEqual(set(comp["meta"]["sources"]), {"intro"})
         art = n["clip_Poster.draw.tsx"]["inputs"]
         self.assertEqual(art["kind"], "renderable")
-        self.assertEqual(art["renderable"], {"ref": {"locator": "Poster.draw.tsx", "fileKind": "drawing", "representation": "auto", "view": "page_2"}, "fit": "cover"})
+        self.assertEqual(art["renderable"], {"ref": {"locator": "Poster.draw.tsx", "fileKind": "drawing", "representation": "auto", "view": "page_2",
+                                                    "overrides": {"hue": 30}}, "fit": "cover", "crop": {"x": 1.0, "y": 2.0, "width": 30.0, "height": 40.0}})
         self.assertIsNone(art["source"])
         self.assertEqual(art["opacity"], 0.5)
         refused = [
@@ -186,6 +188,10 @@ class VideoVocabularyTests(unittest.TestCase):
             (artboard(src="Poster.png", duration=1), "is not a drawing's code"),
             (artboard(src="Poster.draw.tsx"), "give its duration"),
             (artboard(src="Poster.draw.tsx", duration=1, fit="stretch"), "fit is one of fill, contain, cover, none"),
+            (artboard(src="Poster.draw.tsx", duration=1, crop=[0, 0, 10, 10]), r"crop is \{ x, y, width, height \}"),
+            (artboard(src="Poster.draw.tsx", duration=1, crop={"x": 0, "y": 0, "width": 10}), "crop.height is a number"),
+            (artboard(src="Poster.draw.tsx", duration=1, crop={"x": 0, "y": 0, "width": 0, "height": 10}), "crop has a positive width and height"),
+            (artboard(src="Poster.draw.tsx", duration=1, inputs={"hue": "red"}), r"inputs is \{ parameter: number \}"),
         ]
         for el, why in refused:
             with self.assertRaisesRegex(ValueError, why):
