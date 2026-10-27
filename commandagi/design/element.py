@@ -9,7 +9,10 @@ A document is a tree of elements. A call writes one: ``tag(*positional_attribute
   ``layer(*[rect(x=i * 10) for i in range(3)])``); ``None`` and booleans are skipped, as JSX skips them. A tag that
   holds text takes texts and inline elements (``p("The run ", b("passed"), ".")``); a leaf takes nothing.
 - Attributes: keywords in snake_case of the TypeScript name (``frozen_rows`` is ``frozenRows``: each ``_x`` is ``X``;
-  a trailing ``_`` is dropped). A keyword with an uppercase letter is refused by name.
+  a trailing ``_`` is dropped). A keyword with an uppercase letter is refused by name. A name that itself has an
+  underscore — ``origin_mm``, which the rule above would read as ``originMm`` — is written with a trailing ``__``:
+  ``origin_mm__=7`` is the attribute ``origin_mm``. So a field of a document, or a port of a node type of your own,
+  has a keyword whatever its name.
 
 Each element asks ``source.here()`` which call of the running file made it and keeps that index (``source``); a
 declaration copies it where the TypeScript SDK copies an element's ``source``.
@@ -34,7 +37,11 @@ _SNAKE = re.compile(r"_([a-z0-9])")
 
 
 def attr_name(written: str, where: str = "") -> str:
-    """The TypeScript attribute name of a keyword as written (``frozen_rows`` -> ``frozenRows``, ``from_`` -> ``from``)."""
+    """The TypeScript attribute name of a keyword as written (``frozen_rows`` -> ``frozenRows``, ``from_`` -> ``from``,
+    ``origin_mm__`` -> ``origin_mm``)."""
+    # A trailing `__` is the name itself: the one spelling the snake-case rule cannot make for a name with `_`.
+    if written.endswith("__") and len(written) > 2:
+        return written[:-2]
     if _UPPER.search(written):
         snake = _UPPER.sub(lambda m: "_" + m.group(0).lower(), written)
         raise TypeError(f"{where}{written} is written {snake} (keywords are snake_case of the attribute's name)")
