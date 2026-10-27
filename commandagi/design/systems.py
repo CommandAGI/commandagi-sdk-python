@@ -26,7 +26,10 @@ The rule of the ontology's files: a record is an element and its fields are the 
 keywords: ``verified_by`` is ``verifiedBy``). A requirement is named by a ref, never by an id alone
 (``Rover.req.py#mass``). Nothing adds a default. A ``bom`` gives masses; a cost budget reads the logistics roll-up of
 the design it names (``design``: a 3D document, a schematic or a board with a cost check), the one source of cost, so
-no contribution is a cost. The checks are the host's (``commandagi check``, ``commandagi trace``).
+no contribution is a cost. A ``param`` states a number with its unit, or a text a channel states (``param(id="framing",
+value="8N1")``: a format, a dialect, a transport) and then no unit. A side's ``origin``, ``rotation`` (degrees
+counter-clockwise) and ``face`` (``front``, or ``back`` for the side read from the mating part, whose frame is mirrored)
+put the interface's frame in the side's. The checks are the host's (``commandagi check``, ``commandagi trace``).
 """
 from __future__ import annotations
 
@@ -58,7 +61,10 @@ PIN_FIELDS = ["number", "signal", "dir", "voltage", "gpio", "at", "required", "d
 HOLE_FIELDS = ["id", "at", "diameter", "description"]
 MESSAGE_FIELDS = ["id", "text", "code", "define", "dir", "description"]
 PARAM_FIELDS = ["id", "value", "unit", "description"]
-SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "defines", "pins", "params", "files", "description"]
+SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "rotation", "face", "defines", "pins", "params", "files",
+               "description"]
+#: The faces a side states: ``front`` (as drawn), or ``back`` (read from the mating part: the frame mirrored through its y axis).
+SIDE_FACES = ["front", "back"]
 
 _CHILDREN = {"holds": "children"}
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
@@ -68,7 +74,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "interface": _CHILDREN, "frame": {}, "pin": {}, "hole": {}, "message": {}, "param": {}, "side": {},
 }
 
-__all__ = ["VERIFICATION_METHODS", "BUDGET_QUANTITIES", "SYSTEM_CHECK_KINDS", "SIDE_KINDS", "SIGNATURES",
+__all__ = ["VERIFICATION_METHODS", "BUDGET_QUANTITIES", "SYSTEM_CHECK_KINDS", "SIDE_KINDS", "SIDE_FACES", "SIGNATURES",
            "REQUIREMENTS_VOCABULARY", "SYSTEM_VOCABULARY", "INTERFACE_VOCABULARY", *define(globals(), "systems", SIGNATURES)]
 
 
@@ -207,12 +213,20 @@ def _interface(t: DocTree) -> Dict[str, Any]:
         if tag == "message":
             _check("text" in a or "code" in a, f"{at}: a message has its text, its code, or both")
         if tag == "param":
-            _check(_num(a.get("value")), f"{at}: value is a number (its unit in unit)")
+            _check(_num(a.get("value")) or (isinstance(a.get("value"), str) and bool(a["value"].strip())),
+                   f'{at}: value is a number with its unit in unit (115200), or a text a channel states '
+                   f'(a format, a dialect, a transport: "8N1")')
+            _check("unit" not in a or _num(a["value"]),
+                   f"{at}: a parameter stated as a text has no unit (unit is for a number)")
         if tag == "side":
             _check("kind" not in a or a["kind"] in SIDE_KINDS,
                    f"{at}: kind must be one of {', '.join(SIDE_KINDS)} (got {json.dumps(a.get('kind'))})")
             _check("origin" not in a or _pair(a["origin"], 2) or _pair(a["origin"], 3),
                    f"{at}: origin is where the interface's frame sits in this side's frame, [x, y] or [x, y, z] mm")
+            _check("rotation" not in a or _num(a["rotation"]),
+                   f"{at}: rotation is the angle the interface's frame is turned on this side, in degrees counter-clockwise")
+            _check("face" not in a or a["face"] in SIDE_FACES,
+                   f"{at}: face must be one of {', '.join(SIDE_FACES)} (got {json.dumps(a.get('face'))})")
             _check("parts" not in a or (isinstance(a["parts"], list) and all(isinstance(p, str) for p in a["parts"])),
                    f"{at}: parts is a list of part references, whose pins are the interface's in turn")
             _check("channel" not in a or isinstance(a["channel"], str),

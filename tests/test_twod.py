@@ -6,8 +6,9 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, blur, bucket, drawing, ellipse, engrave, exposure, fill, from_twod, gaussianBlur, gradient, gradientFill, group, image, layer, line, link, mask, move,
-                                    nest, noise, options, painting, part, path, photo, raster, raster_layer, rect, sheet, sharpen, stock, stroke,
+from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, bevelEmboss, blur, bucket, colorOverlay, drawing, dropShadow, ellipse, engrave, exposure, fill, from_twod, fx, gaussianBlur, gradient,
+                                    gradientFill, gradientOverlay, group, image, innerGlow, innerShadow, layer, line, link, mask, move,
+                                    nest, noise, options, outerGlow, painting, part, path, patternOverlay, photo, raster, raster_layer, rect, satin, sheet, sharpen, sketch, stock, stroke,
                                     subpaths_of)
 
 
@@ -67,6 +68,22 @@ class DrawingTests(unittest.TestCase):
         self.assertEqual(nodes["image"]["inputs"], {"x": 10, "y": 20, "w": 40, "h": 30,
                                                     "__asset": {"kind": "file", "$file": "photos/harbour.jpg", "mime": "image/jpeg"}})
         self.assertEqual(nodes["raster-layer"]["inputs"], {"__asset": {"kind": "file", "$file": "scan.png", "mime": "image/png"}})
+
+    def test_a_constrained_sketch_is_a_leaf_whose_geometry_is_its_own_data(self):
+        geometry = {"points": {"p1": {"id": "p1", "x": 0, "y": 0}, "p2": {"id": "p2", "x": 40, "y": 0}},
+                    "segments": {"s1": {"id": "s1", "type": "line", "a": "p1", "b": "p2"}},
+                    "constraints": {}, "pointOrder": ["p1", "p2"], "segmentOrder": ["s1"], "constraintOrder": []}
+        g = from_twod(drawing(sketch(sketch=geometry, x=40, y=60, unit="mm", drawing_scale=2, annotations=False),
+                              width=100, height=80))
+        nodes = {n["type"]: n for n in g["nodes"].values()}
+        self.assertEqual(nodes["sketch"]["inputs"],
+                         {"sketch": geometry, "x": 40, "y": 60, "unit": "mm", "drawingScale": 2, "annotations": False})
+        self.assertEqual(nodes["composite"]["inputs"]["layers.1"], wire("sketch"),
+                         "written straight on the drawing, it is a layer of it")
+        with self.assertRaisesRegex(ValueError, "<sketch>: sketch is its geometry"):
+            from_twod(drawing(sketch()))
+        with self.assertRaisesRegex(ValueError, "sketch is its geometry"):
+            from_twod(drawing(sketch(sketch=[1, 2])))
 
     def test_each_node_names_the_call_it_came_from(self):
         out = run_module(textwrap.dedent("""\
@@ -148,6 +165,26 @@ class StackTests(unittest.TestCase):
         g = from_twod(photo(gradient(shape="linear", from_=[0, 0], to=[1, 1], stops=[])), "Photo")
         self.assertEqual(g["nodes"]["photo.gradient"]["inputs"], {"shape": "linear", "from": [0, 0], "to": [1, 1], "stops": []})
 
+    def test_a_layers_fx_holds_the_ten_styles_in_order(self):
+        g = from_twod(painting(layer(
+            fx(
+                dropShadow(distance=4), innerShadow(), outerGlow(), innerGlow(source="center"),
+                bevelEmboss(depth=2), satin(invert=True), colorOverlay(), gradientOverlay(align="layer"),
+                patternOverlay(pattern="dots"), stroke(position="inside"),
+            ),
+            name="Layer 1",
+        ), name="Poster", width=100, height=80))
+        node = g["nodes"]["paint.layer"]
+        self.assertEqual(node["inputs"]["fx"], [
+            {"type": "dropShadow", "distance": 4}, {"type": "innerShadow"}, {"type": "outerGlow"},
+            {"type": "innerGlow", "source": "center"}, {"type": "bevelEmboss", "depth": 2},
+            {"type": "satin", "invert": True}, {"type": "colorOverlay"}, {"type": "gradientOverlay", "align": "layer"},
+            {"type": "patternOverlay", "pattern": "dots"}, {"type": "stroke", "position": "inside"},
+        ])
+        self.assertIn("fx", node["meta"]["sources"])
+        with self.assertRaisesRegex(ValueError, "not a layer style"):
+            from_twod(painting(layer(fx(blur(radius=2)))))
+
     def test_a_mask_is_the_one_layer_it_holds_wired_to_the_node_it_masks(self):
         g = from_twod(photo(
             exposure(mask(gradient()), name="Sky", ev=-0.5),
@@ -159,6 +196,21 @@ class StackTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["doc"]["inputs"]["layers.1"], wire("photo.adjust"))
         with self.assertRaisesRegex(ValueError, "holds one layer"):
             from_twod(photo(exposure(mask())))
+
+    def test_a_mask_that_names_a_layer_of_the_stack_is_wired_to_it(self):
+        g = from_twod(photo(
+            exposure(mask(of="Brush", enabled=False), name="Mood", ev=-0.5),
+            fill(name="Brush"),
+        ))
+        self.assertEqual(g["nodes"]["photo.adjust"]["inputs"]["mask"], wire("photo.fill"))
+        self.assertEqual(g["nodes"]["photo.adjust"]["inputs"]["maskEnabled"], False)
+        self.assertNotIn("mask", g["nodes"]["photo.fill"]["inputs"])
+        with self.assertRaisesRegex(ValueError, "no layer is named that"):
+            from_twod(photo(exposure(mask(of="Gone"))))
+        with self.assertRaisesRegex(ValueError, "2 layers are named that"):
+            from_twod(photo(exposure(mask(of="B")), fill(name="B"), fill(name="B")))
+        with self.assertRaisesRegex(ValueError, "holds no layer"):
+            from_twod(photo(exposure(mask(fill(color=[1, 1, 1, 1]), of="B")), fill(name="B")))
 
     def test_a_masked_node_names_its_masks_call_in_meta_sources(self):
         out = run_module(textwrap.dedent("""\
