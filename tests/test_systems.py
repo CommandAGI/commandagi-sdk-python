@@ -77,11 +77,14 @@ class SystemsTests(unittest.TestCase):
             hole(id="m2-a", at=[0, 0], diameter=2.2),
             message(id="lte-only", text="AT+CNMP=38"),
             param(id="baud", value=115200, unit="Bd"),
-            side(id="base", ref="ee/base.circuit.ts", parts=["J1", "J2"], origin=[0, 1.4]),
+            param(id="framing", value="8N1"),
+            side(id="base", ref="ee/base.circuit.ts", parts=["J1", "J2"], origin=[0, 1.4], rotation=90, face="back"),
             side(id="firmware", ref="fw/config.h", defines={"BOARD": 1}, pins={"RX_PIN": 4}, params={"BAUD": "baud"}),
             side(id="host", ref="devices/cam/definition.tsx", channel="modem", params={"baud": "baud"}),
             name="Header"))["document"]
         self.assertEqual(d["frame"], {"description": "the base board's top, pin 1 at the origin", "unit": "mm"})
+        self.assertEqual(d["params"][1], {"id": "framing", "value": "8N1"}, "a text a channel states has no unit")
+        self.assertEqual(d["sides"][0], {"id": "base", "ref": "ee/base.circuit.ts", "parts": ["J1", "J2"], "origin": [0, 1.4], "rotation": 90, "face": "back"})
         self.assertEqual(d["sides"][1], {"id": "firmware", "ref": "fw/config.h", "defines": {"BOARD": 1}, "pins": {"RX_PIN": 4}, "params": {"BAUD": "baud"}})
         self.assertEqual(d["sides"][2], {"id": "host", "ref": "devices/cam/definition.tsx", "channel": "modem", "params": {"baud": "baud"}})
         cases = [
@@ -91,6 +94,10 @@ class SystemsTests(unittest.TestCase):
             (message(id="m"), "a message has its text, its code, or both"),
             (side(id="s", ref="x", kind="mechanical"), "kind must be one of circuit, 3d, firmware, definition"),
             (side(id="s", ref="x", channel=3), "channel is the id of a channel of the device definition"),
+            (side(id="s", ref="x", rotation="90\u00b0"), "rotation is the angle the interface's frame is turned on this side, in degrees counter-clockwise"),
+            (side(id="s", ref="x", face="bottom"), r'<side id="s">: face must be one of front, back \(got "bottom"\)'),
+            (param(id="p", value=True), r"value is a number with its unit in unit \(115200\), or a text a channel states"),
+            (param(id="p", value="8N1", unit="Bd"), "a parameter stated as a text has no unit"),
             (frame(unit="in"), "positions are in mm"),
         ]
         for el, msg in cases:

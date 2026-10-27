@@ -8,7 +8,7 @@ import unittest
 from commandagi.design import run_module
 from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, bevelEmboss, blur, bucket, colorOverlay, drawing, dropShadow, ellipse, engrave, exposure, fill, from_twod, fx, gaussianBlur, gradient,
                                     gradientFill, gradientOverlay, group, image, innerGlow, innerShadow, layer, line, link, mask, move,
-                                    nest, noise, options, outerGlow, painting, part, path, patternOverlay, photo, raster, raster_layer, rect, satin, sheet, sharpen, stock, stroke,
+                                    nest, noise, options, outerGlow, painting, part, path, patternOverlay, photo, raster, raster_layer, rect, satin, sheet, sharpen, sketch, stock, stroke,
                                     subpaths_of)
 
 
@@ -68,6 +68,22 @@ class DrawingTests(unittest.TestCase):
         self.assertEqual(nodes["image"]["inputs"], {"x": 10, "y": 20, "w": 40, "h": 30,
                                                     "__asset": {"kind": "file", "$file": "photos/harbour.jpg", "mime": "image/jpeg"}})
         self.assertEqual(nodes["raster-layer"]["inputs"], {"__asset": {"kind": "file", "$file": "scan.png", "mime": "image/png"}})
+
+    def test_a_constrained_sketch_is_a_leaf_whose_geometry_is_its_own_data(self):
+        geometry = {"points": {"p1": {"id": "p1", "x": 0, "y": 0}, "p2": {"id": "p2", "x": 40, "y": 0}},
+                    "segments": {"s1": {"id": "s1", "type": "line", "a": "p1", "b": "p2"}},
+                    "constraints": {}, "pointOrder": ["p1", "p2"], "segmentOrder": ["s1"], "constraintOrder": []}
+        g = from_twod(drawing(sketch(sketch=geometry, x=40, y=60, unit="mm", drawing_scale=2, annotations=False),
+                              width=100, height=80))
+        nodes = {n["type"]: n for n in g["nodes"].values()}
+        self.assertEqual(nodes["sketch"]["inputs"],
+                         {"sketch": geometry, "x": 40, "y": 60, "unit": "mm", "drawingScale": 2, "annotations": False})
+        self.assertEqual(nodes["composite"]["inputs"]["layers.1"], wire("sketch"),
+                         "written straight on the drawing, it is a layer of it")
+        with self.assertRaisesRegex(ValueError, "<sketch>: sketch is its geometry"):
+            from_twod(drawing(sketch()))
+        with self.assertRaisesRegex(ValueError, "sketch is its geometry"):
+            from_twod(drawing(sketch(sketch=[1, 2])))
 
     def test_each_node_names_the_call_it_came_from(self):
         out = run_module(textwrap.dedent("""\
