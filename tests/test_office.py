@@ -120,6 +120,17 @@ class DeckTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "needs x, y, w and h"):
             read_deck(deck(slide(shape(x=1))))
 
+    def test_a_text_boxs_run_says_its_own_colour_size_and_family_and_a_list_paragraph_its_bullet_and_level(self):
+        from commandagi.design.office import li, span
+        g = read_deck(deck(slide(text([p("Plain ", span("accent", color="#b91c1c", size=20, font="Georgia")),
+                                       li("Second", bullet="number", level=2),
+                                       li("Third")], x=0, y=0, w=400, h=300))))
+        self.assertEqual(g["nodes"]["slide-1.1"]["inputs"]["text"], {"paragraphs": [
+            {"runs": [{"text": "Plain "}, {"text": "accent", "color": "#b91c1c", "sizePx": 20, "fontFamily": "Georgia"}]},
+            {"runs": [{"text": "Second"}], "listLevel": 2, "bullet": "number"},
+            {"runs": [{"text": "Third"}], "listLevel": 1, "bullet": "disc"},
+        ]})
+
     def test_each_deck_node_names_the_call_it_came_from(self):
         out = run("""\
             from commandagi.design.office import deck, slide, text

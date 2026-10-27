@@ -47,6 +47,9 @@ The tags (keywords are snake_case of the TypeScript attribute: ``frozen_rows``, 
     bullet numbered (*text)  todo(*text, checked)             a list item, a checklist item
     pre(text, lang)  divider()  image(src, alt)               a code block, a rule, a picture
     b i u s code a(*text, href) br()                          marks inside a text
+    span(*text, color, size, font)                            a run's own colour, em size and family, in a text box
+    p(*text)  li(*text, bullet, level)                        one paragraph of a text box; li is a list item:
+                                                              bullet "disc", "number" or "none" (disc unless it says)
     deck(*slides, name, width, height, dpi, style)            the deck (1280 x 720 slide units unless it says); style
                                                               "plain", "ink", "editorial" or "signal"
     slide(*elements, layout, name, notes, background, hidden)
@@ -89,6 +92,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "page": _C, "h1": _T, "h2": _T, "h3": _T, "p": _T, "bullet": _T, "numbered": _T, "todo": _T, "quote": _T, "pre": _T,
     "divider": {}, "image": {},
     "b": _T, "i": _T, "u": _T, "s": _T, "code": _T, "a": _T, "br": {},
+    "span": _T, "li": _T,
     "deck": _C, "slide": _C, "text": _T, "shape": {}, "group": _C,
     "master": _C, "textStyle": {}, "layout": _C, "placeholder": {},
 }
@@ -409,10 +413,13 @@ _TEXT_FRAME = ["columns", "gutter", "inset"]
 #: The deck's styles: a few curated looks (the decks editor's own themes), not a theme editor.
 DECK_STYLES = ["plain", "ink", "editorial", "signal"]
 _MARK_STYLE = {"b": "bold", "i": "italic", "u": "underline", "s": "strike"}
+#: The paragraph tags of a text box: ``p`` is prose, ``li`` a list item at its own level and bullet.
+_PARAGRAPHS = ("p", "li")
+_BULLETS = ["disc", "number", "none"]
 
 
 def rich_text(children: List[Any], at: str) -> Dict[str, Any]:
-    """A text box's children as the deck's rich text: a ``p`` per paragraph, or text and marks for one paragraph."""
+    """A text box's children as the deck's rich text: a ``p`` or ``li`` per paragraph, or text and marks for one."""
 
     def runs_of(c: Any, style: Dict[str, Any], out: List[Dict[str, Any]]) -> None:
         if not isinstance(c, Element):
@@ -426,22 +433,41 @@ def rich_text(children: List[Any], at: str) -> Dict[str, Any]:
             for x in c.children:
                 runs_of(x, {**style, "link": _str(c, "href") or ""}, out)
             return
+        if c.tag == "span":
+            _only(c, ["color", "size", "font"])
+            own = _defined({"color": _str(c, "color"), "sizePx": _num(c, "size"), "fontFamily": _str(c, "font")})
+            for x in c.children:
+                runs_of(x, {**style, **own}, out)
+            return
         if c.tag not in _MARK_STYLE:
-            raise ValueError(f"{at}: <{c.tag}> is not a mark of a text box (b, i, u, s, a; a <p> per paragraph)")
+            raise ValueError(f"{at}: <{c.tag}> is not a mark of a text box (b, i, u, s, a, span; a <p> or a <li> per paragraph)")
         _only(c, [])
         for x in c.children:
             runs_of(x, {**style, _MARK_STYLE[c.tag]: True}, out)
 
-    if any(isinstance(c, Element) and c.tag == "p" for c in children):
-        paragraphs = []
-        for c in children:
-            if not isinstance(c, Element) or c.tag != "p":
-                raise ValueError(f"{at}: a text with paragraphs holds only <p>s")
+    def paragraph_of(c: Element) -> Dict[str, Any]:
+        if c.tag == "p":
             _only(c, [])
             runs: List[Dict[str, Any]] = []
             for x in c.children:
                 runs_of(x, {}, runs)
-            paragraphs.append({"runs": runs})
+            return {"runs": runs}
+        _only(c, ["bullet", "level"])
+        level = _num(c, "level")
+        level = 1 if level is None else level
+        if not isinstance(level, int) or isinstance(level, bool) or level < 1:
+            raise ValueError(f"{_where(c)}: level is a whole number from 1")
+        runs = []
+        for x in c.children:
+            runs_of(x, {}, runs)
+        return {"runs": runs, "listLevel": level, "bullet": _one_of(c, "bullet", _BULLETS) or "disc"}
+
+    if any(isinstance(c, Element) and c.tag in _PARAGRAPHS for c in children):
+        paragraphs = []
+        for c in children:
+            if not isinstance(c, Element) or c.tag not in _PARAGRAPHS:
+                raise ValueError(f"{at}: a text with paragraphs holds only <p>s and <li>s")
+            paragraphs.append(paragraph_of(c))
     else:
         runs = []
         for x in children:
