@@ -28,7 +28,7 @@ keywords: ``verified_by`` is ``verifiedBy``). A requirement is named by a ref, n
 the design it names (``design``: a 3D document, a schematic or a board with a cost check), the one source of cost, so
 no contribution is a cost. A ``param`` states a number with its unit, or a text a channel states (``param(id="framing",
 value="8N1")``: a format, a dialect, a transport) and then no unit. A side's ``origin``, ``rotation`` (degrees
-counter-clockwise) and ``face`` (``top``, or ``bottom`` for the side seen from the mating board, whose frame is mirrored)
+counter-clockwise) and ``face`` (``front``, or ``back`` for the side read from the mating part, whose frame is mirrored)
 put the interface's frame in the side's. The checks are the host's (``commandagi check``, ``commandagi trace``).
 """
 from __future__ import annotations
@@ -48,8 +48,6 @@ BUDGET_QUANTITIES = ["mass", "power", "cost", "thermal"]
 DECLARED_QUANTITY = re.compile(r"[a-z][a-z0-9-]*")
 SYSTEM_CHECK_KINDS = ["interface", "trace"]
 SIDE_KINDS = ["circuit", "3d", "firmware", "definition"]
-#: Which face of a side the interface's frame is on: ``top`` as the side's own frame has it, ``bottom`` from the mating board.
-SIDE_FACES = ["top", "bottom"]
 
 REQUIREMENT_FIELDS = ["id", "text", "rationale", "method", "verifiedBy", "design", "parent"]
 MODE_FIELDS = ["id", "description"]
@@ -65,6 +63,8 @@ MESSAGE_FIELDS = ["id", "text", "code", "define", "dir", "description"]
 PARAM_FIELDS = ["id", "value", "unit", "description"]
 SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "rotation", "face", "defines", "pins", "params", "files",
                "description"]
+#: The faces a side states: ``front`` (as drawn), or ``back`` (read from the mating part: the frame mirrored through its y axis).
+SIDE_FACES = ["front", "back"]
 
 _CHILDREN = {"holds": "children"}
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).

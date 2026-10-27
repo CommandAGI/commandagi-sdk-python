@@ -144,6 +144,25 @@ class CadQueryTests(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, 'faces\\("\\|Z"\\)'):
             cq.Workplane("XY").box(1, 1, 1).faces("|Z")
 
+    def test_a_script_that_names_a_fillet_or_an_edge_selector_is_refused_by_name(self):
+        # A file, not a call: the importer is run as a code part would be, and the refusal says which feature it was
+        # (a fillet, a chamfer and a shell need an edge or a face picked on computed geometry; an edge selector names
+        # edges that no declaration has).
+        for body, said in [
+            (".fillet(0.2)", "cadquery fillet"),
+            (".chamfer(0.2)", "cadquery chamfer"),
+            (".shell(0.2)", "cadquery shell"),
+            (".edges()", "cadquery edges() selectors"),
+            (".edges('|Z')", "cadquery edges() selectors"),
+        ]:
+            with self.assertRaisesRegex(NotImplementedError, said.replace("(", r"\(").replace(")", r"\)")):
+                run_module(
+                    "import commandagi.design.cadquery as cq\n"
+                    "result = cq.Workplane('XY').box(10, 10, 2)" + body + "\n",
+                    "plate.py",
+                    {},
+                )
+
     def test_main_with_params(self):
         g = run_module(
             "from commandagi.design import part, box\n"

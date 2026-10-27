@@ -26,7 +26,9 @@ and ``disabled`` set the node's own fields. The encodings are the TypeScript SDK
 each ``artboard(layer(…), name=…, width=…, height=…)`` after its layers is another; a top-level group of a drawing is a
 ``layer``; a path's ``d`` (absolute M L H V C Q Z); a drawn brush stroke's ``[x, y]`` points; a paint stroke's
 ``[x, y, pressure, t]`` points; a modifier (``blur``, ``transform``, ``fill`` …) wraps the one node it takes; ``clip``
-takes its content, then its mask; ``link(src="parts/Badge.draw.py", x=40, y=60)`` shows another drawing's first artboard
+takes its content, then its mask; a top-level group, shape, image or sketch written on the drawing is a layer of it;
+``sketch(sketch={"points": {…}, "segments": {…}, "constraints": {…}}, x=40, y=60, unit="mm")`` is a constrained sketch
+(graphics' ``Sketch`` object as plain data; its stored positions are the last solve); ``link(src="parts/Badge.draw.py", x=40, y=60)`` shows another drawing's first artboard
 as that file draws it now (``src``: a path from this file's folder, or an address; ``inputs={"size": 40}`` gives values
 to the parameters that drawing declares); a painting's filter (``gaussianBlur(radius=3)``, the photo's filters) chains
 among a layer's strokes and changes what is under it; in a painting or a photo a ``mask`` child of a layer, a stroke or a filter holds the
@@ -58,6 +60,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     # drawing: groups, shapes, pixels, modifiers
     "layer": _C, "group": _C,
     "rect": {}, "ellipse": {}, "polygon": {}, "path": {}, "text": {}, "brush-stroke": {}, "image": {}, "raster-layer": {}, "link": {},
+    "sketch": {},
     "transform": _C, "offset": _C, "array": _C, "mirror": _C, "stroke": _C, "fill": _C, "blur": _C, "levels": _C,
     "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "boolean": _C, "clip": _C,
     # painting and photo: layers, masks, adjustments, filters
@@ -135,7 +138,9 @@ _DRAW_SOURCES = {"rect", "ellipse", "polygon", "path", "text", "brush-stroke"}
 _DRAW_MODIFIERS = {"transform", "offset", "array", "mirror", "stroke", "fill", "blur", "levels", "threshold", "adjust", "crop", "bucket-fill"}
 #: Pixels a drawing places: each names its image file (``src``).
 _DRAW_PIXELS = {"image", "raster-layer"}
-_DRAW_LATER = {"sketch", "connector"}
+#: Drawables written with their own data: a constrained sketch (one ``Sketch`` object).
+_DRAW_DATA = {"sketch"}
+_DRAW_LATER = {"connector"}
 #: An address (``cloud://…``, ``https://…``, a path from the site's root); anything else is a path from the file's folder.
 _ADDRESS = re.compile(r"^[a-z][a-z0-9+.-]*://|^/", re.I)
 _NUMBER = re.compile(r"[MLHVCQZmlhvcqz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?")
@@ -214,8 +219,6 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
     kids = child_elements(el)
     if t == "layer" and not top:
         raise ValueError(f"{_where(el)}: a <layer> is a child of the <drawing>; inside it, group with <group>")
-    if t != "layer" and top:
-        raise ValueError(f"<{t}> is inside a <layer> (a drawing's children are its layers)")
     if t in ("layer", "group"):
         children = [_drawn(s, c, False) for c in kids]
         return _add(s, el, "group", {**_attrs(el), **channels("children", children)})
@@ -232,6 +235,14 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
                 a["subpaths"] = subpaths_of(a.pop("d"), _where(el))
         if t == "brush-stroke" and "points" in a:
             a["points"] = _pairs(a["points"], f"{_where(el)} points")
+        return _add(s, el, t, a)
+    if t in _DRAW_DATA:
+        if kids:
+            raise ValueError(f"{_where(el)} takes no children")
+        a = _attrs(el)
+        if not isinstance(a.get("sketch"), dict):
+            raise ValueError(f"{_where(el)}: sketch is its geometry, as the editor holds it "
+                             "({ points, segments, constraints, … })")
         return _add(s, el, t, a)
     if t in _DRAW_PIXELS:
         if kids:
@@ -261,7 +272,7 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
         masked_by = _drawn(s, kids[1], False)
         return _add(s, el, t, {**_attrs(el), "content": content, "mask": masked_by})
     if t in _DRAW_LATER:
-        raise ValueError(f"<{t}> is not declared in code yet (a drawing in code holds shapes, images, links, groups and modifiers)")
+        raise ValueError(f"<{t}> is not declared in code yet (a drawing in code holds shapes, images, sketches, links, groups and modifiers)")
     raise ValueError(f"<{t}> is not read in a drawing (see commandagi.design.twod)")
 
 
