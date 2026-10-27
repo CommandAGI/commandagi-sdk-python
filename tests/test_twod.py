@@ -160,6 +160,21 @@ class StackTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "holds one layer"):
             from_twod(photo(exposure(mask())))
 
+    def test_a_mask_of_names_a_layer_the_document_declares(self):
+        # The mask names a layer written below it, so its layer is given once the stack is declared.
+        g = from_twod(photo(
+            exposure(mask(of="sky"), name="Mood", ev=-0.5),
+            raster(name="Sky", id="sky", src="sky.png"),
+        ))
+        self.assertEqual(g["nodes"]["photo.adjust"]["inputs"]["mask"], wire("sky"))
+        self.assertEqual(g["nodes"]["doc"]["inputs"]["layers.2"], wire("sky"), "the named layer is still the stack's")
+        self.assertEqual(len(g["nodes"]), 3, "the mask declares no second layer")
+        self.assertNotIn("mask", g["nodes"]["sky"]["inputs"])
+        with self.assertRaisesRegex(ValueError, '<mask of="nope"> names no layer in this document'):
+            from_twod(photo(exposure(mask(of="nope"))))
+        with self.assertRaisesRegex(ValueError, "holds no layer: of names one the document declares"):
+            from_twod(photo(exposure(mask(fill(), of="sky")), raster(id="sky", src="a.png")))
+
     def test_a_masked_node_names_its_masks_call_in_meta_sources(self):
         out = run_module(textwrap.dedent("""\
             from commandagi.design.twod import exposure, gradient, mask, photo

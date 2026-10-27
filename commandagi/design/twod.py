@@ -30,7 +30,9 @@ takes its content, then its mask; ``link(src="parts/Badge.draw.py", x=40, y=60)`
 as that file draws it now (``src``: a path from this file's folder, or an address; ``inputs={"size": 40}`` gives values
 to the parameters that drawing declares); a painting's filter (``gaussianBlur(radius=3)``, the photo's filters) chains
 among a layer's strokes and changes what is under it; in a painting or a photo a ``mask`` child of a layer, a stroke or a filter holds the
-one layer that masks it (``mask(enabled=False)`` is one turned off); a painting's ``textLayer`` is a type layer (its
+one layer that masks it, or ``of`` names a layer the document declares, so one layer is both a stack layer and a mask's
+source (``gradient(id="sky")`` in the stack, ``mask(of="sky")`` on the layer it masks; ``mask(enabled=False)`` is one
+turned off); a painting's ``textLayer`` is a type layer (its
 words, face, size and colour; the pixels are made at render); a painting layer's ``fx`` holds its styles
 (``dropShadow``, ``innerShadow``, ``outerGlow``, ``stroke``, ``colorOverlay``, ``gradientOverlay``). PIXELS ARE NOT CODE: a pixel layer names its image file by relative path (``src``). Each node
 carries its element's call in ``meta.source``; a ``mask`` is not a node, so a masked node carries the mask's call in
@@ -46,7 +48,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 from .element import Element, child_elements, declares, define
-from .ir import NodeRef, Scope, channels, slug, using
+from .ir import NodeRef, Scope, channels, port_value, slug, using
 from .schema import describe_issue, validate, with_defaults
 from .twod_schema import SCHEMA
 
@@ -429,25 +431,40 @@ _STACKS = {
 
 
 def _mask_of(s: Scope, prefix: str, el: Element) -> tuple:
-    """A layer's (or a stroke's, or a filter's) ``mask``: the one stack layer it holds, declared outside the stack and
-    wired to the node's ``mask`` port, and the mask element's call (the masked node's ``meta.sources.mask``)."""
+    """A layer's (or a stroke's, or a filter's) ``mask``, in one of two forms: it holds the one stack layer that masks
+    the node (declared outside the stack), or ``of`` names a layer the document declares, so one layer is both a stack
+    layer and a mask's source (``<mask of="sky" />``). Returns the inputs, the mask element's call (the masked node's
+    ``meta.sources.mask``) and, for ``of``, the name to resolve once the stack is declared."""
     masks = [c for c in child_elements(el) if c.tag == "mask"]
     if not masks:
-        return {}, None
+        return {}, None, None
     if len(masks) > 1:
         raise ValueError(f"{_where(el)} has one <mask>")
     m = masks[0]
     ma = _attrs(m)
     for k, v in ma.items():
-        if k != "enabled" or not isinstance(v, bool):
-            raise ValueError(f"<mask> in {_where(el)} has one attribute, enabled (write the rest on the layer it holds)")
+        if k == "of":
+            if not isinstance(v, str) or not v:
+                raise ValueError(f"<mask> in {_where(el)}: of is the id of a layer in this document")
+        elif k != "enabled" or not isinstance(v, bool):
+            raise ValueError(f"<mask> in {_where(el)} has two attributes, of and enabled (write the rest on the layer it holds)")
+    enabled = {"maskEnabled": False} if ma.get("enabled") is False else {}
     held = child_elements(m)
+    if "of" in ma:
+        if held:
+            raise ValueError(f'<mask of="{ma["of"]}"> in {_where(el)} holds no layer: of names one the document declares')
+        return enabled, m.source, ma["of"]
     if len(held) != 1:
         raise ValueError(f"<mask> in {_where(el)} holds one layer")
-    out = {"mask": _stack(s, prefix, held)[0]}
-    if ma.get("enabled") is False:
-        out["maskEnabled"] = False
-    return out, m.source
+    return {"mask": _stack(s, prefix, held)[0], **enabled}, m.source, None
+
+
+def _resolve_masks(s: Scope) -> None:
+    """Give each ``<mask of="…">`` its layer, now that the document has declared its stack (docs/formats.md § 2D in code)."""
+    for ref, of, at in s.state.pop("namedMasks", []):
+        if slug(of) not in s.nodes:
+            raise ValueError(f'{at}: <mask of="{of}"> names no layer in this document')
+        s.nodes[ref]["inputs"]["mask"] = port_value(NodeRef(s, slug(of)), f"{ref}.mask")
 
 
 def _styles_of(prefix: str, el: Element) -> tuple:
@@ -476,9 +493,11 @@ def _styles_of(prefix: str, el: Element) -> tuple:
 
 def _add_masked(s: Scope, prefix: str, el: Element, type: str, inputs: Dict[str, Any]) -> NodeRef:
     """Declare ``el`` as one node of ``type``, masked by its ``mask`` when it has one, with its ``fx`` when it has them."""
-    mask_inputs, at = _mask_of(s, prefix, el)
+    mask_inputs, at, of = _mask_of(s, prefix, el)
     fx, sources = _styles_of(prefix, el)
     ref = _add(s, el, type, {**inputs, **mask_inputs, **({"fx": fx} if fx is not None else {})})
+    if of is not None:
+        s.state.setdefault("namedMasks", []).append((ref.id, of, _where(el)))
     if at is not None:
         sources["mask"] = at
     if sources:
@@ -523,6 +542,7 @@ def _stack_document(prefix: str, root: Element, name: str) -> Dict[str, Any]:
     s = Scope(f"{prefix}:{slug(title)}", {"domain": prefix, "name": title})
     with using(s):
         layers = _stack(s, prefix, child_elements(root))
+        _resolve_masks(s)
         doc = s.add(f"{prefix}.doc", {**a, **channels("layers", layers)}, id="doc", meta=_meta(root))
         s.output(doc)
     return s.build()
