@@ -32,7 +32,8 @@ takes its content, then its mask; a top-level group, shape, image or sketch writ
 as that file draws it now (``src``: a path from this file's folder, or an address; ``inputs={"size": 40}`` gives values
 to the parameters that drawing declares); a painting's filter (``gaussianBlur(radius=3)``, the photo's filters) chains
 among a layer's strokes and changes what is under it; in a painting or a photo a ``mask`` child of a layer, a stroke or a filter holds the
-one layer that masks it (``mask(enabled=False)`` is one turned off); a painting's ``textLayer`` is a type layer (its
+one layer that masks it (``mask(enabled=False)`` is one turned off), and ``mask(of="Shadow")`` names a layer the stack
+shows, by its ``name``; a painting's ``textLayer`` is a type layer (its
 words, face, size and colour; the pixels are made at render); a painting layer's ``fx`` holds its styles
 (``dropShadow``, ``innerShadow``, ``outerGlow``, ``innerGlow``, ``bevelEmboss``, ``satin``, ``stroke``,
 ``colorOverlay``, ``gradientOverlay``, ``patternOverlay``). PIXELS ARE NOT CODE: a pixel layer names its image file by relative path (``src``). Each node
@@ -441,26 +442,45 @@ _STACKS = {
 }
 
 
-def _mask_of(s: Scope, prefix: str, el: Element) -> tuple:
+def _mask_of(s: Scope, prefix: str, el: Element, names: Dict[str, Any]) -> tuple:
     """A layer's (or a stroke's, or a filter's) ``mask``: the one stack layer it holds, declared outside the stack and
-    wired to the node's ``mask`` port, and the mask element's call (the masked node's ``meta.sources.mask``)."""
+    wired to the node's ``mask`` port, or — ``mask(of="Name")`` — a layer the stack shows, named by its ``name``; and
+    the mask element's call (the masked node's ``meta.sources.mask``)."""
     masks = [c for c in child_elements(el) if c.tag == "mask"]
     if not masks:
-        return {}, None
+        return {}, None, None
     if len(masks) > 1:
         raise ValueError(f"{_where(el)} has one <mask>")
     m = masks[0]
     ma = _attrs(m)
     for k, v in ma.items():
-        if k != "enabled" or not isinstance(v, bool):
-            raise ValueError(f"<mask> in {_where(el)} has one attribute, enabled (write the rest on the layer it holds)")
+        if (k not in ("enabled", "of")) or (k == "enabled" and not isinstance(v, bool)) or (k == "of" and not isinstance(v, str)):
+            raise ValueError(f"<mask> in {_where(el)} has enabled and of (write the rest on the layer it holds or names)")
+    enabled = ma.get("enabled") is not False
+    if "of" in ma:
+        if child_elements(m):
+            raise ValueError(f'<mask of="{ma["of"]}"> in {_where(el)} holds no layer: it names a layer of the stack')
+        return {}, m.source, {"of": ma["of"], "enabled": enabled}
     held = child_elements(m)
     if len(held) != 1:
         raise ValueError(f"<mask> in {_where(el)} holds one layer")
-    out = {"mask": _stack(s, prefix, held)[0]}
-    if ma.get("enabled") is False:
+    out = {"mask": _stack(s, prefix, held, names, False)[0]}
+    if not enabled:
         out["maskEnabled"] = False
-    return out, m.source
+    return out, m.source, None
+
+
+def _resolve_masks(names: Dict[str, Any]) -> None:
+    """Wire every ``mask(of="…")`` to the layer it names: a name must match exactly one layer of the stack."""
+    for ref, of, enabled, where in names["pending"]:
+        hits = [r for (n, r) in names["layers"] if n == of]
+        if not hits:
+            raise ValueError(f'{where} is masked by "{of}", and no layer is named that')
+        if len(hits) > 1:
+            raise ValueError(f'{where} is masked by "{of}", and {len(hits)} layers are named that')
+        ref.node["inputs"]["mask"] = {"wire": {"node": hits[0].id, "port": "out"}}
+        if not enabled:
+            ref.node["inputs"]["maskEnabled"] = False
 
 
 def _styles_of(prefix: str, el: Element) -> tuple:
@@ -487,11 +507,13 @@ def _styles_of(prefix: str, el: Element) -> tuple:
     return fx, sources
 
 
-def _add_masked(s: Scope, prefix: str, el: Element, type: str, inputs: Dict[str, Any]) -> NodeRef:
+def _add_masked(s: Scope, prefix: str, el: Element, type: str, inputs: Dict[str, Any], names: Dict[str, Any]) -> NodeRef:
     """Declare ``el`` as one node of ``type``, masked by its ``mask`` when it has one, with its ``fx`` when it has them."""
-    mask_inputs, at = _mask_of(s, prefix, el)
+    mask_inputs, at, named = _mask_of(s, prefix, el, names)
     fx, sources = _styles_of(prefix, el)
     ref = _add(s, el, type, {**inputs, **mask_inputs, **({"fx": fx} if fx is not None else {})})
+    if named is not None:
+        names["pending"].append((ref, named["of"], named["enabled"], f"{_where(el)}'s <mask>"))
     if at is not None:
         sources["mask"] = at
     if sources:
@@ -499,7 +521,7 @@ def _add_masked(s: Scope, prefix: str, el: Element, type: str, inputs: Dict[str,
     return ref
 
 
-def _stack(s: Scope, prefix: str, children: List[Element]) -> List[NodeRef]:
+def _stack(s: Scope, prefix: str, children: List[Element], names: Dict[str, Any], in_stack: bool) -> List[NodeRef]:
     root, chain_type, layer_of, chains, chain_of = _STACKS[prefix]
     slots = []
     for el in children:
@@ -516,13 +538,15 @@ def _stack(s: Scope, prefix: str, children: List[Element]) -> List[NodeRef]:
                 (chain if chains(c) else stack).append(c)
         if stack and kind != f"{prefix}.group":
             raise ValueError(f"{_where(el)}: only a <group> holds layers")
-        inner = _stack(s, prefix, stack) if kind == f"{prefix}.group" else []
-        top = _add_masked(s, prefix, el, kind, {**inputs, **channels("layers", inner)})
+        inner = _stack(s, prefix, stack, names, in_stack) if kind == f"{prefix}.group" else []
+        top = _add_masked(s, prefix, el, kind, {**inputs, **channels("layers", inner)}, names)
         # Each chain member carries the layer's fields: the stack reads them off whichever member is on top.
         carried = dict(_COMMON_DEFAULTS)
         carried.update({k: inputs[k] for k in _COMMON if inputs.get(k) is not None})
         for c in chain:
-            top = _add_masked(s, prefix, c, chain_type(c), {**carried, **chain_of(c), "src": top})
+            top = _add_masked(s, prefix, c, chain_type(c), {**carried, **chain_of(c), "src": top}, names)
+        if in_stack and isinstance(inputs.get("name"), str):
+            names["layers"].append((inputs["name"], top))
         slots.append(top)
     return slots
 
@@ -535,7 +559,9 @@ def _stack_document(prefix: str, root: Element, name: str) -> Dict[str, Any]:
     title = a["name"] if isinstance(a.get("name"), str) else name
     s = Scope(f"{prefix}:{slug(title)}", {"domain": prefix, "name": title})
     with using(s):
-        layers = _stack(s, prefix, child_elements(root))
+        names: Dict[str, Any] = {"layers": [], "pending": []}
+        layers = _stack(s, prefix, child_elements(root), names, True)
+        _resolve_masks(names)
         doc = s.add(f"{prefix}.doc", {**a, **channels("layers", layers)}, id="doc", meta=_meta(root))
         s.output(doc)
     return s.build()

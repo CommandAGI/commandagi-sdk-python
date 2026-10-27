@@ -10,6 +10,8 @@ Added
 
 - A side places the interface's frame by `rotation` (degrees, counter-clockwise) and `face` (`back`: read from the
   mating part, the frame mirrored through its y axis, so a hole or pin placed on it is mirrored too).
+- A painting's or a photo's `mask(of="Name")` names a layer the stack shows, by its `name`, and wires the masked node to it; the element holds no layer of its own.
+
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 - `<component refRot={90}>`: how far a part's reference text is turned where it sits, in degrees, in the footprint's own frame (the placer turns a text it has no upright place for).
 
