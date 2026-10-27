@@ -28,7 +28,7 @@ The calls (the first arguments are positional attributes; everything else is a k
                                                                              library ref in a .kicad_sym, by path
     part(name, value=…, symbol=…, pins=[…])                                  a part of a netlist circuit (no sheet)
     net(name, pins=[".C1 > .pin1", …])                                       a stored net of a netlist circuit
-    unit(part, unit, sch_x=, sch_y=, sch_rotation=, sch_mirror=)             where unit n (2 or more) of a part sits;
+    unit(part, unit, sch_x=, sch_y=, sch_rotation=, sch_mirror=, sch_style=)  where unit n (2 or more) of a part sits;
                                                                              the part's own sch_x, sch_y place unit 1
     code(name, source=…, inputs={…})                                         a code part: the parts another file
                                                                              declares (its path relative to this one)
@@ -56,7 +56,8 @@ The calls (the first arguments are positional attributes; everything else is a k
                                                                              RoHS, HS Code …)
 
 ``sch_x`` and ``sch_y`` are the sheet's own coordinates: millimetres, Y DOWN. ``sch_rotation`` is 0, 90, 180 or 270
-degrees; ``sch_mirror`` is "x" or "y". A part with neither is declared and not placed. A library part's pins and body
+degrees; ``sch_mirror`` is "x" or "y"; ``sch_style`` is the De Morgan body style the placement shows (1, the
+format's default, unless the file says another). A part with neither is declared and not placed. A library part's pins and body
 are the library's: the editor reads them from the file, so the schematic holds no pin geometry. Its pin is named by
 number (".U1 > .pin5"); the editor binds it to the unit that has it (a pin common to every unit lands on the lowest
 unit placed). A wire is a binding between two pins, never a coincidence of coordinates. Each node carries the call it
@@ -123,7 +124,7 @@ SHEET_PARTS: Dict[str, Dict[str, Any]] = {
     "currentsource": {"symbol": "Ideal:I", "value": "current", "pins": 2, "aliases": _SOURCE, "excitation": True},
     "ground": {"symbol": "Ideal:GND", "value": None, "pins": 1, "aliases": {"pin1": "1", "gnd": "1"}, "power": "GND"},
 }
-_PLACE = ["schX", "schY", "schRotation", "schMirror"]
+_PLACE = ["schX", "schY", "schRotation", "schMirror", "schStyle"]
 _MIRRORS = ("x", "y")
 #: A library part's wire end before the editor reads its library: the part node, and the pin by number.
 LIBRARY_PIN_PORT = "pin:"
@@ -228,12 +229,15 @@ def _pin_number(written: str) -> str:
 
 
 def _place(s: Scope, placed: Dict[str, Any], unit_number: int, el: Element, pins: List[str]) -> None:
-    """Add the placement of ``unit_number`` of a part that ``el`` declares (its schX, schY, schRotation, schMirror)."""
+    """Add the placement of ``unit_number`` of a part that ``el`` declares (its schX, schY, schRotation, schMirror,
+    schStyle)."""
     x, y, rot = _num(el, "schX"), _num(el, "schY"), _num(el, "schRotation")
     mirror = el.props.get("schMirror")
+    style = el.props.get("schStyle")
     if x is None and y is None:
-        if rot is not None or mirror is not None:
-            raise ValueError(f"{_where(el)}: {'schRotation' if rot is not None else 'schMirror'} needs schX and schY")
+        unplaced = "schRotation" if rot is not None else "schMirror" if mirror is not None else "schStyle" if style is not None else None
+        if unplaced:
+            raise ValueError(f"{_where(el)}: {unplaced} needs schX and schY")
         if el.tag == "unit":
             raise ValueError(f"{_where(el)}: a unit is placed: give it schX and schY")
         return
@@ -241,11 +245,14 @@ def _place(s: Scope, placed: Dict[str, Any], unit_number: int, el: Element, pins
         raise ValueError(f"{_where(el)}: schRotation is 0, 90, 180 or 270")
     if mirror is not None and mirror not in _MIRRORS:
         raise ValueError(f'{_where(el)}: schMirror is "x" or "y"')
+    # A body style is 1 or more: 0 is "common to every style", which a placement never shows on its own.
+    if style is not None and (not isinstance(style, int) or isinstance(style, bool) or style < 1):
+        raise ValueError(f"{_where(el)}: schStyle is 1 or more (KiCad's De Morgan body style)")
     ref = placed["ref"]
     placed["units"][unit_number] = s.add(
         sch_symbol_type_for(pins),
-        {"unit": unit_number, "style": 1, "at": {"x": x if x is not None else 0, "y": y if y is not None else 0}, "rot": rot or 0,
-         "mirror": mirror or "", _PART_PORT: {"wire": {"node": placed["id"], "port": _PART_BODY_PORT}}},
+        {"unit": unit_number, "style": style if style is not None else 1, "at": {"x": x if x is not None else 0, "y": y if y is not None else 0},
+         "rot": rot or 0, "mirror": mirror or "", _PART_PORT: {"wire": {"node": placed["id"], "port": _PART_BODY_PORT}}},
         id=f"sym_{ref}_{unit_number}", label=ref, meta=_meta(el)).id
 
 

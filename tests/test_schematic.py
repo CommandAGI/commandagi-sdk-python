@@ -83,7 +83,7 @@ class SheetTests(unittest.TestCase):
 result = group(
     "Rail",
     part("U1", symbol="Amplifier_Operational:LM358", library="opamps.kicad_sym", value="LM358", sch_x=50.8, sch_y=25.4, sch_mirror="x"),
-    unit("U1", 2, sch_x=101.6, sch_y=25.4, sch_rotation=180),
+    unit("U1", 2, sch_x=101.6, sch_y=25.4, sch_rotation=180, sch_style=2),
     resistor("R1", resistance="10k", sch_x=76.2, sch_y=50.8, sch_mirror="y"),
     code("blinker", source="blinker.circuit.ts", inputs={"resistor": "330"}),
     trace(".U1 > .pin7", ".R1 > .pin1"),
@@ -95,7 +95,7 @@ result = group(
         self.assertEqual(n["U1"]["inputs"], {"ref": "U1", "value": "LM358", "symbol": "Amplifier_Operational:LM358", "library": "opamps.kicad_sym", "pins": []}, "the pins are the library's")
         self.assertEqual(n["sym_U1_1"]["inputs"], {"unit": 1, "style": 1, "at": {"x": 50.8, "y": 25.4}, "rot": 0, "mirror": "x", "part": wire("U1", "@part")})
         self.assertEqual(n["sym_U1_1"]["type"], sch_symbol_type_for([]))
-        self.assertEqual(n["sym_U1_2"]["inputs"], {"unit": 2, "style": 1, "at": {"x": 101.6, "y": 25.4}, "rot": 180, "mirror": "", "part": wire("U1", "@part")})
+        self.assertEqual(n["sym_U1_2"]["inputs"], {"unit": 2, "style": 2, "at": {"x": 101.6, "y": 25.4}, "rot": 180, "mirror": "", "part": wire("U1", "@part")})
         self.assertEqual(n["sym_U1_2"]["meta"]["source"]["tag"], "unit", "a unit's placement maps to its unit(…) call")
         self.assertEqual(n["sym_R1_1"]["inputs"]["mirror"], "y")
         self.assertEqual(n["w_1"]["inputs"], {"ends.1": wire("U1", "pin:7"), "ends.2": wire("sym_R1_1", "p1")}, "a library pin by number, bound by the editor")
@@ -111,6 +111,9 @@ result = group(
             ('    part("U1", symbol="A:B", library="a.kicad_sym"),\n    unit("U1", 2),\n', "give it schX and schY"),
             ('    part("U1", symbol="A:B", library="a.kicad_sym"),\n    unit("U1", 2, sch_x=1, sch_y=1),\n    unit("U1", 2, sch_x=2, sch_y=1),\n', "placed twice"),
             ('    resistor("R1", sch_x=0, sch_y=0, sch_mirror="z"),\n', 'schMirror is "x" or "y"'),
+            ('    resistor("R1", sch_x=0, sch_y=0, sch_style=0),\n', "schStyle is 1 or more"),
+            ('    resistor("R1", sch_x=0, sch_y=0, sch_style=1.5),\n', "schStyle is 1 or more"),
+            ('    resistor("R1", sch_style=2),\n', "schStyle needs schX and schY"),
             ('    code("c", source="c.ts", inputs={"source": "d.ts"}),\n', "source is the file"),
         ]
         for body, message in cases:
