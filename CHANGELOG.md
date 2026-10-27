@@ -16,7 +16,7 @@ Added
 - `<component refRot={90}>`: how far a part's reference text is turned where it sits, in degrees, in the footprint's own frame (the placer turns a text it has no upright place for).
 
 - A world unit declares `tilt_deg`: how far its front is raised above level, in degrees (positive up; absent is
-  level). A video channel declares its lens as `fov` (`at_mm`, `diagonal_deg`, `aspect`), which the world view and a
+  level). A video channel declares its lens as `fieldOfViewDeg`, `frameAspect` and `lensAtMm`, which the world view and a
   world's coverage test read alike.
 
 Added
