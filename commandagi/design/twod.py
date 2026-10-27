@@ -32,7 +32,8 @@ to the parameters that drawing declares); a painting's filter (``gaussianBlur(ra
 among a layer's strokes and changes what is under it; in a painting or a photo a ``mask`` child of a layer, a stroke or a filter holds the
 one layer that masks it (``mask(enabled=False)`` is one turned off); a painting's ``textLayer`` is a type layer (its
 words, face, size and colour; the pixels are made at render); a painting layer's ``fx`` holds its styles
-(``dropShadow``, ``innerShadow``, ``outerGlow``, ``stroke``, ``colorOverlay``, ``gradientOverlay``). PIXELS ARE NOT CODE: a pixel layer names its image file by relative path (``src``). Each node
+(``dropShadow``, ``innerShadow``, ``outerGlow``, ``innerGlow``, ``bevelEmboss``, ``satin``, ``stroke``,
+``colorOverlay``, ``gradientOverlay``, ``patternOverlay``). PIXELS ARE NOT CODE: a pixel layer names its image file by relative path (``src``). Each node
 carries its element's call in ``meta.source``; a ``mask`` is not a node, so a masked node carries the mask's call in
 ``meta.sources.mask``. A tag the vocabulary does not have is refused by name.
 
@@ -62,7 +63,8 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "boolean": _C, "clip": _C,
     # painting and photo: layers, masks, adjustments, filters
     "raster": _C, "gradient": _C, "mask": _C, "line": {}, "bucket": {}, "gradientFill": {}, "move": {}, "textLayer": _C,
-    "fx": _C, "dropShadow": {}, "innerShadow": {}, "outerGlow": {}, "colorOverlay": {}, "gradientOverlay": {},
+    "fx": _C, "dropShadow": {}, "innerShadow": {}, "outerGlow": {}, "innerGlow": {}, "bevelEmboss": {}, "satin": {},
+    "colorOverlay": {}, "gradientOverlay": {}, "patternOverlay": {},
     "exposure": _C, "curves": _C, "hsl": _C, "vibrance": _C, "colorBalance": _C, "blackWhite": _C, "invert": _C, "posterize": _C, "develop": _C,
     "gaussianBlur": _C, "unsharpMask": _C, "sharpen": _C, "noise": _C,
     # nest
@@ -323,7 +325,7 @@ _COMMON_DEFAULTS = {"name": "Layer", "visible": True, "opacity": 1, "blend": "no
 PHOTO_ADJUSTMENTS = ("exposure", "levels", "curves", "hsl", "vibrance", "colorBalance", "blackWhite", "invert", "threshold", "posterize", "develop")
 PHOTO_FILTERS = ("gaussianBlur", "unsharpMask", "sharpen", "noise")
 #: A painting layer's styles, the tags of its ``fx`` (Photoshop's Layer Style).
-LAYER_STYLES = ("dropShadow", "innerShadow", "outerGlow", "stroke", "colorOverlay", "gradientOverlay")
+LAYER_STYLES = ("dropShadow", "innerShadow", "outerGlow", "innerGlow", "bevelEmboss", "satin", "stroke", "colorOverlay", "gradientOverlay", "patternOverlay")
 _MIME = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "gif": "image/gif", "bmp": "image/bmp"}
 
 
