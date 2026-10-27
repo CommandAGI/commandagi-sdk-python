@@ -66,7 +66,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "transform": _C, "offset": _C, "array": _C, "mirror": _C, "stroke": _C, "fill": _C, "blur": _C, "levels": _C,
     "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "boolean": _C, "clip": _C,
     # painting and photo: layers, masks, adjustments, filters
-    "raster": _C, "gradient": _C, "mask": _C, "line": {}, "bucket": {}, "gradientFill": {}, "move": {}, "textLayer": _C,
+    "raster": _C, "gradient": _C, "mask": _C, "line": {}, "bucket": {}, "gradientFill": {}, "move": {}, "erase": {}, "freeTransform": {}, "textLayer": _C,
     "fx": _C, "dropShadow": {}, "innerShadow": {}, "outerGlow": {}, "innerGlow": {}, "bevelEmboss": {}, "satin": {},
     "colorOverlay": {}, "gradientOverlay": {}, "patternOverlay": {},
     "exposure": _C, "curves": _C, "hsl": _C, "vibrance": _C, "colorBalance": _C, "blackWhite": _C, "invert": _C, "posterize": _C, "develop": _C,
@@ -376,7 +376,7 @@ def _adjustment_layer(el: Element, node_type: str) -> tuple:
 
 #: What is painted on a painting's pixel layer: strokes, the Paint Bucket, the Gradient, the Move tool. A filter
 #: (``PHOTO_FILTERS``) chains among them.
-PAINT_CHAIN = ("stroke", "bucket", "gradientFill", "move")
+PAINT_CHAIN = ("stroke", "bucket", "gradientFill", "move", "erase", "freeTransform")
 #: A painting's shape layers.
 PAINT_SHAPES = ("rect", "ellipse", "polygon", "line")
 

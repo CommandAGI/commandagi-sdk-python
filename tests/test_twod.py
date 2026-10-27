@@ -7,7 +7,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, bevelEmboss, blur, bucket, colorOverlay, drawing, dropShadow, ellipse, engrave, exposure, fill, from_twod, fx, gaussianBlur, gradient,
-                                    gradientFill, gradientOverlay, group, image, innerGlow, innerShadow, layer, line, link, mask, move,
+                                    gradientFill, gradientOverlay, group, image, innerGlow, innerShadow, layer, line, link, mask, move, erase, freeTransform,
                                     nest, noise, options, outerGlow, painting, part, path, patternOverlay, photo, raster, raster_layer, rect, satin, sheet, sharpen, sketch, stock, stroke,
                                     subpaths_of)
 
@@ -134,6 +134,8 @@ class StackTests(unittest.TestCase):
                 bucket(x=5, y=6, tolerance=20, contiguous=True, color=[1, 0, 0, 1]),
                 gradientFill(shape="linear", from_=[0, 0], to=[100, 0], stops=[{"at": 0, "color": [0, 0, 0, 1]}, {"at": 1, "color": [1, 1, 1, 1]}]),
                 move(dx=12, dy=-3, selection=[{"wand": [5, 6], "tolerance": 32, "contiguous": False}]),
+                erase(selection=[{"rect": [0, 0, 10, 10], "feather": 0}]),
+                freeTransform(cx=50, cy=40, dx=2, dy=3, scaleX=1.5, scaleY=1.5, angle=0.25),
                 name="Paint",
             ),
             rect(name="Rectangle 1", x=4, y=5, w=30, h=20, fill=[0, 0, 1, 1], stroke=[0, 0, 0, 1], stroke_width=2),
@@ -145,7 +147,9 @@ class StackTests(unittest.TestCase):
         self.assertEqual(n["paint.bucket"]["inputs"], {"name": "Paint", "visible": True, "opacity": 1, "blend": "normal", "x": 5, "y": 6,
                                                        "tolerance": 20, "contiguous": True, "color": [1, 0, 0, 1], "src": wire("paint.stroke")})
         self.assertEqual(n["paint.gradientFill"]["inputs"]["from"], [0, 0])
-        self.assertEqual(n["doc"]["inputs"]["layers.1"], wire("paint.move"))
+        self.assertEqual(n["paint.erase"]["inputs"]["src"], wire("paint.move"))
+        self.assertEqual(n["paint.freeTransform"]["inputs"]["scaleX"], 1.5)
+        self.assertEqual(n["doc"]["inputs"]["layers.1"], wire("paint.freeTransform"))
         self.assertEqual(n["paint.shape"]["inputs"], {"name": "Rectangle 1", "x": 4, "y": 5, "w": 30, "h": 20, "fill": [0, 0, 1, 1],
                                                       "stroke": [0, 0, 0, 1], "strokeWidth": 2, "shape": "rect"})
         self.assertEqual(n["paint.shape_2"]["inputs"]["shape"], "line")
