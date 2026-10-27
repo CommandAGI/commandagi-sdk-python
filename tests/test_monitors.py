@@ -107,8 +107,13 @@ class MonitorTests(unittest.TestCase):
         full = monitor_with_defaults(mirror)
         self.assertEqual(full["discovers"], [{"into": "./", "of": [], "when": {"class": "message.*"}, "slug": "conversation",
                                               "class": "../../conversation.tsx#Conversation",
-                                              "props": {"conversation": "conversation", "title": "fromName"}, "name": "fromName", "max": 5}])
+                                              "props": {"conversation": "conversation", "title": "fromName"}, "name": "fromName", "max": 5,
+                                              "visibility": None}])
         self.assertEqual(full["sources"][0]["vantage"], "../../../infra/vantages/laptop-linux")
+        # A discover says the visibility its folders take; absent, the platform writes them private.
+        public = monitor_with_defaults(declare_document(monitor(discover(
+            slug="cve", class_="../c.tsx#Exploit", visibility="public")))["document"])["discovers"][0]
+        self.assertEqual(public["visibility"], "public")
         self.assertEqual(declare_document(conversation("4412", "Alice"))["document"]["follows"],
                          [{"monitor": "../", "match": "message.*", "where": "conversation=4412"}])
 
@@ -128,6 +133,7 @@ class MonitorTests(unittest.TestCase):
             (dict(of=[]), "of is a monitor's folder or a list of them"),
             (dict(props={"title": "a b"}), "props.title is a data path"),
             (dict(max=500), "max is a whole number from 1 to 50"),
+            (dict(visibility="shared"), "visibility is private, unlisted, public"),
             (dict(delete=True), "delete is not read"),
         ]
         for attrs, words in refused:

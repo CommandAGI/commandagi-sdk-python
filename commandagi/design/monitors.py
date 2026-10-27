@@ -40,9 +40,11 @@ SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit", "host", "mod
 FOLLOW_FIELDS = ["monitor", "match", "where"]
 WAKE_FIELDS = ["match", "prompt"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since"]
-DISCOVER_FIELDS = ["into", "of", "when", "slug", "class", "props", "name", "max"]
+DISCOVER_FIELDS = ["into", "of", "when", "slug", "class", "props", "name", "max", "visibility"]
 #: The most new folders a discover writes a tick.
 DISCOVER_MAX = 50
+#: Who may read a file a discover writes (docs/monitors.md § own thread or record).
+VISIBILITIES = ["private", "unlisted", "public"]
 #: The paths a source's reads take (docs/sources.md § fetch paths).
 VIAS = ["worker", "host", "vpn", "browser", "vm", "android-vm", "phone"]
 #: The paths that launch a machine from a snapshot (a logged-in state), and so cost money per read.
@@ -66,7 +68,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 }
 
 __all__ = ["MONITOR_FIELDS", "SUBJECT", "SOURCE_FIELDS", "FOLLOW_FIELDS", "DERIVE_FIELDS", "WAKE_FIELDS", "DISCOVER_FIELDS",
-           "DISCOVER_MAX", "VIAS", "VM_VIAS", "MODES", "UNIT_REF", "SIGNATURES", "duration_seconds", "monitor_with_defaults", "MONITOR_VOCABULARY",
+           "DISCOVER_MAX", "VISIBILITIES", "VIAS", "VM_VIAS", "MODES", "UNIT_REF", "SIGNATURES", "duration_seconds", "monitor_with_defaults", "MONITOR_VOCABULARY",
            *define(globals(), "monitors", SIGNATURES)]
 
 _DURATION = re.compile(r"^([1-9]\d*)(s|m|h|d)$")
@@ -258,6 +260,9 @@ def _discover(t: DocTree) -> Dict[str, Any]:
     mx = a.get("max")
     if mx is not None and (isinstance(mx, bool) or not isinstance(mx, int) or not 1 <= mx <= DISCOVER_MAX):
         raise ValueError(f"{at} max is a whole number from 1 to {DISCOVER_MAX}, not {json.dumps(mx)}")
+    vis = a.get("visibility")
+    if vis is not None and vis not in VISIBILITIES:
+        raise ValueError(f"{at} visibility is {', '.join(VISIBILITIES)}, not {json.dumps(vis)}")
     return _said(a, DISCOVER_FIELDS)
 
 
@@ -321,7 +326,7 @@ def monitor_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
         of = d.get("of")
         return {"into": d.get("into", "./"), "of": [] if of is None else [of] if isinstance(of, str) else of,
                 "when": d.get("when"), "slug": d["slug"], "class": d["class"], "props": d.get("props", {}),
-                "name": d.get("name"), "max": d.get("max", 10)}
+                "name": d.get("name"), "max": d.get("max", 10), "visibility": d.get("visibility")}
     return {"title": m.get("title"), "class": m.get("class"), "about": m.get("about"), "readme": m.get("readme"),
             "sameAs": m.get("sameAs", []), "sources": [src(s) for s in m.get("sources", [])],
             "follows": [{"monitor": f["monitor"], "match": f.get("match"), "where": f.get("where")} for f in m.get("follows", [])],
