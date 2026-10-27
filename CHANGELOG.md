@@ -8,6 +8,7 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `<artboard crop inputs>`: an artboard says the source rectangle it shows (`crop={{ x, y, width, height }}`, in the drawing's own scene units) and the values it gives the drawing's parameters (`inputs={{ name: value }}`).
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 
 Added
