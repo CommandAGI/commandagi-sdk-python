@@ -256,6 +256,21 @@ def _input_values(el: Element) -> Dict[str, Any]:
     return dict(v)
 
 
+def _rect_of(el: Element, prop: str) -> Optional[Dict[str, float]]:
+    """A ``crop``: the source rectangle shown, in the drawing's own scene units."""
+    v = el.props.get(prop)
+    if v is None:
+        return None
+    if not isinstance(v, dict):
+        raise ValueError(f"{_where(el)}: {prop} is {{ x, y, width, height }}, not {json.dumps(v)}")
+    for k in ("x", "y", "width", "height"):
+        if isinstance(v.get(k), bool) or not isinstance(v.get(k), (int, float)) or not math.isfinite(v.get(k)):
+            raise ValueError(f"{_where(el)}: {prop}.{k} is a number")
+    if v["width"] <= 0 or v["height"] <= 0:
+        raise ValueError(f"{_where(el)}: {prop} has a positive width and height")
+    return {k: float(v[k]) for k in ("x", "y", "width", "height")}
+
+
 def _clip_length(c: Element, in_point: float, speed: float, picture: bool) -> float:
     """A clip's length: out - in at its speed, or its duration."""
     out, duration = _num(c, "out", 0), _num(c, "duration", 0)
@@ -503,7 +518,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 source = None
             elif c.type == "artboard":
                 # A drawing's page, drawn live: the clip keeps the reference, never the drawing.
-                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + ["src", "view", "fit", "representation"])
+                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + ["src", "view", "fit", "representation", "crop", "inputs"])
                 if kind != "video":
                     raise ValueError(f"{_where(c)}: an artboard goes on a video track")
                 src = _document_src(c, ARTBOARD_FILE, "a drawing's code (a .draw.tsx, .draw.py or .draw.rs)")
@@ -516,8 +531,15 @@ def declare_video(root: Element) -> Dict[str, Any]:
                                        "representation": _or(_str(c, "representation", ARTBOARD_REPRESENTATIONS), ARTBOARD["representation"])}
                 if view is not None:
                     ref["view"] = view
+                overrides = _input_values(c)
+                if overrides:
+                    ref["overrides"] = overrides
+                renderable: Dict[str, Any] = {"ref": ref, "fit": _or(_str(c, "fit", ARTBOARD_FITS), ARTBOARD["fit"])}
+                crop = _rect_of(c, "crop")
+                if crop is not None:
+                    renderable["crop"] = crop
                 inputs = {"kind": "renderable", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1,
-                          **_common(c), "volume": 1, "renderable": {"ref": ref, "fit": _or(_str(c, "fit", ARTBOARD_FITS), ARTBOARD["fit"])}}
+                          **_common(c), "volume": 1, "renderable": renderable}
                 source = None
             elif c.type == "title":
                 _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + list(TITLE_TEXT) + ["typewriter"])
