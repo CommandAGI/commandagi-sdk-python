@@ -135,7 +135,7 @@ class StackTests(unittest.TestCase):
                 gradientFill(shape="linear", from_=[0, 0], to=[100, 0], stops=[{"at": 0, "color": [0, 0, 0, 1]}, {"at": 1, "color": [1, 1, 1, 1]}]),
                 move(dx=12, dy=-3, selection=[{"wand": [5, 6], "tolerance": 32, "contiguous": False}]),
                 erase(selection=[{"rect": [0, 0, 10, 10], "feather": 0}]),
-                freeTransform(cx=50, cy=40, dx=2, dy=3, scaleX=1.5, scaleY=1.5, angle=0.25),
+                freeTransform(cx=50, cy=40, dx=2, dy=3, scale_x=1.5, scale_y=1.5, angle=0.25),
                 name="Paint",
             ),
             rect(name="Rectangle 1", x=4, y=5, w=30, h=20, fill=[0, 0, 1, 1], stroke=[0, 0, 0, 1], stroke_width=2),
