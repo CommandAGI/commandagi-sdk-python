@@ -144,3 +144,12 @@ class OntologyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FieldNameTest(unittest.TestCase):
+    def test_double_underscore_names_a_field_with_an_underscore_of_its_own(self):
+        from commandagi.design.element import attr_name
+
+        self.assertEqual(attr_name("lead_time__"), "lead_time")
+        self.assertEqual(attr_name("lead_time"), "leadTime")
+        self.assertEqual(attr_name("from_"), "from")

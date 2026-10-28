@@ -9,7 +9,8 @@ A document is a tree of elements. A call writes one: ``tag(*positional_attribute
   ``layer(*[rect(x=i * 10) for i in range(3)])``); ``None`` and booleans are skipped, as JSX skips them. A tag that
   holds text takes texts and inline elements (``p("The run ", b("passed"), ".")``); a leaf takes nothing.
 - Attributes: keywords in snake_case of the TypeScript name (``frozen_rows`` is ``frozenRows``: each ``_x`` is ``X``;
-  a trailing ``_`` is dropped). A keyword with an uppercase letter is refused by name.
+  a trailing ``_`` is dropped; a trailing ``__`` marks a name with an underscore of its own: ``lead_time__`` is
+  ``lead_time``, read as written). A keyword with an uppercase letter is refused by name.
 
 Each element asks ``source.here()`` which call of the running file made it and keeps that index (``source``); a
 declaration copies it where the TypeScript SDK copies an element's ``source``.
@@ -38,6 +39,8 @@ def attr_name(written: str, where: str = "") -> str:
     if _UPPER.search(written):
         snake = _UPPER.sub(lambda m: "_" + m.group(0).lower(), written)
         raise TypeError(f"{where}{written} is written {snake} (keywords are snake_case of the attribute's name)")
+    if written.endswith("__") and len(written) > 2:
+        return written[:-2]
     name = written[:-1] if written.endswith("_") and len(written) > 1 else written
     return _SNAKE.sub(lambda m: m.group(1).upper(), name)
 
