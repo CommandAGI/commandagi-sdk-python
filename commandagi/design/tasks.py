@@ -43,7 +43,7 @@ TASK_FIELDS = ["id", "title", "status", "priority", "glyph", "assignees", "proje
 ASK_FIELDS = ["world", "units", "channels", "verbs", "folder", "files", "venues", "symbols", "maxQty", "maxNotional", "perDay",
               "hours", "note"]
 CHANGE_FIELDS = ["file", "base", "proposed"]
-PROJECT_FIELDS = ["id", "name", "glyph", "defaultViewId", "subprojects", "archived", "readme", "createdAt", "updatedAt"]
+PROJECT_FIELDS = ["id", "name", "glyph", "defaultViewId", "subprojects", "files", "archived", "readme", "createdAt", "updatedAt"]
 VIEW_FIELDS = ["id", "name", "mode", "groupBy", "filter", "laneOrder"]
 TIME_FIELDS = ["startAt", "dueAt", "closedAt", "expires", "approvedAt", "createdAt", "updatedAt"]
 
