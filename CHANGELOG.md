@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A camera unit's calibration takes `camera(channel=…, intrinsics=…, extrinsics=…, residual=…, robot=…, marker=…,
+  run=…, reality=…, at=…, by=…)`, one per video channel: the lens, the camera in the world, the residual and the run
+  that measured it with its reality (the TypeScript SDK's `<camera>`).
 - A board's `<component>` takes `locked` (KiCad's footprint lock, `true` or left out), so a KiCad board's locked footprints keep the
   lock through the code and back to a `.kicad_pcb`.
 - A schematic's code part takes `suppressed` (`code(name, source=…, suppressed=True)`): a suppressed part is not run

@@ -49,6 +49,11 @@ CALIBRATION_FIELDS = ["device", "serial", "note"]
 CALIBRATION_JOINT_FIELDS = ["name", "zero", "kp", "kv", "run"]
 #: One re-zero: the joint, its new zero (rad), when (epoch ms), who (person:<id> | agent:<id>), why.
 REZERO_FIELDS = ["joint", "zero", "at", "by", "reason"]
+#: One calibrated camera: its video channel, the arm it was measured against, its intrinsics (pixels), its extrinsics
+#: (the camera in the world: mm and a unit quaternion, x right, y down, z forward), the marker in that arm's tool frame,
+#: the residual (reprojection px, and the position mm and rotation degrees it bounds, three sigma), the run that
+#: measured it and that run's reality, when and by whom.
+CALIBRATION_CAMERA_FIELDS = ["channel", "robot", "intrinsics", "extrinsics", "marker", "residual", "run", "reality", "at", "by"]
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
@@ -63,11 +68,12 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "calibration": {"holds": "children"},
     "joint": {},
     "rezero": {},
+    "camera": {},
 }
 
 __all__ = ["CONTRACT_FIELDS", "INSTANCE_FIELDS", "INSTANCE_EVENT_FIELDS", "RELEASE_FIELDS", "RELEASE_FILE_FIELDS",
            "RELEASE_CHECK_FIELDS", "RELEASE_OUTPUT_FIELDS", "RELEASE_CHECK_STATUSES", "CALIBRATION_FIELDS",
-           "CALIBRATION_JOINT_FIELDS", "REZERO_FIELDS", "SIGNATURES", "CONTRACT_VOCABULARY", "INSTANCE_VOCABULARY",
+           "CALIBRATION_JOINT_FIELDS", "REZERO_FIELDS", "CALIBRATION_CAMERA_FIELDS", "SIGNATURES", "CONTRACT_VOCABULARY", "INSTANCE_VOCABULARY",
            "RELEASE_VOCABULARY", "CALIBRATION_VOCABULARY", "RECORDS", *define(globals(), "records", SIGNATURES)]
 
 
@@ -123,7 +129,7 @@ def _json(v: Any) -> str:
 
 
 def _calibration(t: DocTree) -> Dict[str, Any]:
-    listed = {tag: [dict(c["attrs"]) for c in t["children"] if c["tag"] == tag] for tag in ("joint", "rezero")}
+    listed = {tag: [dict(c["attrs"]) for c in t["children"] if c["tag"] == tag] for tag in ("joint", "rezero", "camera")}
     for j in listed["joint"]:
         at = f'<joint name="{j.get("name")}">'
         if "zero" in j and not _finite(j["zero"]):
@@ -145,7 +151,36 @@ def _calibration(t: DocTree) -> Dict[str, Any]:
         if when < last:
             raise ValueError(f"{at}: the re-zeros are oldest first, and this one is older than the one before it")
         last = when
-    return {**_own(t["attrs"], CALIBRATION_FIELDS), "joints": listed["joint"], "rezeros": listed["rezero"]}
+    for c in listed["camera"]:
+        _camera_checked(c)
+    cameras = {"cameras": listed["camera"]} if listed["camera"] else {}
+    return {**_own(t["attrs"], CALIBRATION_FIELDS), "joints": listed["joint"], "rezeros": listed["rezero"], **cameras}
+
+
+def _numbers(v: Any, n: int) -> bool:
+    return isinstance(v, list) and len(v) == n and all(_finite(x) for x in v)
+
+
+def _camera_checked(c: Dict[str, Any]) -> None:
+    """A ``camera`` as a calibration holds it, or the reason it is not one (the TypeScript SDK's ``cameraChecked``)."""
+    at = f'<camera channel="{c.get("channel")}">'
+    i = c.get("intrinsics")
+    if not isinstance(i, dict) or not all(_finite(i.get(k)) and i[k] > 0 for k in ("width", "height", "fx", "fy")) \
+            or not _finite(i.get("cx")) or not _finite(i.get("cy")):
+        raise ValueError(f"{at}: intrinsics are {{ width, height, fx, fy, cx, cy }} in pixels (width, height, fx and fy positive), not {_json(i)}")
+    e = c.get("extrinsics")
+    if not isinstance(e, dict) or not _numbers(e.get("position_mm"), 3) or not _numbers(e.get("quaternion"), 4):
+        raise ValueError(f"{at}: extrinsics are {{ position_mm: [x, y, z], quaternion: [x, y, z, w] }}, not {_json(e)}")
+    m = c.get("marker")
+    if m is not None and (not isinstance(m, dict) or not _numbers(m.get("position_mm"), 3) or not _numbers(m.get("quaternion"), 4)):
+        raise ValueError(f"{at}: marker is {{ position_mm: [x, y, z], quaternion: [x, y, z, w] }}, not {_json(m)}")
+    r = c.get("residual")
+    if not isinstance(r, dict) or not _finite(r.get("rms_px")) or r["rms_px"] < 0:
+        raise ValueError(f"{at}: residual has rms_px, the reprojection error in pixels, not {_json(r)}")
+    if "reality" in c and c["reality"] not in ("physical", "simulation"):
+        raise ValueError(f"{at}: reality is physical or simulation, not {_json(c['reality'])}")
+    if "run" in c and "reality" not in c:
+        raise ValueError(f"{at}: a camera measured by a run says its reality (a simulated run is never physical evidence)")
 
 
 def _calibration_tree(d: Dict[str, Any]) -> DocTree:
@@ -153,7 +188,8 @@ def _calibration_tree(d: Dict[str, Any]) -> DocTree:
         return {"tag": tag, "attrs": _own(o, keys), "children": []}
     return {"tag": "calibration", "attrs": _own(d, CALIBRATION_FIELDS),
             "children": [leaf("joint", j, CALIBRATION_JOINT_FIELDS) for j in d.get("joints") or []]
-            + [leaf("rezero", r, REZERO_FIELDS) for r in d.get("rezeros") or []]}
+            + [leaf("rezero", r, REZERO_FIELDS) for r in d.get("rezeros") or []]
+            + [leaf("camera", c, CALIBRATION_CAMERA_FIELDS) for c in d.get("cameras") or []]}
 
 
 def _never(_: Any) -> DocTree:
@@ -181,7 +217,9 @@ RELEASE_VOCABULARY = Vocabulary("release", "a hardware release", "release", {
 #: A unit's calibration (``<name>.calibration.py``): what one physical unit measures off its definition. A unit of a world
 #: names it (``unit(calibration="arm.calibration.py", …)``). Each ``joint`` holds the joint's zero and its servo's gains
 #: as this unit has them; each ``rezero`` is an event of the unit, oldest first. A joint's zero is its newest re-zero's,
-#: else its ``joint``'s. A re-zero is appended, never edited::
+#: else its ``joint``'s. A re-zero is appended, never edited. A camera unit's calibration holds a ``camera`` per video
+#: channel: its lens and where it is, measured by a run that moved a marker through its view, with the residual that
+#: says how far to trust them; a new run replaces it::
 #:
 #:     calibration(
 #:         joint(name="shoulder_lift", zero=0.012, kp=12, kv=0.6, run="runs/2026-10-30-lift/run.json"),
@@ -192,6 +230,8 @@ CALIBRATION_VOCABULARY = Vocabulary("calibration", "a unit's calibration", "cali
     "calibration": {"parents": [], "required": ["device"], "attrs": CALIBRATION_FIELDS},
     "joint": {"parents": ["calibration"], "key": "name", "required": ["name"], "attrs": CALIBRATION_JOINT_FIELDS},
     "rezero": {"parents": ["calibration"], "required": ["joint", "zero", "at", "by"], "attrs": REZERO_FIELDS},
+    "camera": {"parents": ["calibration"], "key": "channel", "required": ["channel", "intrinsics", "extrinsics", "residual"],
+               "attrs": CALIBRATION_CAMERA_FIELDS},
 }, _calibration, _calibration_tree, empty=lambda name: {"device": "", "joints": [], "rezeros": []})
 
 for _v in (CONTRACT_VOCABULARY, INSTANCE_VOCABULARY, RELEASE_VOCABULARY, CALIBRATION_VOCABULARY):

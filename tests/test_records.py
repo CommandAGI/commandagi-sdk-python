@@ -5,7 +5,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.records import RECORDS, calibration, check, contract, event, file, instance, joint, output, party, release, rezero
+from commandagi.design.records import RECORDS, calibration, camera, check, contract, event, file, instance, joint, output, party, release, rezero
 
 TERMS = {"subject": {"kind": "data_stream", "resourceType": "device", "resourceId": "dev-1"}, "title": "Bench camera",
          "description": "", "price": {"type": "metered", "rate": 1, "unit": "minute"}, "schedule": None, "takeRateBps": 1000,
@@ -80,6 +80,17 @@ class RecordTests(unittest.TestCase):
             cal(rezero(joint="a", zero=0.1, at=1, by="owner"))
         with self.assertRaisesRegex(ValueError, "oldest first"):
             cal(rezero(joint="a", zero=0.1, at=2, by="person:o"), rezero(joint="a", zero=0.2, at=1, by="person:o"))
+        # A camera unit's calibration: its lens, where it is and the residual, with the run that measured it and its reality.
+        cam = {"channel": "view", "robot": "arm", "intrinsics": {"width": 320, "height": 240, "fx": 207.6, "fy": 207.4, "cx": 160.1, "cy": 119.9},
+               "extrinsics": {"position_mm": [14.2, -509.1, 1006], "quaternion": [0.69, -0.06, -0.06, 0.72]},
+               "residual": {"rms_px": 0.07, "position_mm": 0.83, "rotation_deg": 0.18}, "run": "runs/c/run.json", "reality": "simulation"}
+        with_camera = cal(camera(**cam))["document"]
+        self.assertEqual(with_camera["cameras"], [cam])
+        self.assertEqual(v.from_tree(v.to_tree(with_camera)), with_camera)
+        with self.assertRaisesRegex(ValueError, "intrinsics are"):
+            cal(camera(**{**cam, "intrinsics": {**cam["intrinsics"], "fx": 0}}))
+        with self.assertRaisesRegex(ValueError, "says its reality"):
+            cal(camera(**{k: x for k, x in cam.items() if k != "reality"}))
 
     def test_a_run_names_each_record_by_its_call(self):
         out = run_module(
