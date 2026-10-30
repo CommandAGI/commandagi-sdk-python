@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A data sheet: `sheet(name=…, source=…, query=…, format=…)` reads a file beside the workbook, an http(s) URL or
+  `surface:<id>`, as the TypeScript SDK's `<sheet source>` does; it holds no cells, columns or rows.
+
 - A video's `clip(link=…)`: two clips of one video file with the same `link` are its picture and its sound, patched to
   two tracks at once. A video file on an audio track is its sound (a clip of kind `audio`); a still there is refused.
 - A drawing's compound shape is `compound(…, op=…)` (`unite`, `minus`, `intersect` or `exclude`): it holds its shapes
@@ -39,6 +42,16 @@ Added
   mating part, the frame mirrored through its y axis, so a hole or pin placed on it is mirrored too).
 - A painting's or a photo's `mask(of="Name")` names a layer the stack shows, by its `name`, and wires the masked node to it; the element holds no layer of its own.
 - `sch_style`: a placement's De Morgan body style (`unit("U1", 2, …, sch_style=2)`), which selects the pins and body the library draws for it. 1 is the default and writes nothing.
+- `commandagi.design.scouts`: the scouts' two documents, the same as the TypeScript SDK's `scouts.ts` (docs/scouts.md
+  in the CommandAGI repository):
+  - `scout(case(...), configuration(...), workload(...), judge(...), budget=…, …)` (`<name>.scout.py`): one comparison
+    of configurations on the cases of each workload, scored by a check (`exact`, `oneOf`, `number`, `contains`,
+    `regex`, `json`, `letter`, `literal`, `tool`, `program`) or by a judge panel, with the verdict's rules (`budget`,
+    `repeats`, `margin`, `relative_margin`, `error_floor`, `min_calls`, `min_cases`, `resamples`, `alpha`, `seed`,
+    `max_cases`). A case's `from_` is `public`, `synthetic` or `own-run`; nothing else may be a case.
+  - `replacement(layer(capability(evidence(...))), decision(...), product=…, as_of=…)` (`<name>.replacement.py`): what
+    replacing a product would cost, by layer and capability, with the decision and the economics.
+
 - A monitor source names the connected account it reads as (`<source connection="gmail@jacobfv123@gmail.com">`); the api worker reads it (`via="worker"` only).
 - `<component refRot={90}>`: how far a part's reference text is turned where it sits, in degrees, in the footprint's own frame (the placer turns a text it has no upright place for).
 

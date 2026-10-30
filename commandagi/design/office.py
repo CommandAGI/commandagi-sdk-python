@@ -31,6 +31,11 @@ document the CommandAGI sheets, docs and decks editors open. The same elements a
 The tags (keywords are snake_case of the TypeScript attribute: ``frozen_rows``, ``num_fmt``, ``font_size``):
     workbook(*sheets, title)                                  the workbook
     sheet(*cells, name, rows, cols, frozen_rows, frozen_cols, color)
+                                                              a grid sheet
+    sheet(name, source, query, format)                        a data sheet: what it reads and the SQL over it (a
+                                                              source is a file beside the workbook, an http(s) URL
+                                                              or ``surface:<id>``; format "parquet", "sqlite" …). A
+                                                              data sheet holds no cells, columns or rows
     cell(at, value | formula, num_fmt, bold, italic, align, bg, color, wrap)   one cell; a formula starts with "="
     column(at, width)  row(at, height)                        a column's width or a row's height, in pixels
     chart(name, range, kind, category, series, title, at, width, height)
@@ -182,6 +187,26 @@ def _col_index(letters: str) -> int:
 
 _RANGE = re.compile(r"^[A-Z]{1,3}[1-9]\d{0,6}(:[A-Z]{1,3}[1-9]\d{0,6})?$", re.I)
 
+DATA_FORMATS = ["parquet", "arrow", "feather", "csv", "tsv", "json", "ndjson", "avro", "orc", "sqlite", "duckdb", "xlsx", "auto"]
+SURFACES = ["threads", "devices", "snapshots", "drive", "notifications", "marketplace", "credits"]
+
+
+def _data_source_of(el: Element, text: builtins.str, fmt: Optional[builtins.str]) -> Dict[str, Any]:
+    """A data sheet's source as its ``source`` text names it: a file beside the workbook, an http(s) URL, or ``surface:<id>``."""
+    if re.match(r"^https?://", text):
+        return _defined({"kind": "remote", "engine": "http", "url": text, "format": fmt})
+    surface = re.match(r"^surface:([a-z]+)$", text)
+    if surface:
+        if surface.group(1) not in SURFACES:
+            raise ValueError(f"{_where(el)}: source is surface:<id>, a platform surface ({', '.join(SURFACES)}), not {json.dumps(text)}")
+        if fmt is not None:
+            raise ValueError(f"{_where(el)}: a surface source has no format")
+        return {"kind": "surface", "surface": surface.group(1)}
+    # The workbook's own file is its code, so a data sheet names another file.
+    if text == "self" or re.match(r"^[a-z][a-z0-9+.-]*://", text):
+        raise ValueError(f"{_where(el)}: source is a file beside the workbook, an http(s) URL or surface:<id>, not {json.dumps(text)}")
+    return _defined({"kind": "file", "ref": text, "format": fmt})
+
 
 def _workbook_element(el: Element) -> Dict[str, Any]:
     """The attributes of a chart, a pivot, a filter or a criterion, checked against the element's schema
@@ -207,7 +232,7 @@ def read_workbook(root: Element) -> Dict[str, Any]:
     for i, el in enumerate(child_elements(root)):
         if el.tag != "sheet":
             raise ValueError(f"<{el.tag}> is not read in a <workbook> (it holds <sheet>s)")
-        _only(el, ["name", "rows", "cols", "frozenRows", "frozenCols", "color"])
+        _only(el, ["name", "rows", "cols", "frozenRows", "frozenCols", "color", "source", "format", "query"])
         sid = f"sheet-{i + 1}"
         name = _str(el, "name")
         name = f"Sheet {i + 1}" if name is None else name
@@ -215,6 +240,19 @@ def read_workbook(root: Element) -> Dict[str, Any]:
             raise ValueError(f"two sheets are called {name}")
         names.add(name.lower())
         sources[f"sheet:{sid}"] = el.source
+        source = _str(el, "source")
+        if source is not None:
+            fmt = _one_of(el, "format", DATA_FORMATS)
+            query = _str(el, "query")
+            if el.children:
+                raise ValueError(f"{_where(el)}: a data sheet holds nothing: its source and query say what it reads")
+            for k in ("rows", "cols", "frozenRows", "frozenCols"):
+                if el.props.get(k) is not None:
+                    raise ValueError(f"{_where(el)}: a data sheet reads a table, so it has no {k}")
+            sheets.append(_defined({"id": sid, "name": name, "color": _str(el, "color"), "kind": "data", "source": _data_source_of(el, source, fmt), "query": query}))
+            continue
+        if el.props.get("query") is not None or el.props.get("format") is not None:
+            raise ValueError(f"{_where(el)}: a grid sheet reads no source (a <sheet> with a source is a data sheet)")
         cells: Dict[str, Dict[str, Any]] = {}
         col_widths: Dict[int, Any] = {}
         row_heights: Dict[int, Any] = {}

@@ -29,6 +29,32 @@ class WorkbookTests(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "<cell> holds nothing"):
             cell("Item", at="A1")
 
+    def test_a_sheet_with_a_source_is_a_data_sheet(self):
+        def one(**props):
+            return read_workbook(workbook(sheet(**props)))["document"]["sheets"][0]
+
+        self.assertEqual(one(name="Sales", source="sales.parquet", format="parquet", query="select * from sales"),
+                         {"id": "sheet-1", "name": "Sales", "kind": "data",
+                          "source": {"kind": "file", "ref": "sales.parquet", "format": "parquet"}, "query": "select * from sales"})
+        self.assertEqual(one(name="Prices", source="https://example.test/prices.csv")["source"],
+                         {"kind": "remote", "engine": "http", "url": "https://example.test/prices.csv"})
+        self.assertEqual(one(name="Devices", source="surface:devices")["source"], {"kind": "surface", "surface": "devices"})
+        # A data sheet reads a table: it holds no children, and a grid sheet reads no source.
+        with self.assertRaisesRegex(ValueError, "a data sheet holds nothing"):
+            read_workbook(workbook(sheet(cell(at="A1", value=1), name="Sales", source="sales.parquet")))
+        with self.assertRaisesRegex(ValueError, "a data sheet reads a table, so it has no rows"):
+            read_workbook(workbook(sheet(name="Sales", source="sales.parquet", rows=10)))
+        with self.assertRaisesRegex(ValueError, "a grid sheet reads no source"):
+            read_workbook(workbook(sheet(name="Sales", query="select 1")))
+        with self.assertRaisesRegex(ValueError, r"source is a file beside the workbook, an http\(s\) URL or surface:<id>"):
+            read_workbook(workbook(sheet(name="Sales", source="self")))
+        with self.assertRaisesRegex(ValueError, "source is a file beside the workbook"):
+            read_workbook(workbook(sheet(name="Sales", source="ftp://example.test/x.csv")))
+        with self.assertRaisesRegex(ValueError, "source is surface:<id>"):
+            read_workbook(workbook(sheet(name="Sales", source="surface:planets")))
+        with self.assertRaisesRegex(ValueError, "format is one of"):
+            read_workbook(workbook(sheet(name="Sales", source="sales.parquet", format="csvz")))
+
     def test_a_sheets_chart_pivot_and_filter_are_checked_against_the_workbook_schema(self):
         def book(*kids):
             return read_workbook(workbook(sheet(cell(at="A1", value="Region"), *kids, name="Sales")))
