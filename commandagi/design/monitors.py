@@ -7,13 +7,13 @@ account's Drive, never written in the file::
 
     def corporation(cik, ticker, name):  # a class of things is a function; an instance is one call
         return monitor(source(id="filings", adapter="sec-filings", params={"cik": cik}, every="15m"),
-                       follows(monitor="../../central-banks/fed", match="fomc.*"),
+                       follows(monitor="../../central-banks/fed", when={"class": "fomc.*"}),
                        title=f"{name} ({ticker})", class_="corporation", about=f"cik:{cik}")
 
     result = corporation("0001045810", "NVDA", "NVIDIA")
 
 A monitor's ``class`` is written ``class_`` (a Python keyword). A follow names the followed monitor's folder, relative
-to this monitor's folder. Nothing adds a default: what the file does not say, the document does not have. A monitor's
+to this monitor's folder, and takes the records its ``when`` (a record predicate, like a discover's) holds for. Nothing adds a default: what the file does not say, the document does not have. A monitor's
 ``sameAs``, ``sources``, ``follows``, ``derives``, ``wakes`` and ``discovers`` are always lists. A ``derive`` names an
 operator and, per port, the folder of the monitor whose records go in: ``derive(id="vwap", op="vwap",
 inputs={"trades": "../trades"}, params={"window": "1m"})``. A ``discover`` gives each thing its records name a folder
@@ -37,7 +37,7 @@ MONITOR_FIELDS = ["title", "class", "about", "readme", "sameAs"]
 SUBJECT = re.compile(r"^[a-z][a-z0-9-]*:\S*$")
 SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit", "host", "mode", "retain", "since",
                  "session", "snapshot", "profile", "keep", "maxCostPerDay", "unit", "vantage", "connection"]
-FOLLOW_FIELDS = ["monitor", "match", "when"]
+FOLLOW_FIELDS = ["monitor", "when"]
 WAKE_FIELDS = ["match", "prompt"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since"]
 DISCOVER_FIELDS = ["into", "of", "when", "slug", "class", "props", "name", "max", "visibility"]
@@ -276,7 +276,6 @@ def _monitor(t: DocTree) -> Dict[str, Any]:
     follows = []
     for c in parts("follows"):
         _text(c, "monitor", "monitor")
-        _text(c, "match", "monitor")
         if c["attrs"].get("when") is not None:
             bad = _when_shape(c["attrs"]["when"])
             if bad:
@@ -329,7 +328,7 @@ def monitor_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
                 "name": d.get("name"), "max": d.get("max", 10), "visibility": d.get("visibility")}
     return {"title": m.get("title"), "class": m.get("class"), "about": m.get("about"), "readme": m.get("readme"),
             "sameAs": m.get("sameAs", []), "sources": [src(s) for s in m.get("sources", [])],
-            "follows": [{"monitor": f["monitor"], "match": f.get("match"), "when": f.get("when")} for f in m.get("follows", [])],
+            "follows": [{"monitor": f["monitor"], "when": f.get("when")} for f in m.get("follows", [])],
             "derives": [{"id": d["id"], "op": d["op"], "inputs": d["inputs"], "params": d.get("params", {}),
                          "since": d.get("since")} for d in m.get("derives", [])],
             "wakes": [{"match": w.get("match"), "prompt": w["prompt"]} for w in m.get("wakes", [])],
