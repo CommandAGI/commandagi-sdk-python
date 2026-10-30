@@ -24,7 +24,9 @@ is ``fontSize``; ``in_`` is ``in``). Media files are named by path relative to t
 composition (``composition(src=...)``: another video's code, a ``video.instance`` node whose frames are its clip's source;
 ``inputs`` are the values it gives that video's parameters) and an artboard (``artboard(src=...)``: a drawing's page, drawn
 live; ``view`` names the page, else the first; ``crop={"x": …, "y": …, "width": …, "height": …}`` the part of it to show; ``inputs`` the values it gives the
-drawing's parameters, so two artboards of one drawing can say two things). Times on a
+drawing's parameters, so two artboards of one drawing can say two things). A video's own artboards are other frames of it
+at other sizes (``artboard(name="Vertical", width=1080, height=1920)`` in the ``video``, with no ``src``; the video itself
+is the first); an ``override(artboard="Vertical", …)`` in a clip, title or effect sets what it is on that artboard only. Times on a
 video's timeline are seconds; in a song, beats (an audio clip's ``in``, where it starts in its file, is seconds, as on a
 video). Each node carries the call that declared it in ``meta.source``; what a
 node holds that is not a node (a clip's effects, transition, intro, outro and keyframes; a midi clip's notes; a video's
@@ -48,7 +50,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "video": _HOLDS, "song": _HOLDS, "track": _HOLDS, "clip": _HOLDS, "composition": _HOLDS, "artboard": _HOLDS, "title": _HOLDS,
     "shape": _HOLDS, "adjustment": _HOLDS,
     "midi": _HOLDS, "effect": _HOLDS,
-    "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {},
+    "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {}, "override": {},
     "synth": {}, "sampler": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {},
 }
 
@@ -222,6 +224,63 @@ def shape_content(kind: str) -> str:
 CLIP_CROP = {"cropTop": "top", "cropRight": "right", "cropBottom": "bottom", "cropLeft": "left"}
 _CLIP_PROPS = ["name", "start", "duration", "in", "out", "speed", "opacity", "volume", "blendMode", "fitMode", *CLIP_TRANSFORM, *CLIP_COLOR, *CLIP_CROP]
 
+#: What an ``override`` in a clip may set on one of the video's artboards: its look (not its sound), transform, colour and
+#: crop; a title's text fields; a ``clip``'s media file (``src``, of the same kind). One in an ``effect`` sets its params
+#: and ``enabled``.
+OVERRIDE_LOOK = ("opacity", "blendMode", "fitMode")
+#: A video's own artboard (``artboard(name=…, width=…, height=…)`` in the ``video``): its props.
+VIDEO_ARTBOARD_PROPS = ("name", "width", "height")
+
+
+def _override_artboard(el: Element, artboards: "set[str]") -> str:
+    """The artboard an ``override`` names: one the video declares."""
+    a = _str(el, "artboard")
+    if not a:
+        raise ValueError('<override> names its artboard (artboard="…", one the <video> declares)')
+    if a not in artboards:
+        declared = f" (it declares {', '.join(chr(34) + x + chr(34) for x in sorted(artboards))})" if artboards else ""
+        raise ValueError(f'<override artboard="{a}">: the <video> declares no <artboard name="{a}">{declared}')
+    return a
+
+
+def _clip_override(el: Element, c: Element, artboards: "set[str]") -> Tuple[str, Dict[str, Any]]:
+    """One ``override`` in a clip: what the clip is on that artboard."""
+    own = list(TITLE_TEXT) if c.type == "title" else ["src"] if c.type == "clip" else []
+    _refuse_unknown(el, ["artboard", *OVERRIDE_LOOK, *CLIP_TRANSFORM, *CLIP_COLOR, *CLIP_CROP, *own])
+    a = _override_artboard(el, artboards)
+    o: Dict[str, Any] = {}
+    for k, v in (("opacity", _num(el, "opacity", 0, 1)), ("blendMode", _str(el, "blendMode")), ("fitMode", _str(el, "fitMode", ("fit", "fill", "stretch")))):
+        if v is not None:
+            o[k] = v
+    transform = {k: _num(el, k) for k in CLIP_TRANSFORM if _num(el, k) is not None}
+    if transform:
+        o["transform"] = transform
+    color = {k: _num(el, k, -180 if k == "hue" else -1, 180 if k == "hue" else 1) for k in CLIP_COLOR if el.props.get(k) is not None}
+    if color:
+        o["color"] = color
+    crop = {edge: _num(el, k, 0, 0.49) for k, edge in CLIP_CROP.items() if el.props.get(k) is not None}
+    if crop:
+        o["crop"] = crop
+    if c.type == "title":
+        text: Dict[str, Any] = {}
+        for k, d in TITLE_TEXT.items():
+            if el.props.get(k) is None:
+                continue
+            if isinstance(d, bool):
+                text[k] = _bool(el, k)
+            elif isinstance(d, (int, float)):
+                text[k] = _num(el, k, 0)
+            else:
+                text[k] = _str(el, k, ("left", "center", "right") if k == "align" else None)
+        if text:
+            o["text"] = text
+    if c.type == "clip" and _str(el, "src") is not None:
+        o["src"] = _str(el, "src")
+    if not o:
+        raise ValueError(f'{_where(el)} in {_where(c)}: an override names what it sets on artboard "{a}"')
+    return a, o
+
+
 #: The files a ``composition`` and an ``artboard`` name: another video's code, a drawing's code.
 COMPOSITION_FILE = re.compile(r"\.vid\.(tsx|jsx|py|rs)$", re.I)
 ARTBOARD_FILE = re.compile(r"\.draw\.(tsx|jsx|py|rs)$", re.I)
@@ -315,7 +374,7 @@ def _common(c: Element) -> Dict[str, Any]:
     return out
 
 
-def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any], artboards: "set[str]") -> Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
     transition_in: Dict[str, Any] = {"kind": "none", "duration": 0}
     anims: Dict[str, Any] = {}
     notes: List[Dict[str, Any]] = []
@@ -325,6 +384,7 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) -> Tuple[D
     keyframes: List[Dict[str, Any]] = []
     fx_id, kf_id, afx_id = _ids(), _ids(), _ids()
     saw = False
+    overrides: Dict[str, Any] = {}
 
     def key(el: Element, prop: str) -> None:
         time, value = _num(el, "time", 0), _num(el, "value")
@@ -418,14 +478,42 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) -> Tuple[D
                 fx["src"] = src
             effects.append(fx)
             sources[f"effect:{fid}"] = el.source
+            fx_overrides: Dict[str, Any] = {}
             for k in child_elements(el):
+                if k.type == "override":
+                    a = _override_artboard(k, artboards)
+                    if a in fx_overrides:
+                        raise ValueError(f'<effect type="{t}">: one <override> for artboard "{a}"')
+                    o: Dict[str, Any] = {}
+                    on = _bool(k, "enabled")
+                    if on is not None:
+                        o["enabled"] = on
+                    for pk, pv in k.props.items():
+                        if pk in ("key", "artboard", "enabled"):
+                            continue
+                        if isinstance(pv, bool) or not isinstance(pv, (int, float)) or not math.isfinite(pv):
+                            raise ValueError(f'<override artboard="{a}"> in <effect type="{t}">: {pk} is a number, not {json.dumps(pv)}')
+                        o.setdefault("params", {})[pk] = pv
+                    if not o:
+                        raise ValueError(f'<override artboard="{a}"> in <effect type="{t}"> names what it sets')
+                    fx_overrides[a] = o
+                    sources[f"effectOverride:{fid}:{a}"] = k.source
+                    continue
                 if k.type != "keyframe":
-                    raise ValueError(f"<{k.type}> is not read in an <effect> (its keyframes are <keyframe param time value>)")
+                    raise ValueError(f"<{k.type}> is not read in an <effect> (its keyframes are <keyframe param time value>, its overrides <override artboard>)")
                 _refuse_unknown(k, ["param", "time", "value", "easing", "bezier"])
                 param = _str(k, "param")
                 if not param:
                     raise ValueError(f"{_where(k)}: an effect's keyframe names its param")
                 key(k, f"effect.{fid}.{param}")
+            if fx_overrides:
+                fx["overrides"] = fx_overrides
+        elif el.type == "override":
+            a, o = _clip_override(el, c, artboards)
+            if a in overrides:
+                raise ValueError(f'{_where(c)}: one <override> for artboard "{a}"')
+            overrides[a] = o
+            sources[f"override:{a}"] = el.source
         elif el.type == "keyframe":
             _refuse_unknown(el, ["property", "time", "value", "easing", "bezier"])
             prop = _str(el, "property", ANIMATABLE)
@@ -439,8 +527,8 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any]) -> Tuple[D
             audio.append(fx)
             sources[f"audio:{fx['id']}"] = el.source
         else:
-            raise ValueError(f"<{el.type}> is not read in a <{c.type}> (a clip holds <transition>, <intro>, <outro>, <effect>, <keyframe> and audio effects ({', '.join(VIDEO_AUDIO_EFFECTS)}); a <midi> clip its <note>s)")
-    return transition_in, anims, effects, audio, keyframes, notes
+            raise ValueError(f"<{el.type}> is not read in a <{c.type}> (a clip holds <transition>, <intro>, <outro>, <effect>, <keyframe>, <override> and audio effects ({', '.join(VIDEO_AUDIO_EFFECTS)}); a <midi> clip its <note>s)")
+    return transition_in, anims, effects, audio, keyframes, notes, overrides
 
 
 def declare_video(root: Element) -> Dict[str, Any]:
@@ -457,7 +545,28 @@ def declare_video(root: Element) -> Dict[str, Any]:
     composite_sources: Dict[str, Any] = {}
     master: List[Dict[str, Any]] = []
     master_id = _ids()
+    # The video's own artboards first: an override anywhere names one of them.
+    artboards: List[Dict[str, Any]] = []
+    for a in child_elements(root):
+        if a.type != "artboard":
+            continue
+        if a.props.get("src") is not None:
+            raise ValueError(f"{_where(a)}: an artboard of a drawing goes on a <track>; an <artboard> in the <video> is another frame of it (name, width, height)")
+        _refuse_unknown(a, list(VIDEO_ARTBOARD_PROPS))
+        an = _str(a, "name")
+        if not an:
+            raise ValueError("<artboard> in a <video> has a name (the <override>s name it)")
+        if any(x["name"] == an for x in artboards):
+            raise ValueError(f'{_where(a)}: two artboards are named "{an}"')
+        w, h = _num(a, "width", 1), _num(a, "height", 1)
+        if w is None or h is None:
+            raise ValueError(f"{_where(a)}: give its width and height in pixels")
+        artboards.append({"name": an, "width": w, "height": h})
+        composite_sources[f"artboard:{an}"] = a.source
+    artboard_names = {x["name"] for x in artboards}
     for tr in child_elements(root):
+        if tr.type == "artboard":
+            continue
         if tr.type in VIDEO_AUDIO_EFFECTS:
             fx = _audio_effect(tr, master_id)
             master.append(fx)
@@ -473,7 +582,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
             composite_sources[f"marker:{mid}"] = tr.source
             continue
         if tr.type != "track":
-            raise ValueError(f"<{tr.type}> is not read in a <video> (it holds <track>, <marker> and the master's audio effects)")
+            raise ValueError(f"<{tr.type}> is not read in a <video> (it holds <track>, <artboard>, <marker> and the master's audio effects)")
         _refuse_unknown(tr, ["name", "kind", "muted", "hidden", "locked", "volume", "height"])
         kind = _or(_str(tr, "kind", VIDEO_TRACK_KINDS), "video")
         track_name = _or(_str(tr, "name"), "A" if kind == "audio" else "M" if kind == "midi" else "V")
@@ -621,7 +730,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 nodes[comp_id] = _node(comp_id, "video.instance", {INSTANCE_REF: {"path": nested["src"], "name": clip_name}, **nested["values"]}, clip_name)
                 source = _wire(comp_id, "frames")
             sources: Dict[str, Any] = {}
-            transition_in, anims, effects, audio, keyframes, notes = _clip_children(c, clip_id, sources)
+            transition_in, anims, effects, audio, keyframes, notes, overrides = _clip_children(c, clip_id, sources, artboard_names)
             inputs["transitionIn"] = transition_in
             inputs.update(anims)
             inputs["effects"] = effects
@@ -630,6 +739,27 @@ def declare_video(root: Element) -> Dict[str, Any]:
             inputs["trackers"] = []
             if keyframes:
                 inputs["keyframes"] = keyframes
+            if overrides:
+                # Another media file on one artboard is a source of its own, of the clip's kind.
+                for an, o in overrides.items():
+                    if "src" not in o:
+                        continue
+                    osrc = o.pop("src")
+                    own_kind = media_kind(str(c.props.get("src")))
+                    if re.match(r"^[a-z]+:|^/", osrc, re.I):
+                        raise ValueError(f'<override artboard="{an}"> in {_where(c)}: src is a path relative to this file, not {osrc}')
+                    omk = media_kind(osrc)
+                    if not omk or omk != own_kind:
+                        raise ValueError(f'<override artboard="{an}"> in {_where(c)}: {osrc} is not a {own_kind} file (the clip\'s own kind)')
+                    oid = slug(osrc)
+                    osource = f"src_{oid}"
+                    ofile = osrc.split("/")[-1]
+                    if osource not in nodes:
+                        nodes[osource] = _node(osource, "video.source", {
+                            "asset": {"id": oid, "kind": omk, "name": ofile, "url": "", "path": osrc, "duration": 0, "width": 0, "height": 0, "hasAudio": omk != "image"},
+                            "__asset": {"kind": "file", "$file": osrc}}, ofile)
+                    o["assetId"] = oid
+                inputs["overrides"] = overrides
             if c.type == "midi":
                 inputs["midi"] = {"notes": notes, "instrument": _or(_str(c, "instrument", MIDI_INSTRUMENTS), MIDI_CLIP["instrument"]),
                                   "gain": _or(_num(c, "gain", 0), MIDI_CLIP["gain"])}
@@ -647,6 +777,8 @@ def declare_video(root: Element) -> Dict[str, Any]:
         track_wires.append(_wire(track_id, "frames"))
     project_id = slug(f"proj_{name}")
     composite: Dict[str, Any] = {"id": project_id, "name": name, "settings": settings}
+    if artboards:
+        composite["artboards"] = artboards
     if markers:
         composite["markers"] = markers
     if master:
