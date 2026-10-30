@@ -66,6 +66,7 @@ class StudyTests(unittest.TestCase):
         d = declare_document(s.study(
             s.step(id="lift", joint="shoulder_lift", from_=0.54, to=0.84),
             s.gains(joint="shoulder_lift", kp=12, kv=0.6),
+            s.tune(joint="shoulder_lift", kp=[4, 40], kv=[0.1, 2]),
             s.response(duration=1, dt=0.001, band=0.02),
             s.criterion(id="settle", quantity="settlingTime", limit=0.3, step="lift"),
             kind="step-response", part="../worlds/arm-cell/world.tsx#arm", units=s.STEP_RESPONSE_UNITS,
@@ -74,6 +75,7 @@ class StudyTests(unittest.TestCase):
             "kind": "step-response", "part": "../worlds/arm-cell/world.tsx#arm", "units": "rad-s",
             "steps": [{"id": "lift", "joint": "shoulder_lift", "from": 0.54, "to": 0.84}],
             "gains": [{"joint": "shoulder_lift", "kp": 12, "kv": 0.6}],
+            "tune": [{"joint": "shoulder_lift", "kp": [4, 40], "kv": [0.1, 2]}],
             "response": {"duration": 1, "dt": 0.001, "band": 0.02},
             "criteria": [{"id": "settle", "quantity": "settlingTime", "limit": 0.3, "step": "lift"}],
         }

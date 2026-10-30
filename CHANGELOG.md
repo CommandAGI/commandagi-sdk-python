@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A step-response study's `tune(joint=…, kp=[low, high], kv=[low, high])`: the bounds the validation planner may
+  search a joint's gains in when the study fails; what it finds is proposed as an edit of the unit's calibration.
 - A study of kind `step-response` (`units="rad-s"`, `STEP_RESPONSE_UNITS`): `step(id=…, joint=…, from_=…, to=…)` (each
   solved alone), `gains(joint=…, kp=…, kv=…)` (the gains to try on a joint), `response(duration=…, dt=…, band=…)`; a
   `criterion` names the `step` it reads. Its `part` is a `definition.tsx` or a unit of a world (`world.tsx#<uid>`).

@@ -143,13 +143,15 @@ register_study_kind("flow", {
 # A step-response study (kind="step-response", units="rad-s"): the tuning of a joint's position servo, run on the
 # simulated machine a device definition declares. ``part`` is a ``definition.tsx`` or a unit of a world
 # (``world.tsx#<uid>``), whose calibration's gains then apply. Each ``step`` moves one joint from ``from`` to ``to``
-# (radians) and is solved alone; ``gains`` are the gains to try on a joint; ``response`` is the window (``duration``, s),
+# (radians) and is solved alone; ``gains`` are the gains to try on a joint; ``tune`` gives the bounds ``[low, high]`` of
+# ``kp`` and ``kv`` the validation planner may search when the study fails; ``response`` is the window (``duration``, s),
 # the sample period (``dt``, s) and the settling band (a fraction of the step). A criterion reads ``overshoot``,
 # ``riseTime``, ``settlingTime`` or ``steadyStateError``, on every step or on the one its ``step`` names.
 STEP_RESPONSE_UNITS = "rad-s"
 register_study_kind("step-response", {
     "step": {"rule": {"parents": ["study"], "key": "id", "required": ["id", "joint", "from", "to"], "attrs": ["id", "joint", "from", "to"]}, "field": "steps", "list": True},
     "gains": {"rule": {"parents": ["study"], "key": "joint", "required": ["joint"], "attrs": ["joint", "kp", "kv"]}, "field": "gains", "list": True},
+    "tune": {"rule": {"parents": ["study"], "key": "joint", "required": ["joint"], "attrs": ["joint", "kp", "kv"]}, "field": "tune", "list": True},
     "response": {"rule": {"parents": ["study"], "single": True, "required": ["duration"], "attrs": ["duration", "dt", "band"]}, "field": "response"},
 })
 __all__ += ["STEP_RESPONSE_UNITS"]
