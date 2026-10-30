@@ -6,7 +6,7 @@ import textwrap
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, bevelEmboss, blur, bucket, colorOverlay, drawing, dropShadow, ellipse, engrave, exposure, fill, from_twod, fx, gaussianBlur, gradient,
+from commandagi.design.twod import (PHOTO_FILTERS, SCHEMA, artboard, bevelEmboss, blur, bucket, colorOverlay, compound, drawing, dropShadow, ellipse, engrave, exposure, fill, from_twod, fx, gaussianBlur, gradient,
                                     gradientFill, gradientOverlay, group, image, innerGlow, innerShadow, layer, line, link, mask, move, erase, freeTransform,
                                     nest, noise, options, outerGlow, painting, part, path, patternOverlay, photo, raster, raster_layer, rect, satin, sheet, sharpen, sketch, stock, stroke,
                                     subpaths_of)
@@ -39,6 +39,14 @@ class DrawingTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["Edge"]["inputs"]["subpaths"], [
             {"start": {"x": 0, "y": 0}, "segs": [{"to": {"x": 10, "y": 0}}, {"c1": {"x": 1, "y": 2}, "c2": {"x": 3, "y": 4}, "to": {"x": 5, "y": 6}}, {"c1": {"x": 7, "y": 8}, "to": {"x": 9, "y": 9}}], "closed": True},
         ])
+
+    def test_a_compound_is_one_node_that_holds_its_shapes_back_to_front(self):
+        g = from_twod(drawing(layer(
+            compound(rect(x=0, y=0, w=100, h=100), ellipse(cx=100, cy=100, rx=40, ry=40), op="minus", fill="#0f172a"),
+            name="Art",
+        )))
+        self.assertEqual(g["nodes"]["group"]["inputs"], {"name": "Art", "children.1": wire("compound")})
+        self.assertEqual(g["nodes"]["compound"], {"id": "compound", "type": "compound", "inputs": {"op": "minus", "fill": "#0f172a", "children.1": wire("rect"), "children.2": wire("ellipse")}})
 
     def test_a_drawing_is_its_first_artboard_and_each_artboard_after_its_layers_is_another(self):
         g = from_twod(drawing(

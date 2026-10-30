@@ -25,7 +25,9 @@ ONE RULE FOR EVERY TAG: an element is one node, its keywords are the node's inpu
 and ``disabled`` set the node's own fields. The encodings are the TypeScript SDK's: a drawing is its first artboard, and
 each ``artboard(layer(…), name=…, width=…, height=…)`` after its layers is another; a top-level group of a drawing is a
 ``layer``; a path's ``d`` (absolute M L H V C Q Z); a drawn brush stroke's ``[x, y]`` points; a paint stroke's
-``[x, y, pressure, t]`` points; a modifier (``blur``, ``transform``, ``fill`` …) wraps the one node it takes; ``clip``
+``[x, y, pressure, t]`` points; a modifier (``blur``, ``transform``, ``fill`` …) wraps the one node it takes;
+``compound(rect(…), ellipse(…), op="minus")`` holds its shapes (a live Pathfinder: ``unite``, ``minus``, ``intersect``
+or ``exclude``); ``clip``
 takes its content, then its mask; a top-level group, shape, image or sketch written on the drawing is a layer of it;
 ``sketch(sketch={"points": {…}, "segments": {…}, "constraints": {…}}, x=40, y=60, unit="mm")`` is a constrained sketch
 (graphics' ``Sketch`` object as plain data; its stored positions are the last solve); ``link(src="parts/Badge.draw.py", x=40, y=60)`` shows another drawing's first artboard
@@ -64,7 +66,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "rect": {}, "ellipse": {}, "polygon": {}, "path": {}, "text": {}, "brush-stroke": {}, "image": {}, "raster-layer": {}, "link": {},
     "sketch": {},
     "transform": _C, "offset": _C, "array": _C, "mirror": _C, "stroke": _C, "fill": _C, "blur": _C, "levels": _C,
-    "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "boolean": _C, "clip": _C,
+    "threshold": _C, "adjust": _C, "crop": _C, "bucket-fill": _C, "compound": _C, "clip": _C,
     # painting and photo: layers, masks, adjustments, filters
     "raster": _C, "gradient": _C, "mask": _C, "line": {}, "bucket": {}, "gradientFill": {}, "move": {}, "erase": {}, "freeTransform": {}, "textLayer": _C,
     "fx": _C, "dropShadow": {}, "innerShadow": {}, "outerGlow": {}, "innerGlow": {}, "bevelEmboss": {}, "satin": {},
@@ -266,8 +268,8 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
         if len(kids) != 1:
             raise ValueError(f"{_where(el)} wraps the one node it changes")
         return _add(s, el, t, {**_attrs(el), "in": _drawn(s, kids[0], False)})
-    if t == "boolean":
-        return _add(s, el, t, {**_attrs(el), **channels("shapes", [_drawn(s, c, False) for c in kids])})
+    if t == "compound":
+        return _add(s, el, t, {**_attrs(el), **channels("children", [_drawn(s, c, False) for c in kids])})
     if t == "clip":
         if len(kids) != 2:
             raise ValueError(f"{_where(el)} takes its content, then its mask")
