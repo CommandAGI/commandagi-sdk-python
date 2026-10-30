@@ -62,6 +62,29 @@ class StudyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"<mesh> belongs to a structural study, not to a flow one"):
             declare_document(s.study(s.mesh(size=2), kind="flow", part="a.3d.tsx"))
 
+    def test_a_step_response_study_names_its_steps_gains_and_window(self):
+        d = declare_document(s.study(
+            s.step(id="lift", joint="shoulder_lift", from_=0.54, to=0.84),
+            s.gains(joint="shoulder_lift", kp=12, kv=0.6),
+            s.response(duration=1, dt=0.001, band=0.02),
+            s.criterion(id="settle", quantity="settlingTime", limit=0.3, step="lift"),
+            kind="step-response", part="../worlds/arm-cell/world.tsx#arm", units=s.STEP_RESPONSE_UNITS,
+        ))
+        doc = {
+            "kind": "step-response", "part": "../worlds/arm-cell/world.tsx#arm", "units": "rad-s",
+            "steps": [{"id": "lift", "joint": "shoulder_lift", "from": 0.54, "to": 0.84}],
+            "gains": [{"joint": "shoulder_lift", "kp": 12, "kv": 0.6}],
+            "response": {"duration": 1, "dt": 0.001, "band": 0.02},
+            "criteria": [{"id": "settle", "quantity": "settlingTime", "limit": 0.3, "step": "lift"}],
+        }
+        self.assertEqual(d["document"], doc)
+        v = s.study_vocabulary
+        self.assertEqual(v.from_tree(v.to_tree(doc)), doc)
+        with self.assertRaisesRegex(ValueError, r"<mesh> belongs to a structural study, not to a step-response one"):
+            declare_document(s.study(s.mesh(size=2), kind="step-response", part="definition.tsx"))
+        with self.assertRaisesRegex(ValueError, r'<step id="a"> needs to'):
+            declare_document(s.study(s.step(id="a", joint="j", from_=0), kind="step-response", part="definition.tsx"))
+
 
 if __name__ == "__main__":
     unittest.main()

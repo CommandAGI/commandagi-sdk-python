@@ -56,8 +56,9 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 
 NODE_GRAPH_ID = "nodegraph"
 #: The fields of a unit in a world's file (packages/domain/world/worlds.js). ``serial``: the serial number of the one physical
-#: thing a unit is; ``revision``: its hardware revision (a firmware release says which it supports).
-UNIT_FIELDS = ["uid", "name", "device", "serial", "revision", "domain", "group", "size_mm", "support", "channels", "manualUrl", "position", "rotation", "tilt_deg", "release"]
+#: thing a unit is; ``revision``: its hardware revision (a firmware release says which it supports); ``calibration``: a ref to the
+#: unit's own ``.calibration.py`` (its joints' zeros and gains, and its re-zeros).
+UNIT_FIELDS = ["uid", "name", "device", "serial", "revision", "domain", "group", "size_mm", "support", "channels", "manualUrl", "position", "rotation", "tilt_deg", "release", "calibration"]
 #: The fields of a group in a world's file: what one unit stands in (a shelf level, a bench, a rack, a desk). ``group``
 #: nests a group in another; ``size_mm`` with ``position`` and ``rotation`` is the box the world view draws. A group has no
 #: device and no channel: nothing runs or is granted on it.

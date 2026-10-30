@@ -98,7 +98,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.pcb` | a board in code (`board`) |
 | `commandagi.design.threed` | a 3D part or assembly |
 | `commandagi.design.fab` | a machining setup (`cam`), a slicing setup (`slicing`) |
-| `commandagi.design.study` | a study of a part (`study`: material, fixtures, load cases, mesh, criteria, revise; docs/formats.md § studies) |
+| `commandagi.design.study` | a study (`study`: `structural`, `flow` or `step-response`; material, fixtures, load cases, mesh, steps, gains, criteria, revise; docs/formats.md § studies) |
 | `commandagi.design.testplans` | a test plan (`testplan`: conditions, fixtures, steps) |
 | `commandagi.design.firmware` | a firmware release (`firmware`: supported revisions), a rollout (`rollout`: health checks, targets) |
 | `commandagi.design.office` | a workbook, a page, a deck |
@@ -111,7 +111,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.evals` | an eval (`eval`: its `case`s), a metric (`metric`) |
 | `commandagi.design.monitors` | a monitor (`monitor.py`, in the folder of the thing it follows) |
 | `commandagi.design.agents` | an agent harness (`harness.py`; `realtime`: what its model takes and gives live), an agent (`agent.py`: a base or a fork) |
-| `commandagi.design.records` | a contract, a product instance |
+| `commandagi.design.records` | a contract, a product instance, a hardware release, a unit's calibration (`calibration`: joints, re-zeros) |
 | `commandagi.design.postal` | a letter, a postcard |
 | `commandagi.design.pdf` | a PDF assembled from pages, comments, stamps, signatures, redactions, fields and bookmarks |
 

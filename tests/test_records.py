@@ -5,7 +5,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.records import check, contract, event, file, instance, output, party, release
+from commandagi.design.records import RECORDS, calibration, check, contract, event, file, instance, joint, output, party, release, rezero
 
 TERMS = {"subject": {"kind": "data_stream", "resourceType": "device", "resourceId": "dev-1"}, "title": "Bench camera",
          "description": "", "price": {"type": "metered", "rate": 1, "unit": "minute"}, "schedule": None, "takeRateBps": 1000,
@@ -58,6 +58,28 @@ class RecordTests(unittest.TestCase):
             declare_document(release(id="r", rev="A", of=".", frozen="../files"))
         unit = declare_document(instance(serial="S", product_id="p", release="../releases/A/A.release.py"))
         self.assertEqual(unit["document"]["release"], "../releases/A/A.release.py")
+
+    def test_a_calibration(self):
+        d = declare_document(calibration(
+            joint(name="shoulder_lift", zero=0.012, kp=12, kv=0.6, run="runs/lift/run.json"),
+            rezero(joint="shoulder_lift", zero=0.015, at=1793318400000, by="person:owner", reason="motor replaced"),
+            device="../../devices/so101-follower-arm/definition.tsx", serial="SO101-0007"))
+        doc = {"device": "../../devices/so101-follower-arm/definition.tsx", "serial": "SO101-0007",
+               "joints": [{"name": "shoulder_lift", "zero": 0.012, "kp": 12, "kv": 0.6, "run": "runs/lift/run.json"}],
+               "rezeros": [{"joint": "shoulder_lift", "zero": 0.015, "at": 1793318400000, "by": "person:owner", "reason": "motor replaced"}]}
+        self.assertEqual(d["format"], "calibration")
+        self.assertEqual(d["document"], doc)
+        v = RECORDS["calibration"]
+        self.assertEqual(v.from_tree(v.to_tree(doc)), doc)
+
+        def cal(*children):
+            return declare_document(calibration(*children, device="d/definition.tsx"))
+        with self.assertRaisesRegex(ValueError, "kp is a positive number"):
+            cal(joint(name="a", kp=0))
+        with self.assertRaisesRegex(ValueError, "by is person:<id> or agent:<id>"):
+            cal(rezero(joint="a", zero=0.1, at=1, by="owner"))
+        with self.assertRaisesRegex(ValueError, "oldest first"):
+            cal(rezero(joint="a", zero=0.1, at=2, by="person:o"), rezero(joint="a", zero=0.2, at=1, by="person:o"))
 
     def test_a_run_names_each_record_by_its_call(self):
         out = run_module(

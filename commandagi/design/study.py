@@ -13,7 +13,7 @@ same elements as the TypeScript SDK's JSX (``commandagi/design`` ``study.ts``), 
     )
 
 One root, ``study(kind=…, part=…, units=…)``, for every kind. A kind adds its own tags (``register_study_kind``); this
-module declares ``structural``. ``criterion`` and ``revise`` are every kind's. A record is an element and its fields are
+module declares ``structural``, ``flow`` and ``step-response``. ``criterion`` and ``revise`` are every kind's. A record is an element and its fields are
 its attributes (snake_case keywords of the native names: ``load_case`` is ``loadCase``). A load's tag is its ``type``.
 Nothing adds a default.
 """
@@ -32,7 +32,7 @@ _FACES = "faces"
 #: and its kind (None: every kind's).
 _TAGS: Dict[str, Dict[str, Any]] = {
     "criterion": {"rule": {"parents": ["study"], "key": "id", "required": ["id", "quantity", "limit"],
-                           "attrs": ["id", "quantity", "limit", "region", "loadCase", "note"]}, "field": "criteria", "list": True},
+                           "attrs": ["id", "quantity", "limit", "region", "loadCase", "step", "note"]}, "field": "criteria", "list": True},
     "revise": {"rule": {"parents": ["study"], "key": "parameter", "required": ["parameter", "min", "max"],
                         "attrs": ["parameter", "min", "max"]}, "field": "revise", "list": True},
 }
@@ -140,6 +140,19 @@ register_study_kind("flow", {
     "outlet": {"rule": {"parents": ["study"], "key": "id", "required": ["id", _FACES], "attrs": ["id", _FACES]}, "field": "outlets", "list": True},
     "flowMesh": {"rule": {"parents": ["study"], "single": True, "required": ["cells"], "attrs": ["cells", "levels", "iterations", "wallModel"]}, "field": "flowMesh"},
 })
+# A step-response study (kind="step-response", units="rad-s"): the tuning of a joint's position servo, run on the
+# simulated machine a device definition declares. ``part`` is a ``definition.tsx`` or a unit of a world
+# (``world.tsx#<uid>``), whose calibration's gains then apply. Each ``step`` moves one joint from ``from`` to ``to``
+# (radians) and is solved alone; ``gains`` are the gains to try on a joint; ``response`` is the window (``duration``, s),
+# the sample period (``dt``, s) and the settling band (a fraction of the step). A criterion reads ``overshoot``,
+# ``riseTime``, ``settlingTime`` or ``steadyStateError``, on every step or on the one its ``step`` names.
+STEP_RESPONSE_UNITS = "rad-s"
+register_study_kind("step-response", {
+    "step": {"rule": {"parents": ["study"], "key": "id", "required": ["id", "joint", "from", "to"], "attrs": ["id", "joint", "from", "to"]}, "field": "steps", "list": True},
+    "gains": {"rule": {"parents": ["study"], "key": "joint", "required": ["joint"], "attrs": ["joint", "kp", "kv"]}, "field": "gains", "list": True},
+    "response": {"rule": {"parents": ["study"], "single": True, "required": ["duration"], "attrs": ["duration", "dt", "band"]}, "field": "response"},
+})
+__all__ += ["STEP_RESPONSE_UNITS"]
 __all__ += [n for n in SIGNATURES if n not in __all__]
 
 register_vocabulary(study_vocabulary, "study")

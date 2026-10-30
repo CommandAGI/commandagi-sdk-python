@@ -8,6 +8,12 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A study of kind `step-response` (`units="rad-s"`, `STEP_RESPONSE_UNITS`): `step(id=…, joint=…, from_=…, to=…)` (each
+  solved alone), `gains(joint=…, kp=…, kv=…)` (the gains to try on a joint), `response(duration=…, dt=…, band=…)`; a
+  `criterion` names the `step` it reads. Its `part` is a `definition.tsx` or a unit of a world (`world.tsx#<uid>`).
+- A unit's calibration (`<name>.calibration.py`, `commandagi.design.records`): `calibration(device=…, serial=…, note=…)`
+  with `joint(name=…, zero=…, kp=…, kv=…, run=…)` and `rezero(joint=…, zero=…, at=…, by=…, reason=…)`, the unit's
+  re-zeros oldest first. A world unit names it by `calibration`.
 - A side places the interface's frame by `rotation` (degrees, counter-clockwise) and `face` (`back`: read from the
   mating part, the frame mirrored through its y axis, so a hole or pin placed on it is mirrored too).
 - A painting's or a photo's `mask(of="Name")` names a layer the stack shows, by its `name`, and wires the masked node to it; the element holds no layer of its own.

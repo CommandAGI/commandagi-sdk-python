@@ -1,5 +1,6 @@
 """Records, declared in Python: a market contract (``.contract.py``) and a product instance (``.instance.py``), which are
-signed, and a hardware release (``.release.py``: ``release(file(…), check(…), output(…), id=…, rev=…, of=…, frozen=…)``), the
+signed, a hardware release (``.release.py``: ``release(file(…), check(…), output(…), id=…, rev=…, of=…, frozen=…)``) and a
+unit's calibration (``.calibration.py``: ``calibration(joint(…), rezero(…), device=…, serial=…)``), the
 same documents and the same elements as the TypeScript SDK's JSX (``commandagi/design`` ``records.ts``)::
 
     from commandagi.design.records import contract, event, instance, party
@@ -25,6 +26,9 @@ empty graph; ``sources`` names each element's call by its path (``""``, ``party@
 """
 from __future__ import annotations
 
+import json
+import math
+import re
 from typing import Any, Dict
 
 from .documents import DocTree, Vocabulary, register_vocabulary
@@ -38,6 +42,13 @@ RELEASE_FILE_FIELDS = ["path", "digest"]
 RELEASE_CHECK_FIELDS = ["file", "id", "kind", "status", "accepted", "reason"]
 RELEASE_OUTPUT_FIELDS = ["path", "digest", "from", "kind"]
 RELEASE_CHECK_STATUSES = ["passed", "failed", "skipped", "accepted"]
+#: A unit's calibration: the definition it calibrates (a ref), the unit's serial, a note.
+CALIBRATION_FIELDS = ["device", "serial", "note"]
+#: One calibrated joint: its zero (rad, what its encoder reads at the chain's zero), its servo's gains, the run that
+#: measured them.
+CALIBRATION_JOINT_FIELDS = ["name", "zero", "kp", "kv", "run"]
+#: One re-zero: the joint, its new zero (rad), when (epoch ms), who (person:<id> | agent:<id>), why.
+REZERO_FIELDS = ["joint", "zero", "at", "by", "reason"]
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
@@ -49,11 +60,15 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "file": {},
     "check": {},
     "output": {},
+    "calibration": {"holds": "children"},
+    "joint": {},
+    "rezero": {},
 }
 
 __all__ = ["CONTRACT_FIELDS", "INSTANCE_FIELDS", "INSTANCE_EVENT_FIELDS", "RELEASE_FIELDS", "RELEASE_FILE_FIELDS",
-           "RELEASE_CHECK_FIELDS", "RELEASE_OUTPUT_FIELDS", "RELEASE_CHECK_STATUSES", "SIGNATURES", "CONTRACT_VOCABULARY",
-           "INSTANCE_VOCABULARY", "RELEASE_VOCABULARY", *define(globals(), "records", SIGNATURES)]
+           "RELEASE_CHECK_FIELDS", "RELEASE_OUTPUT_FIELDS", "RELEASE_CHECK_STATUSES", "CALIBRATION_FIELDS",
+           "CALIBRATION_JOINT_FIELDS", "REZERO_FIELDS", "SIGNATURES", "CONTRACT_VOCABULARY", "INSTANCE_VOCABULARY",
+           "RELEASE_VOCABULARY", "CALIBRATION_VOCABULARY", "RECORDS", *define(globals(), "records", SIGNATURES)]
 
 
 def _own(o: Dict[str, Any], keys: Any = None) -> Dict[str, Any]:
@@ -98,6 +113,49 @@ def _release(t: DocTree) -> Dict[str, Any]:
     return {**_own(t["attrs"], RELEASE_FIELDS), "files": listed["file"], "checks": listed["check"], "outputs": listed["output"]}
 
 
+def _finite(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def _json(v: Any) -> str:
+    """A value as the TypeScript SDK's message writes it (JSON; undefined for a missing one)."""
+    return "undefined" if v is None else json.dumps(v)
+
+
+def _calibration(t: DocTree) -> Dict[str, Any]:
+    listed = {tag: [dict(c["attrs"]) for c in t["children"] if c["tag"] == tag] for tag in ("joint", "rezero")}
+    for j in listed["joint"]:
+        at = f'<joint name="{j.get("name")}">'
+        if "zero" in j and not _finite(j["zero"]):
+            raise ValueError(f"{at}: zero is radians, not {_json(j['zero'])}")
+        if "kp" in j and not (_finite(j["kp"]) and j["kp"] > 0):
+            raise ValueError(f"{at}: kp is a positive number (N·m/rad), not {_json(j['kp'])}")
+        if "kv" in j and not (_finite(j["kv"]) and j["kv"] >= 0):
+            raise ValueError(f"{at}: kv is a number of at least 0 (N·m·s/rad), not {_json(j['kv'])}")
+    last = -math.inf
+    for r in listed["rezero"]:
+        at = f'<rezero joint="{r.get("joint")}">'
+        if not _finite(r.get("zero")):
+            raise ValueError(f"{at}: zero is radians, not {_json(r.get('zero'))}")
+        when = r.get("at")
+        if not (_finite(when) and float(when).is_integer()):
+            raise ValueError(f"{at}: at is epoch milliseconds, not {_json(when)}")
+        if not isinstance(r.get("by"), str) or not re.match(r"^(person|agent):.+", r["by"]):
+            raise ValueError(f"{at}: by is person:<id> or agent:<id>, not {_json(r.get('by'))}")
+        if when < last:
+            raise ValueError(f"{at}: the re-zeros are oldest first, and this one is older than the one before it")
+        last = when
+    return {**_own(t["attrs"], CALIBRATION_FIELDS), "joints": listed["joint"], "rezeros": listed["rezero"]}
+
+
+def _calibration_tree(d: Dict[str, Any]) -> DocTree:
+    def leaf(tag: str, o: Dict[str, Any], keys: Any) -> DocTree:
+        return {"tag": tag, "attrs": _own(o, keys), "children": []}
+    return {"tag": "calibration", "attrs": _own(d, CALIBRATION_FIELDS),
+            "children": [leaf("joint", j, CALIBRATION_JOINT_FIELDS) for j in d.get("joints") or []]
+            + [leaf("rezero", r, REZERO_FIELDS) for r in d.get("rezeros") or []]}
+
+
 def _never(_: Any) -> DocTree:
     raise NotImplementedError("the editor makes the tree from a document (the TypeScript SDK's toTree)")
 
@@ -120,5 +178,25 @@ RELEASE_VOCABULARY = Vocabulary("release", "a hardware release", "release", {
     "output": {"parents": ["release"], "key": "path", "required": ["path", "digest"], "attrs": RELEASE_OUTPUT_FIELDS},
 }, _release, _never)
 
-for _v in (CONTRACT_VOCABULARY, INSTANCE_VOCABULARY, RELEASE_VOCABULARY):
+#: A unit's calibration (``<name>.calibration.py``): what one physical unit measures off its definition. A unit of a world
+#: names it (``unit(calibration="arm.calibration.py", …)``). Each ``joint`` holds the joint's zero and its servo's gains
+#: as this unit has them; each ``rezero`` is an event of the unit, oldest first. A joint's zero is its newest re-zero's,
+#: else its ``joint``'s. A re-zero is appended, never edited::
+#:
+#:     calibration(
+#:         joint(name="shoulder_lift", zero=0.012, kp=12, kv=0.6, run="runs/2026-10-30-lift/run.json"),
+#:         rezero(joint="shoulder_lift", zero=0.015, at=1793318400000, by="person:owner", reason="motor replaced"),
+#:         device="../../devices/so101-follower-arm/definition.tsx", serial="SO101-0007",
+#:     )
+CALIBRATION_VOCABULARY = Vocabulary("calibration", "a unit's calibration", "calibration", {
+    "calibration": {"parents": [], "required": ["device"], "attrs": CALIBRATION_FIELDS},
+    "joint": {"parents": ["calibration"], "key": "name", "required": ["name"], "attrs": CALIBRATION_JOINT_FIELDS},
+    "rezero": {"parents": ["calibration"], "required": ["joint", "zero", "at", "by"], "attrs": REZERO_FIELDS},
+}, _calibration, _calibration_tree, empty=lambda name: {"device": "", "joints": [], "rezeros": []})
+
+for _v in (CONTRACT_VOCABULARY, INSTANCE_VOCABULARY, RELEASE_VOCABULARY, CALIBRATION_VOCABULARY):
     register_vocabulary(_v, "records")
+
+#: The vocabularies of the records, by format.
+RECORDS = {"contract": CONTRACT_VOCABULARY, "instance": INSTANCE_VOCABULARY, "release": RELEASE_VOCABULARY,
+           "calibration": CALIBRATION_VOCABULARY}
