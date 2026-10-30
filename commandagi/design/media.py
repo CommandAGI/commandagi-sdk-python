@@ -475,7 +475,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 track_sources[f"audio:{fx['id']}"] = c.source
                 continue
             if c.type == "clip":
-                _refuse_unknown(c, ["src", *_CLIP_PROPS])
+                _refuse_unknown(c, ["src", "link", *_CLIP_PROPS])
                 src = _str(c, "src")
                 if not src:
                     raise ValueError('<clip> names its media file (src="media/take-1.mp4", relative to this file)')
@@ -484,7 +484,8 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 mk = media_kind(src)
                 if not mk:
                     raise ValueError(f"{_where(c)}: {src} is not a video, audio or image file this editor reads")
-                if (mk == "audio") != (kind == "audio"):
+                # A video file on an audio track is its sound; a sound file has no picture, and a still has no sound.
+                if (kind != "audio") if mk == "audio" else (mk == "image" and kind == "audio"):
                     raise ValueError(f"{_where(c)}: " + ('a sound goes on an audio track (kind="audio")' if mk == "audio" else 'a picture goes on a video track (kind="video")'))
                 asset_id = slug(src)
                 source_id = f"src_{asset_id}"
@@ -497,8 +498,13 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 speed = _or(_num(c, "speed", 0.01), 1)
                 in_point = _or(_num(c, "in", 0), 0)
                 duration = _clip_length(c, in_point, speed, mk == "image")
-                inputs: Dict[str, Any] = {"kind": mk, "assetId": asset_id, "name": clip_name, "start": _or(_num(c, "start", 0), 0),
+                link = _str(c, "link")
+                if link == "":
+                    raise ValueError(_where(c) + ": link names the clips that are one take's picture and sound, not \"\"")
+                inputs: Dict[str, Any] = {"kind": "audio" if kind == "audio" else mk, "assetId": asset_id, "name": clip_name, "start": _or(_num(c, "start", 0), 0),
                                           "duration": duration, "inPoint": in_point, "speed": speed, **_common(c)}
+                if link is not None:
+                    inputs["link"] = link
                 source = _wire(source_id, "media")
             elif c.type == "composition":
                 # Another video, drawn live from its own code: a ``video.instance`` node (made below, once the clip has its id).

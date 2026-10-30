@@ -30,6 +30,14 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(n["composite"]["inputs"]["tracks.1"], wire("track_V1", "frames"))
         self.assertEqual(n["composite"]["inputs"]["markers"], [{"id": "marker_1", "time": 4, "name": "Drop", "color": "#f5c542"}])
 
+    def test_a_video_file_on_an_audio_track_is_its_sound_and_a_link_pairs_picture_and_sound(self):
+        take = dict(src="media/take.mp4", link="L1", start=1, out=4)
+        n = declare_video(video(track(clip(volume=0, **take), name="V1"), track(clip(**take), name="A1", kind="audio")))["nodes"]
+        clips = [x["inputs"] for x in n.values() if x["type"] == "video.clip"]
+        self.assertEqual([(c["kind"], c["link"], c["volume"]) for c in clips], [("video", "L1", 0), ("audio", "L1", 1)])
+        with self.assertRaisesRegex(ValueError, "a picture goes on a video track"):
+            declare_video(video(track(clip(src="a.png", duration=1), kind="audio")))
+
     def test_what_a_video_cannot_say_is_refused_by_name(self):
         with self.assertRaisesRegex(ValueError, "relative to this file"):
             declare_video(video(track(clip(src="/abs/a.mp4", duration=1))))
