@@ -5,7 +5,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.market import MARKET_VOCABULARY, account, bid, book, holding, market, quote, trade
+from commandagi.design.market import MARKET_VOCABULARY, account, bid, book, fill, holding, market, order, order_update, quote, trade
 
 # A copy of seed/user-commandagi/examples/market/code/Paper.market.py in the CommandAGI repository: the golden all
 # three SDKs declare alike.
@@ -110,6 +110,16 @@ class MarketTests(unittest.TestCase):
             declare_document(market(quote(t=T, sym=7)))
         with self.assertRaisesRegex(ValueError, r'<quote> t is an ISO time .*, not "yesterday"'):
             declare_document(market(quote(t="yesterday", sym="NRTH")))
+
+    def test_a_bracket_is_an_order_with_two_exits_each_outcome_naming_its_leg(self):
+        o = dict(t=T, id="o-a1b2c3d4e5f6", sym="NRTH", side="buy", qty="10", type="limit", limit="184.50", take_profit="190.25",
+                 stop_loss="180", tif="gtc", venue="alpaca-paper", mode="paper", by="person:ada", grant="g-paper")
+        u = dict(t=T, order="o-a1b2c3d4e5f6", leg="stop-loss", state="cancelled", mode="paper", ref="alp-1004", src="venue")
+        f = dict(t=T, sym="NRTH", side="sell", price="190.25", qty="10", order="o-a1b2c3d4e5f6", leg="take-profit", mode="paper", ref="fill-2")
+        doc = declare_document(market(order(**o), order_update(**u), fill(**f)))["document"]
+        self.assertEqual(doc, {"records": [{"kind": "order", **{("takeProfit" if k == "take_profit" else "stopLoss" if k == "stop_loss" else k): v for k, v in o.items()}}, {"kind": "order-update", **u}, {"kind": "fill", **f}]})
+        with self.assertRaisesRegex(ValueError, r'<order> stopLoss is decimal text \("185.09"\), not a number'):
+            declare_document(market(order(**{**o, "stop_loss": 180})))
 
     def test_what_the_vocabulary_has_no_words_for_is_refused_by_name(self):
         with self.assertRaisesRegex(ValueError, r"<quote>: price is not read \(t, sym, last, bid, ask, vol\)"):
