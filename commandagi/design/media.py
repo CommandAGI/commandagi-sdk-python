@@ -23,7 +23,8 @@ One call per tag (``commandagi.design.element``): children positional, attribute
 is ``fontSize``; ``in_`` is ``in``). Media files are named by path relative to the file, never inlined. So are a nested
 composition (``composition(src=...)``: another video's code, a ``video.instance`` node whose frames are its clip's source;
 ``inputs`` are the values it gives that video's parameters) and an artboard (``artboard(src=...)``: a drawing's page, drawn
-live; ``view`` names the page, else the first; ``crop={"x": …, "y": …, "width": …, "height": …}`` the part of it to show). Times on a
+live; ``view`` names the page, else the first; ``crop={"x": …, "y": …, "width": …, "height": …}`` the part of it to show; ``inputs`` the values it gives the
+drawing's parameters, so two artboards of one drawing can say two things). Times on a
 video's timeline are seconds; in a song, beats (an audio clip's ``in``, where it starts in its file, is seconds, as on a
 video). Each node carries the call that declared it in ``meta.source``; what a
 node holds that is not a node (a clip's effects, transition, intro, outro and keyframes; a midi clip's notes; a video's
@@ -254,6 +255,20 @@ def _input_values(el: Element) -> Dict[str, Any]:
     if INSTANCE_REF in v:
         raise ValueError(f"{_where(el)}: {INSTANCE_REF} is not a parameter")
     return dict(v)
+
+
+def _drawing_inputs(el: Element) -> Optional[Dict[str, Any]]:
+    """An artboard's input values: the drawing's parameters by name, each a number, a text or a yes/no. Read into the
+    reference's ``overrides``, which the drawing is run with."""
+    v = el.props.get("inputs")
+    if v is None:
+        return None
+
+    def ok(x: Any) -> bool:
+        return isinstance(x, (str, bool)) or (isinstance(x, (int, float)) and math.isfinite(x))
+    if not isinstance(v, dict) or not all(ok(x) for x in v.values()):
+        raise ValueError(f"{_where(el)}: inputs is {{ parameter: number | text | true/false }}, not {json.dumps(v)}")
+    return dict(v) if v else None
 
 
 def _crop_rect(el: Element) -> Optional[Dict[str, float]]:
@@ -522,7 +537,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 source = None
             elif c.type == "artboard":
                 # A drawing's page, drawn live: the clip keeps the reference, never the drawing.
-                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + ["src", "view", "fit", "representation", "crop"])
+                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + ["src", "view", "fit", "representation", "crop", "inputs"])
                 if kind != "video":
                     raise ValueError(f"{_where(c)}: an artboard goes on a video track")
                 src = _document_src(c, ARTBOARD_FILE, "a drawing's code (a .draw.tsx, .draw.py or .draw.rs)")
@@ -535,6 +550,9 @@ def declare_video(root: Element) -> Dict[str, Any]:
                                        "representation": _or(_str(c, "representation", ARTBOARD_REPRESENTATIONS), ARTBOARD["representation"])}
                 if view is not None:
                     ref["view"] = view
+                overrides = _drawing_inputs(c)
+                if overrides is not None:
+                    ref["overrides"] = overrides
                 inputs = {"kind": "renderable", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1,
                           **_common(c), "volume": 1, "renderable": {"ref": ref, "fit": _or(_str(c, "fit", ARTBOARD_FITS), ARTBOARD["fit"])}}
                 crop = _crop_rect(c)

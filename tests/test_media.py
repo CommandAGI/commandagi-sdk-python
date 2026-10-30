@@ -189,6 +189,10 @@ class VideoVocabularyTests(unittest.TestCase):
         self.assertEqual(cropped["clip_Poster.draw.tsx"]["inputs"]["renderable"]["crop"], {"x": 10, "y": 20, "width": 400, "height": 300})
         with self.assertRaisesRegex(ValueError, r"crop is \{ x, y, width, height \}"):
             declare_video(video(track(artboard(src="P.draw.tsx", duration=2, crop={"x": 0, "y": 0, "width": 0, "height": 3}))))
+        given = declare_video(video(track(artboard(src="Poster.draw.tsx", duration=2, inputs={"title": "Square", "size": 40, "dark": True}))))["nodes"]
+        self.assertEqual(given["clip_Poster.draw.tsx"]["inputs"]["renderable"]["ref"]["overrides"], {"title": "Square", "size": 40, "dark": True})
+        with self.assertRaisesRegex(ValueError, r"inputs is \{ parameter: number \| text \| true/false \}"):
+            declare_video(video(track(artboard(src="P.draw.tsx", duration=2, inputs={"size": [1]}))))
         refused = [
             (composition(src="Intro.mp4", out=1), "is not another video's code"),
             (composition(src="/x/Intro.vid.tsx", out=1), "relative to this file"),
