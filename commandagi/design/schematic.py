@@ -30,8 +30,10 @@ The calls (the first arguments are positional attributes; everything else is a k
     net(name, pins=[".C1 > .pin1", …])                                       a stored net of a netlist circuit
     unit(part, unit, sch_x=, sch_y=, sch_rotation=, sch_mirror=, sch_style=)  where unit n (2 or more) of a part sits;
                                                                              the part's own sch_x, sch_y place unit 1
-    code(name, source=…, inputs={…})                                         a code part: the parts another file
-                                                                             declares (its path relative to this one)
+    code(name, source=…, inputs={…}, suppressed=…)                           a code part: the parts another file
+                                                                             declares (its path relative to this one);
+                                                                             a suppressed one (True) is not run and
+                                                                             declares nothing
     attachment(name, role=…, file=…, mime=…)                                 a KiCad file the circuit carries
     … no_connect=["3", "4"]                                                  on any part: the pins it leaves open on
                                                                              purpose, by pin number (KiCad's no-connect
@@ -364,8 +366,11 @@ def declare_sheet(children: List[Element]) -> None:
             parts[ref] = placed
             continue
         if el.tag == "code":
-            _refuse_unknown(el, ["name", "source", "inputs"])
+            _refuse_unknown(el, ["name", "source", "inputs", "suppressed"])
             name = _str(el, "name", "the code part's id")
+            suppressed = el.props.get("suppressed")
+            if suppressed is not None and not isinstance(suppressed, bool):
+                raise ValueError(f"{_where(el)}: suppressed is true or false")
             source = _str(el, "source", "the path of the file it runs, relative to this one")
             inputs = {} if el.props.get("inputs") is None else _plain(el.props["inputs"], f"{_where(el)} inputs")
             if not isinstance(inputs, dict):
@@ -374,7 +379,10 @@ def declare_sheet(children: List[Element]) -> None:
                 raise ValueError(f"{_where(el)}: source is the file, not one of its inputs")
             if name in s.nodes:
                 raise ValueError(f"two nodes are called {name}")
-            s.add(_CODE_OP, {"source": source, **inputs}, id=name, label=source.split("/")[-1], meta=_meta(el))
+            code = s.add(_CODE_OP, {"source": source, **inputs}, id=name, label=source.split("/")[-1], meta=_meta(el))
+            # The graph's own suppression: a disabled code node is not run (suppressed=False says the default).
+            if suppressed:
+                s.nodes[code.id]["disabled"] = True
             continue
         if el.tag == "junction":
             _refuse_unknown(el, ["name", "schX", "schY"])

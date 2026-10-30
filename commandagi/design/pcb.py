@@ -41,8 +41,10 @@ The calls (children are positional; every attribute is a keyword):
                                       ("Package_SO:SOIC-8") in the ``.pretty`` folder ``library`` names. ``ref_at``
                                       and ``value_at`` [x, y] are where its reference and value texts sit (mm, in
                                       the footprint's own frame).
-    trace(name, layer, width, points, from_, to, net, surface, uuid, segment_uuids, kicad)
+    trace(name, layer, width, points, rule, from_, to, net, surface, uuid, segment_uuids, kicad)
                                       a copper run: its points ([[x, y], …]) on one copper layer, a finished width.
+                                      ``rule`` is its routing rule, "45", "90" or "any" (the default): the angles
+                                      its legs take between its points, so a moved point re-routes the legs.
     arc(name, layer, width, points, from_, to, net, uuid, kicad)
                                       a circular copper arc: start, a point on it, end.
     via(name, pcb_x, pcb_y, drill, diameter, layers, pads, net, uuid, kicad)
@@ -251,6 +253,8 @@ def trace_point_id(index: int, count: int) -> str:
 
 
 _CONDUCTORS = {"trace", "arc", "via", "pour"}
+#: A run's routing rules: the angles its legs take between its points (45° steps, 90° steps, or any angle).
+_TRACE_RULES = ("45", "90", "any")
 _FACTS = {"graphic", "text", "dimension", "kicad", "net", "netclass", "diffpair", "group", "keepout", "thermal", "bus", "objective", "fab"}
 #: The layout's constraints, each a board fact (``fact`` is its tag), as the TypeScript SDK's.
 _CONSTRAINTS = ("netclass", "diffpair", "group", "keepout", "thermal", "bus", "objective")
@@ -724,7 +728,10 @@ def _declare_board(s: Scope, root: Element) -> None:
             s.add(BOARD_PART, inputs, id=f"fp_{ref}", label=ref, meta=_meta(el))
         elif el.tag in ("trace", "arc"):
             _refuse_unknown(el, ["name", "layer", "width", "points", "from", "to", "net", "uuid", "kicad",
-                                 *(["segmentUuids", "surface"] if el.tag == "trace" else [])])
+                                 *(["segmentUuids", "surface", "rule"] if el.tag == "trace" else [])])
+            rule = el.props.get("rule", "any")
+            if not isinstance(rule, str) or rule not in _TRACE_RULES:
+                raise ValueError(f'{_where(el)}: rule is "45", "90" or "any", not {json.dumps(rule)}')
             on_surface = el.props.get("surface")
             if on_surface is not None and on_surface is not True:
                 raise ValueError(f"{_where(el)}: surface is true or left out")
@@ -740,9 +747,9 @@ def _declare_board(s: Scope, root: Element) -> None:
             inputs = {"kind": "arc" if el.tag == "arc" else "run",
                       "points": [{**p, "id": trace_point_id(i, len(pts))} for i, p in enumerate(pts)],
                       "widthMm": _positive(el, "width", True), "layer": layer}
-            # The board view routes and re-routes a run under any angle; a KiCad segment says no rule.
+            # A run is routed under its rule; an arc has none.
             if el.tag == "trace":
-                inputs["rule"] = "any"
+                inputs["rule"] = rule
             if terminals:
                 inputs["terminals"] = terminals
             if segment_uuids is not None:

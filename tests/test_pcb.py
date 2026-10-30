@@ -67,6 +67,19 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["cu_1"]["inputs"]["terminals"], [{"point": 1, "via": "VIA1"}])
         self.assertEqual(g["nodes"]["cu_2"]["inputs"]["terminals"], [{"point": 0, "run": "T1", "runPoint": "p1"}])
 
+    def test_a_trace_names_its_routing_rule(self):
+        g = declared(
+            trace(layer="F.Cu", width=0.2, points=[[0, 0], [5, 5]], rule="45"),
+            trace(layer="F.Cu", width=0.2, points=[[0, 0], [5, 0]], rule="90"),
+            trace(layer="F.Cu", width=0.2, points=[[0, 0], [3, 1]]),
+            arc(layer="F.Cu", width=0.2, points=[[0, 0], [1, 1], [2, 0]]),
+        )
+        self.assertEqual([g["nodes"][f"cu_{i}"]["inputs"].get("rule") for i in (1, 2, 3, 4)], ["45", "90", "any", None])
+        with self.assertRaisesRegex(ValueError, 'rule is "45", "90" or "any", not 45'):
+            declared(trace(layer="F.Cu", width=0.2, points=[[0, 0], [1, 0]], rule=45))
+        with self.assertRaisesRegex(ValueError, "rule is not read on a board"):
+            declared(arc(layer="F.Cu", width=0.2, points=[[0, 0], [1, 1], [2, 0]], rule="45"))
+
     def test_a_library_footprint_is_its_ref_and_its_library(self):
         g = declared(component(name="U1", footprint="Package_SO:SOIC-8", library="footprints.pretty", pcb_x=12, pcb_y=8, pcb_rotation=90))
         self.assertEqual(g["nodes"]["fp_U1"]["inputs"], {"ref": "U1", "footprint": "Package_SO:SOIC-8", "library": "footprints.pretty",

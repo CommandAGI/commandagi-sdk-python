@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A schematic's code part takes `suppressed` (`code(name, source=…, suppressed=True)`): a suppressed part is not run
+  and declares nothing (the graph's disabled node).
+- A board's `trace(…)` takes `rule`, its routing rule: "45", "90" or "any" (the default). A value off these three is
+  refused.
 - A step-response study's `tune(joint=…, kp=[low, high], kv=[low, high])`: the bounds the validation planner may
   search a joint's gains in when the study fails; what it finds is proposed as an edit of the unit's calibration.
 - A study of kind `step-response` (`units="rad-s"`, `STEP_RESPONSE_UNITS`): `step(id=…, joint=…, from_=…, to=…)` (each

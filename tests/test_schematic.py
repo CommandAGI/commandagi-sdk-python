@@ -120,6 +120,15 @@ result = group(
             with self.assertRaisesRegex(ValueError, message):
                 run(sheet(body), "s.sch.py")
 
+    def test_a_suppressed_code_part_is_a_disabled_node(self):
+        # It is not run, so it declares nothing; suppressed=False is the default.
+        off = run(sheet('    code("c", source="c.ts", suppressed=True),\n'), "s.sch.py")["nodes"]["c"]
+        self.assertEqual((off["inputs"], off.get("disabled")), ({"source": "c.ts"}, True))
+        on = run(sheet('    code("c", source="c.ts", suppressed=False),\n'), "s.sch.py")["nodes"]["c"]
+        self.assertNotIn("disabled", on)
+        with self.assertRaisesRegex(ValueError, "suppressed is true or false"):
+            run(sheet('    code("c", source="c.ts", suppressed="yes"),\n'), "s.sch.py")
+
     def test_a_netlist_circuit_lists_pins_and_nets_and_carries_its_kicad_files(self):
         text = sheet('''    part("U1", value="LM358", pins=["1", {"number": "2", "name": "IN-"}]),
     part("C1", pins=["1", "2"], spice=[{"id": "c", "model": "C1u", "terminals": {"a": "1", "b": "2"}}]),
