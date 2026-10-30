@@ -23,7 +23,7 @@ One call per tag (``commandagi.design.element``): children positional, attribute
 is ``fontSize``; ``in_`` is ``in``). Media files are named by path relative to the file, never inlined. So are a nested
 composition (``composition(src=...)``: another video's code, a ``video.instance`` node whose frames are its clip's source;
 ``inputs`` are the values it gives that video's parameters) and an artboard (``artboard(src=...)``: a drawing's page, drawn
-live; ``view`` names the page, else the first). Times on a
+live; ``view`` names the page, else the first; ``crop={"x": …, "y": …, "width": …, "height": …}`` the part of it to show). Times on a
 video's timeline are seconds; in a song, beats (an audio clip's ``in``, where it starts in its file, is seconds, as on a
 video). Each node carries the call that declared it in ``meta.source``; what a
 node holds that is not a node (a clip's effects, transition, intro, outro and keyframes; a midi clip's notes; a video's
@@ -254,6 +254,19 @@ def _input_values(el: Element) -> Dict[str, Any]:
     if INSTANCE_REF in v:
         raise ValueError(f"{_where(el)}: {INSTANCE_REF} is not a parameter")
     return dict(v)
+
+
+def _crop_rect(el: Element) -> Optional[Dict[str, float]]:
+    """An artboard's ``crop``: the rectangle of the drawing's page to show, ``{x, y, width, height}`` in the page's own units."""
+    v = el.props.get("crop")
+    if v is None:
+        return None
+    keys = ("x", "y", "width", "height")
+    if (not isinstance(v, dict) or set(v) != set(keys)
+            or any(isinstance(v[k], bool) or not isinstance(v[k], (int, float)) or not math.isfinite(v[k]) for k in keys)
+            or v["width"] <= 0 or v["height"] <= 0):
+        raise ValueError(f"{_where(el)}: crop is {{ x, y, width, height }} with a width and a height above 0, not {json.dumps(v)}")
+    return {k: v[k] for k in keys}
 
 
 def _clip_length(c: Element, in_point: float, speed: float, picture: bool) -> float:
@@ -503,7 +516,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 source = None
             elif c.type == "artboard":
                 # A drawing's page, drawn live: the clip keeps the reference, never the drawing.
-                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + ["src", "view", "fit", "representation"])
+                _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + ["src", "view", "fit", "representation", "crop"])
                 if kind != "video":
                     raise ValueError(f"{_where(c)}: an artboard goes on a video track")
                 src = _document_src(c, ARTBOARD_FILE, "a drawing's code (a .draw.tsx, .draw.py or .draw.rs)")
@@ -518,6 +531,9 @@ def declare_video(root: Element) -> Dict[str, Any]:
                     ref["view"] = view
                 inputs = {"kind": "renderable", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": 0, "speed": 1,
                           **_common(c), "volume": 1, "renderable": {"ref": ref, "fit": _or(_str(c, "fit", ARTBOARD_FITS), ARTBOARD["fit"])}}
+                crop = _crop_rect(c)
+                if crop is not None:
+                    inputs["renderable"]["crop"] = crop
                 source = None
             elif c.type == "title":
                 _refuse_unknown(c, [p for p in _CLIP_PROPS if p not in ("in", "out", "speed", "volume")] + list(TITLE_TEXT) + ["typewriter"])
