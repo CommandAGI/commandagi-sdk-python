@@ -264,7 +264,7 @@ class _DynamicsJoint6(__DynamicsJoint6Required, __DynamicsJoint6Optional):
 
 #: A joint between two bodies: its kind, its axis, its limits and the two references it binds. `<joint>` in code.
 _DynamicsJointRequired = TypedDict("_DynamicsJointRequired", {"id": str, "kind": 'JointKind', "a": str, "anchor": 'Vec32'})
-_DynamicsJointOptional = TypedDict("_DynamicsJointOptional", {"b": str, "axis": 'Vec32', "refA": 'JointReference', "refB": 'JointReference', "limits": Tuple[float, float], "travel": Tuple[float, float], "pitch": float, "actuator": '_DynamicsJoint6'}, total=False)
+_DynamicsJointOptional = TypedDict("_DynamicsJointOptional", {"b": str, "axis": 'Vec32', "refA": 'JointReference', "refB": 'JointReference', "limits": Tuple[float, float], "travel": Tuple[float, float], "pitch": float, "home": float, "homeTravel": float, "actuator": '_DynamicsJoint6'}, total=False)
 class DynamicsJoint(_DynamicsJointRequired, _DynamicsJointOptional):
     pass
 
@@ -368,7 +368,7 @@ _InspectionOptional = TypedDict("_InspectionOptional", {"dimensions": List['Crit
 class Inspection(_InspectionRequired, _InspectionOptional):
     pass
 
-#: The geometry of a body that a joint binds: a face, an edge or a vertex, named by where it is.
+#: The geometry of a body that a joint binds: a face, an edge or a vertex, named by where it is in the body's own space (the body as its features draw it, before the placement the assembly gives it).
 _JointReferenceRequired = TypedDict("_JointReferenceRequired", {"kind": Literal["face", "edge", "vertex"], "point": 'Vec32'})
 _JointReferenceOptional = TypedDict("_JointReferenceOptional", {"direction": 'Vec32', "label": str}, total=False)
 class JointReference(_JointReferenceRequired, _JointReferenceOptional):
