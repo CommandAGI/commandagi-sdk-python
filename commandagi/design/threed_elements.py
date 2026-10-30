@@ -772,7 +772,7 @@ _SourceCompressedTextureOptional = TypedDict("_SourceCompressedTextureOptional",
 class SourceCompressedTexture(_SourceCompressedTextureRequired, _SourceCompressedTextureOptional):
     pass
 
-#: Universal uncompressed pixel data (for DataTexture and legacy Basis RGBA output).
+#: Universal uncompressed pixel data (for DataTexture and Basis RGBA output).
 _SourceDataTextureRequired = TypedDict("_SourceDataTextureRequired", {"kind": Literal["data"], "width": float, "height": float, "data": str, "format": float, "type": float})
 _SourceDataTextureOptional = TypedDict("_SourceDataTextureOptional", {"name": str, "colorSpace": str, "channel": float, "wrapS": float, "wrapT": float, "magFilter": float, "minFilter": float, "anisotropy": float, "flipY": bool, "transform": 'SourceTextureTransform'}, total=False)
 class SourceDataTexture(_SourceDataTextureRequired, _SourceDataTextureOptional):
