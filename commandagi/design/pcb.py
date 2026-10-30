@@ -28,7 +28,7 @@ The calls (children are positional; every attribute is a keyword):
     masks(name, label, lib_name, unit_um_per_db, polygons)
                                       an IC mask layout, flattened: each polygon {layer, datatype, points} with
                                       points in micrometres, the stream's units and the library it names.
-    graphic(kind, layer, points, width, filled, id, kicad)
+    graphic(kind, layer, points, width, filled, arcs, id, kicad)
                                       a board drawing (line, arc, circle, rect, poly) on a layer.
     text(text|field, at, rotation, layer, size, size_x, thickness, kind, id, kicad)
     dimension(points, height, layer, width, text_size, id, kicad)
@@ -800,7 +800,7 @@ def _declare_board(s: Scope, root: Element) -> None:
             inputs.update(uuid_of(el), **net_of(el), **_kicad(el))
             s.add(CONDUCTOR, inputs, id=id_of[id(el)], label="Pour", meta=_meta(el))
         elif el.tag == "graphic":
-            _refuse_unknown(el, ["kind", "layer", "points", "width", "filled", "id", "kicad"])
+            _refuse_unknown(el, ["kind", "layer", "points", "width", "filled", "arcs", "id", "kicad"])
             kind = _text(el, "kind", True)
             if kind not in _GRAPHICS:
                 raise ValueError(f"{_where(el)}: kind is {', '.join(_GRAPHICS)}")
@@ -814,6 +814,16 @@ def _declare_board(s: Scope, root: Element) -> None:
                 inputs["id"] = _text(el, "id")
             inputs.update(kind=kind, points=_point_list(el, "points", 2 if kind == "poly" else _GRAPHICS[kind], _GRAPHICS[kind]),
                           widthMm=_num(el, "width", True), layer=_text(el, "layer", True))
+            arcs = el.props.get("arcs")
+            if arcs is not None:
+                # A polygon's arcs: where each one's three points (start, mid, end) begin in `points`.
+                nxt, ok = 0, kind == "poly" and isinstance(arcs, list) and len(arcs) > 0
+                for i in (arcs if ok else []):
+                    ok = ok and isinstance(i, int) and not isinstance(i, bool) and nxt <= i and i + 3 <= len(inputs["points"])
+                    nxt = (i + 3) if isinstance(i, int) else nxt
+                if not ok:
+                    raise ValueError(f"{_where(el)}: arcs is, on a poly, the increasing indices in points where an arc's start, mid and end begin (3 points each, not overlapping)")
+                inputs["arcStarts"] = arcs
             if kind not in ("line", "arc"):
                 inputs["filled"] = filled if filled is not None else False
             inputs.update(_kicad(el))

@@ -89,6 +89,14 @@ class BoardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "a footprint library folder"):
             declared(component(name="U1", footprint="Package_SO:SOIC-8", library="SOIC-8.kicad_mod"))
 
+    def test_a_polygon_says_its_arcs(self):
+        pts = [[0, 0], [1, 0], [2, 1], [3, 0], [3, 3]]
+        g = declared(graphic(kind="poly", layer="F.Mask", points=pts, width=0, filled=True, arcs=[1]), width=10, height=10)
+        fact = [n["inputs"] for n in g["nodes"].values() if n["type"] == "eda.boardfact"][0]
+        self.assertEqual(fact["arcStarts"], [1])
+        with self.assertRaisesRegex(ValueError, "arcs is, on a poly"):
+            declared(graphic(kind="poly", layer="F.Mask", points=pts, width=0, arcs=[3]), width=10, height=10)
+
     def test_what_a_kicad_board_holds(self):
         layers = [{"ordinal": 0, "name": "F.Cu", "type": "signal"}, {"ordinal": 4, "name": "In1.Cu", "type": "signal"},
                   {"ordinal": 2, "name": "B.Cu", "type": "signal"}, {"ordinal": 25, "name": "Edge.Cuts", "type": "user"}]
