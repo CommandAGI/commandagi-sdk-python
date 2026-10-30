@@ -221,7 +221,7 @@ A URL in `COMMANDAGI_THREED` is that running service only. Both places speak one
 `observe(doc)`, `export(doc, "step" | "iges", bodies=)`, `measure(doc, "distance" | "angle" | "radius" | "closest", a,
 b)`, `measure_all(doc, [{"quantity", "a", "b"}, …])` (many on one build), `interference(doc, clearance=, bodies=)`,
 `drawing(doc, direction=, up=, section=)`, `tessellate(doc, deflection)`. `doc` is what a file declares, its
-graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"body": "body_0", "kind": "face" | "edge" |
+graph (`run_module(...)["graph"]`) or the graph's JSON text. An entity is `{"body": "base", "kind": "face" | "edge" |
 "vertex" | "body", "index": n}`, with the index as `observe` lists it.
 
 - **A build in which a feature failed is not whole.** `observe` answers it with `status: "failed"` and `failures`.

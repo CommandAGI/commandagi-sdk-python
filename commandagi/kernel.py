@@ -405,7 +405,7 @@ class Kernel:
 
     def measure(self, doc: Any, quantity: str, a: Dict[str, Any], b: Optional[Dict[str, Any]] = None, *, parts: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """``distance`` | ``angle`` | ``closest`` between two entities, or the ``radius`` of one: ``{"value"}``, or
-        ``{"points": {"a", "b"}}`` for ``closest``. An entity is ``{"body": "body_0", "kind": "body" | "face" | "edge" |
+        ``{"points": {"a", "b"}}`` for ``closest``. An entity is ``{"body": "base", "kind": "body" | "face" | "edge" |
         "vertex", "index": n}``, the index as observe lists it."""
         return self.measure_all(doc, [{"quantity": quantity, "a": a, **({"b": b} if b is not None else {})}], parts=parts)[0]
 
