@@ -2669,6 +2669,12 @@
                   "maxLength": 64,
                   "description": "a key or a combo: enter, ctrl+l, ctrl+shift+t"
                 },
+                "holdMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 60000,
+                  "description": "hold the key down this many milliseconds before releasing it (absent: a tap)"
+                },
                 "basis": {
                   "type": "string",
                   "maxLength": 10,
@@ -3017,6 +3023,16 @@
                   "minLength": 1,
                   "maxLength": 1024
                 },
+                "robot": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "link": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
                 "local": {
                   "type": "array",
                   "minItems": 3,
@@ -3059,7 +3075,6 @@
                 }
               },
               "required": [
-                "body",
                 "local",
                 "target"
               ],
