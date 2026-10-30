@@ -67,7 +67,7 @@ _RECORDS: Dict[str, Any] = {
               ["limit", "stop", "takeProfit", "stopLoss", "instrument", "account", "connection"],
               ["qty", "limit", "stop", "takeProfit", "stopLoss"]),
     "order-update": ("market", ["t", "order", "state", "mode"], ["leg", "ref", "filled", "avg", "error", "src"], ["filled", "avg"]),
-    "cancel": ("market", ["t", "id", "venue", "mode", "ref", "by", "grant"], ["order", "connection", "account"], []),
+    "cancel": ("market", ["t", "id", "venue", "mode", "ref", "by", "grant"], ["order", "leg", "connection", "account"], []),
     "cancel-update": ("market", ["t", "cancel", "state", "mode"], ["error"], []),
     "amend": ("market", ["t", "id", "order", "sym", "side", "qty", "type", "tif", "venue", "mode", "ref", "by", "grant"],
               ["limit", "stop", "connection", "account"], ["qty", "limit", "stop"]),
