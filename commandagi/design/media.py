@@ -22,11 +22,14 @@ TypeScript SDK's ``media.ts`` (``.vid.tsx``, ``.mus.tsx``)::
 One call per tag (``commandagi.design.element``): children positional, attributes as snake_case keywords (``font_size``
 is ``fontSize``; ``in_`` is ``in``). Media files are named by path relative to the file, never inlined. So are a nested
 composition (``composition(src=...)``: another video's code, a ``video.instance`` node whose frames are its clip's source;
-``inputs`` are the values it gives that video's parameters) and an artboard (``artboard(src=...)``: a drawing's page, drawn
+``inputs`` are the values it gives that video's parameters; ``artboard`` names which of that video's own artboards it shows,
+else its own frame) and an artboard (``artboard(src=...)``: a drawing's page, drawn
 live; ``view`` names the page, else the first; ``crop={"x": …, "y": …, "width": …, "height": …}`` the part of it to show; ``inputs`` the values it gives the
 drawing's parameters, so two artboards of one drawing can say two things). A video's own artboards are other frames of it
 at other sizes (``artboard(name="Vertical", width=1080, height=1920)`` in the ``video``, with no ``src``; the video itself
-is the first); an ``override(artboard="Vertical", …)`` in a clip, title or effect sets what it is on that artboard only. Times on a
+is the first); an ``override(artboard="Vertical", …)`` in a clip, title or effect sets what it is on that artboard only (a
+``shape``'s fill, an ``artboard`` clip's drawing ``inputs``, an effect's amount …), and the ``keyframe(property=…)``s inside
+an ``override`` are that artboard's own keys: there the property follows them, not the clip's. Times on a
 video's timeline are seconds; in a song, beats (an audio clip's ``in``, where it starts in its file, is seconds, as on a
 video). Each node carries the call that declared it in ``meta.source``; what a
 node holds that is not a node (a clip's effects, transition, intro, outro and keyframes; a midi clip's notes; a video's
@@ -50,7 +53,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "video": _HOLDS, "song": _HOLDS, "track": _HOLDS, "clip": _HOLDS, "composition": _HOLDS, "artboard": _HOLDS, "title": _HOLDS,
     "shape": _HOLDS, "adjustment": _HOLDS,
     "midi": _HOLDS, "effect": _HOLDS,
-    "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {}, "override": {},
+    "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {}, "override": _HOLDS,
     "synth": {}, "sampler": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {},
 }
 
@@ -225,9 +228,14 @@ CLIP_CROP = {"cropTop": "top", "cropRight": "right", "cropBottom": "bottom", "cr
 _CLIP_PROPS = ["name", "start", "duration", "in", "out", "speed", "opacity", "volume", "blendMode", "fitMode", *CLIP_TRANSFORM, *CLIP_COLOR, *CLIP_CROP]
 
 #: What an ``override`` in a clip may set on one of the video's artboards: its look (not its sound), transform, colour and
-#: crop; a title's text fields; a ``clip``'s media file (``src``, of the same kind). One in an ``effect`` sets its params
-#: and ``enabled``.
+#: crop; a title's text fields; a ``clip``'s media file (``src``, of the same kind); a ``shape``'s fill, stroke and
+#: strokeWidth; an ``artboard`` clip's drawing ``inputs``; and its own ``keyframe(property=…)``s of the look and transform
+#: (on that artboard the property follows them, not the clip's). One in an ``effect`` sets its params and ``enabled``.
 OVERRIDE_LOOK = ("opacity", "blendMode", "fitMode")
+#: The properties an ``override``'s own keyframes animate: the picture's, not the sound's.
+OVERRIDE_ANIMATABLE = tuple(p for p in ANIMATABLE if p != "volume")
+#: A ``shape``'s look an ``override`` sets.
+OVERRIDE_SHAPE = ("fill", "stroke", "strokeWidth")
 #: A video's own artboard (``artboard(name=…, width=…, height=…)`` in the ``video``): its props.
 VIDEO_ARTBOARD_PROPS = ("name", "width", "height")
 
@@ -245,7 +253,7 @@ def _override_artboard(el: Element, artboards: "set[str]") -> str:
 
 def _clip_override(el: Element, c: Element, artboards: "set[str]") -> Tuple[str, Dict[str, Any]]:
     """One ``override`` in a clip: what the clip is on that artboard."""
-    own = list(TITLE_TEXT) if c.type == "title" else ["src"] if c.type == "clip" else []
+    own = list(TITLE_TEXT) if c.type == "title" else ["src"] if c.type == "clip" else list(OVERRIDE_SHAPE) if c.type == "shape" else ["inputs"] if c.type == "artboard" else []
     _refuse_unknown(el, ["artboard", *OVERRIDE_LOOK, *CLIP_TRANSFORM, *CLIP_COLOR, *CLIP_CROP, *own])
     a = _override_artboard(el, artboards)
     o: Dict[str, Any] = {}
@@ -276,7 +284,15 @@ def _clip_override(el: Element, c: Element, artboards: "set[str]") -> Tuple[str,
             o["text"] = text
     if c.type == "clip" and _str(el, "src") is not None:
         o["src"] = _str(el, "src")
-    if not o:
+    if c.type == "shape":
+        look = {k: v for k, v in (("fill", _str(el, "fill")), ("stroke", _str(el, "stroke")), ("strokeWidth", _num(el, "strokeWidth", 0))) if v is not None}
+        if look:
+            o["sticker"] = look
+    if c.type == "artboard":
+        inputs = _drawing_inputs(el)
+        if inputs:
+            o["inputs"] = inputs
+    if not o and not child_elements(el):
         raise ValueError(f'{_where(el)} in {_where(c)}: an override names what it sets on artboard "{a}"')
     return a, o
 
@@ -386,15 +402,18 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any], artboards:
     saw = False
     overrides: Dict[str, Any] = {}
 
-    def key(el: Element, prop: str) -> None:
+    # An override's keys go into its own tracks and have no source of their own: the override's call is theirs.
+    def key(el: Element, prop: str, into: Optional[List[Dict[str, Any]]] = None, base: Optional[str] = None) -> None:
+        own = into is None
+        into = keyframes if into is None else into
         time, value = _num(el, "time", 0), _num(el, "value")
         if time is None or value is None:
             raise ValueError(f"{_where(el)}: a keyframe has a time and a value")
-        track_ = next((k for k in keyframes if k["property"] == prop), None)
+        track_ = next((k for k in into if k["property"] == prop), None)
         if track_ is None:
             track_ = {"property": prop, "keys": []}
-            keyframes.append(track_)
-        kid = kf_id(f"kf_{clip_id}")
+            into.append(track_)
+        kid = kf_id(base or f"kf_{clip_id}")
         easing = _or(_str(el, "easing", EASINGS), "linear")
         bezier = el.props.get("bezier")
         if bezier is not None and easing != "bezier":
@@ -408,7 +427,8 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any], artboards:
             k["bezier"] = list(bezier)
         track_["keys"].append(k)
         track_["keys"].sort(key=lambda k: k["time"])
-        sources[f"keyframe:{kid}"] = el.source
+        if own:
+            sources[f"keyframe:{kid}"] = el.source
 
     for el in child_elements(c):
         if el.type == "transition":
@@ -512,6 +532,18 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any], artboards:
             a, o = _clip_override(el, c, artboards)
             if a in overrides:
                 raise ValueError(f'{_where(c)}: one <override> for artboard "{a}"')
+            # Its own keyframes: on this artboard the property follows them, not the clip's.
+            okeys: List[Dict[str, Any]] = []
+            for k in child_elements(el):
+                if k.type != "keyframe":
+                    raise ValueError(f"<{k.type}> is not read in an <override> (it holds its artboard's <keyframe property time value>s)")
+                _refuse_unknown(k, ["property", "time", "value", "easing", "bezier"])
+                prop = _str(k, "property", OVERRIDE_ANIMATABLE)
+                if not prop:
+                    raise ValueError(f"{_where(k)}: a keyframe names its property ({', '.join(OVERRIDE_ANIMATABLE)})")
+                key(k, prop, okeys, f"kf_{clip_id}_{a}")
+            if okeys:
+                o["keyframes"] = okeys
             overrides[a] = o
             sources[f"override:{a}"] = el.source
         elif el.type == "keyframe":
@@ -632,7 +664,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 source = _wire(source_id, "media")
             elif c.type == "composition":
                 # Another video, drawn live from its own code: a ``video.instance`` node (made below, once the clip has its id).
-                _refuse_unknown(c, ["src", "inputs", *_CLIP_PROPS])
+                _refuse_unknown(c, ["src", "inputs", "artboard", *_CLIP_PROPS])
                 if kind != "video":
                     raise ValueError(f"{_where(c)}: a composition goes on a video track")
                 src = _document_src(c, COMPOSITION_FILE, "another video's code (a .vid.tsx, .vid.py or .vid.rs)")
@@ -642,7 +674,11 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 duration = _clip_length(c, in_point, speed, False)
                 inputs = {"kind": "video", "name": clip_name, "start": _or(_num(c, "start", 0), 0), "duration": duration, "inPoint": in_point,
                           "speed": speed, **_common(c)}
-                nested = {"src": src, "values": _input_values(c)}
+                # Which of the other video's own artboards it shows (absent: its own frame).
+                shows = _str(c, "artboard")
+                if shows == "":
+                    raise ValueError(f"{_where(c)}: artboard names one of the other video's own artboards, not \"\"")
+                nested = {"src": src, "values": _input_values(c), **({"artboard": shows} if shows is not None else {})}
                 source = None
             elif c.type == "artboard":
                 # A drawing's page, drawn live: the clip keeps the reference, never the drawing.
@@ -727,7 +763,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
             clip_id = new_id(f"clip_{clip_name}")
             if nested:
                 comp_id = new_id(f"comp_{clip_name}")
-                nodes[comp_id] = _node(comp_id, "video.instance", {INSTANCE_REF: {"path": nested["src"], "name": clip_name}, **nested["values"]}, clip_name)
+                nodes[comp_id] = _node(comp_id, "video.instance", {INSTANCE_REF: {"path": nested["src"], "name": clip_name, **({"artboard": nested["artboard"]} if "artboard" in nested else {})}, **nested["values"]}, clip_name)
                 source = _wire(comp_id, "frames")
             sources: Dict[str, Any] = {}
             transition_in, anims, effects, audio, keyframes, notes, overrides = _clip_children(c, clip_id, sources, artboard_names)

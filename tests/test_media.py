@@ -240,3 +240,32 @@ class VideoVocabularyTests(unittest.TestCase):
             declare_video(video(artboard(src="Poster.draw.tsx", duration=1)))
         with self.assertRaisesRegex(ValueError, r"b\.png is not a video file"):
             declare_video(video(track(clip(override(artboard="V", src="b.png"), src="a.mp4", out=1)), artboard(name="V", width=1, height=1)))
+
+    def test_an_override_sets_a_shapes_look_an_artboard_clips_inputs_and_its_own_keyframes_and_a_composition_names_its_artboard(self):
+        from commandagi.design.media import artboard, composition, override, shape
+        nodes = declare_video(video(
+            track(
+                shape(override(artboard="Square", fill="#00ff00", stroke_width=4), kind="ellipse", duration=2, fill="#ff0000"),
+                artboard(override(artboard="Square", inputs={"title": "Square"}), src="Card.draw.tsx", start=2, duration=2, inputs={"title": "Wide"}),
+                title(keyframe(property="transform.y", time=0, value=0),
+                      override(keyframe(property="transform.y", time=0, value=100), keyframe(property="transform.y", time=1, value=300, easing="easeOut"),
+                               artboard="Square"),
+                      text="Hi", start=4, duration=2),
+                composition(src="Inner.vid.tsx", start=6, out=2, artboard="Vertical")),
+            artboard(name="Square", width=1080, height=1080)))["nodes"]
+        self.assertEqual(nodes["clip_Sticker"]["inputs"]["overrides"], {"Square": {"sticker": {"fill": "#00ff00", "strokeWidth": 4}}})
+        self.assertEqual(nodes["clip_Card.draw.tsx"]["inputs"]["overrides"], {"Square": {"inputs": {"title": "Square"}}})
+        self.assertEqual(nodes["clip_Title"]["inputs"]["overrides"], {"Square": {"keyframes": [{"property": "transform.y", "keys": [
+            {"id": "kf_clip_Title_Square", "time": 0, "value": 100, "easing": "linear"},
+            {"id": "kf_clip_Title_Square_2", "time": 1, "value": 300, "easing": "easeOut"}]}]}})
+        self.assertEqual(len(nodes["clip_Title"]["inputs"]["keyframes"]), 1, "the clip keeps its own keys")
+        self.assertEqual(nodes["comp_Inner.vid.tsx"]["inputs"]["__instance"], {"path": "Inner.vid.tsx", "name": "Inner.vid.tsx", "artboard": "Vertical"})
+        sq = artboard(name="S", width=1, height=1)
+        refused = [
+            (override(keyframe(property="volume", time=0, value=1), artboard="S"), r'property is one of opacity, transform\.x.*not "volume"'),
+            (override(note(pitch=60, start=0, duration=1), artboard="S"), "<note> is not read in an <override>"),
+            (override(artboard="S", fill="#fff"), "prop fill is not read on a <override>"),
+        ]
+        for el, why in refused:
+            with self.assertRaisesRegex(ValueError, why):
+                declare_video(video(track(title(el, text="T", duration=1)), sq))
