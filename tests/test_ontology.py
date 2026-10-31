@@ -31,6 +31,10 @@ class OntologyTests(unittest.TestCase):
         links = [{"node": "ram", "joint": {"unit": "press-1", "channel": "axes", "name": "z", "type": "prismatic", "axis": "z", "origin_mm": [0, 0, 0], "home": 0}}]
         posed = declared(world(name="Press", kind="physical", model="press.3d.tsx", links=links))["document"]["document"]
         self.assertEqual(posed, {"name": "Press", "kind": "physical", "model": "press.3d.tsx", "links": links, "units": []})
+        # A world's follow policies (docs/follow.md): an attribute of world(), as the TypeScript SDK writes it.
+        policies = [{"id": "sim-control", "kind": "follow", "robot": "arm", "reality": "physical", "leader": {"unit": "arm", "run": "twin"}, "hz": 30}]
+        followed = declared(world(name="Cell", kind="physical", policies=policies))["document"]["document"]
+        self.assertEqual(followed, {"name": "Cell", "kind": "physical", "policies": policies, "units": []})
         with self.assertRaisesRegex(ValueError, "said explicitly"):
             declared(world(name="W", kind="real"))
         with self.assertRaisesRegex(ValueError, 'two <unit> in <world> have uid "a"'):

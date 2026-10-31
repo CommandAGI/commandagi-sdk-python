@@ -66,7 +66,8 @@ UNIT_FIELDS = ["uid", "name", "device", "serial", "revision", "domain", "group",
 GROUP_FIELDS = ["uid", "name", "description", "group", "size_mm", "position", "rotation"]
 #: ``links``: the parts of the world's model that a run moves (packages/domain/world/pose.js modelPose), a definition's
 #: link grammar with the unit named in each joint and emit; ``node`` is the id of the model's feature that makes the part.
-WORLD_FIELDS = ["name", "kind", "description", "from", "model", "links"]
+#: ``policies``: the world's follow policies (docs/follow.md): one unit's robot follows another's joints, by angle.
+WORLD_FIELDS = ["name", "kind", "description", "from", "model", "links", "policies"]
 GEO_FIELDS = ["id", "name", "createdAt", "updatedAt", "description", "defaultWorkspace", "metadata"]
 #: A node's attributes that are not its ports.
 _NODE_ATTRS = ["id", "type", "label", "x", "y", "disabled", "output", "meta", "inputs"]
