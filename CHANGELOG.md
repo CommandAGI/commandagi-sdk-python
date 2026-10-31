@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A machining setup's `machine` states its own travel: `travelMm` (`travel_mm` in Python and Rust), `[x, y, z]` in mm. A
+  stated travel holds a setup that names no unit, and the unit's definition does not replace it.
 - An `override(artboard=…)` takes `no_keys` (`no_keys=["opacity"]`): the clip's keys of those properties do not show on
   that artboard. An `override` in an `effect` holds `keyframe(param=…)`s, that artboard's own keys of the param, and
   takes `no_keys` of params.
