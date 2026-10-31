@@ -49,7 +49,7 @@ CALIBRATION_FIELDS = ["device", "serial", "note", "by", "at"]
 #: measured them, the travel measured end to end (``min``, ``max``: the bus's raw values, min < max), and whether the
 #: joint counts the other way than its definition says (``reversed``), and the servo id the joint has on this unit's
 #: bus when it is not the definition's (``id``: a servo found by motion in a guided calibration).
-CALIBRATION_JOINT_FIELDS = ["name", "id", "zero", "kp", "kv", "run", "min", "max", "reversed"]
+CALIBRATION_JOINT_FIELDS = ["name", "id", "zero", "kp", "kv", "run", "min", "max", "wraps", "reversed"]
 #: One re-zero: the joint, its new zero (rad), when (epoch ms), who (person:<id> | agent:<id>), why.
 REZERO_FIELDS = ["joint", "zero", "at", "by", "reason"]
 #: One calibrated camera: its video channel, the arm it was measured against, its intrinsics (pixels), its extrinsics
@@ -143,7 +143,13 @@ def _calibration(t: DocTree) -> Dict[str, Any]:
             raise ValueError(f"{at}: kv is a number of at least 0 (N·m·s/rad), not {_json(j['kv'])}")
         if ("min" in j) != ("max" in j):
             raise ValueError(f"{at}: a measured travel gives both min and max")
-        if "min" in j and not (_finite(j["min"]) and _finite(j["max"]) and j["min"] < j["max"]):
+        if "wraps" in j and j["wraps"] is not True:
+            raise ValueError(f"{at}: wraps is true (the travel crosses the seam where the count turns over) or absent, not {_json(j['wraps'])}")
+        # A travel that wraps goes from min up through the seam (4095 -> 0) to max, so its min is above its max.
+        wraps = j.get("wraps") is True
+        if "min" in j and not (_finite(j["min"]) and _finite(j["max"]) and (j["min"] > j["max"] if wraps else j["min"] < j["max"])):
+            if wraps:
+                raise ValueError(f"{at}: a travel that wraps goes from min up through the seam to max, so min > max, not {_json([j['min'], j['max']])}")
             raise ValueError(f"{at}: min and max are the bus's values with min < max, not {_json([j['min'], j['max']])}")
         if "reversed" in j and not isinstance(j["reversed"], bool):
             raise ValueError(f"{at}: reversed is true or false, not {_json(j['reversed'])}")
