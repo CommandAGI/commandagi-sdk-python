@@ -40,6 +40,17 @@ class DrawingTests(unittest.TestCase):
             {"start": {"x": 0, "y": 0}, "segs": [{"to": {"x": 10, "y": 0}}, {"c1": {"x": 1, "y": 2}, "c2": {"x": 3, "y": 4}, "to": {"x": 5, "y": 6}}, {"c1": {"x": 7, "y": 8}, "to": {"x": 9, "y": 9}}], "closed": True},
         ])
 
+    def test_a_compound_names_one_of_the_four_operations_in_the_draw_graphs_words(self):
+        def op(**props):
+            return from_twod(drawing(layer(compound(rect(x=0, y=0, w=1, h=1), **props))))
+        for value, shown in (("zork", '"zork"'), ("toString", '"toString"'), (3, "3")):
+            with self.assertRaises(ValueError) as refused:
+                op(op=value)
+            self.assertEqual(str(refused.exception), f"compound.op is unite, minus, intersect or exclude, not {shown}")
+        for named in ("unite", "minus", "intersect", "exclude"):
+            self.assertEqual(op(op=named)["nodes"]["compound"]["inputs"]["op"], named)
+        self.assertNotIn("op", op()["nodes"]["compound"]["inputs"])
+
     def test_a_compound_is_one_node_that_holds_its_shapes_back_to_front(self):
         g = from_twod(drawing(layer(
             compound(rect(x=0, y=0, w=100, h=100), ellipse(cx=100, cy=100, rx=40, ry=40), op="minus", fill="#0f172a"),

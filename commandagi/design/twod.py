@@ -47,6 +47,7 @@ editors run); a wrong one is refused with every issue: ``<gaussianBlur>: radius:
 """
 from __future__ import annotations
 
+import json
 import math
 import re
 from typing import Any, Dict, List, Optional
@@ -269,6 +270,9 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
             raise ValueError(f"{_where(el)} wraps the one node it changes")
         return _add(s, el, t, {**_attrs(el), "in": _drawn(s, kids[0], False)})
     if t == "compound":
+        op = el.props.get("op")
+        if op is not None and op not in _COMPOUND_OPS:
+            raise ValueError(f"compound.op is unite, minus, intersect or exclude, not {json.dumps(op, ensure_ascii=False, separators=(',', ':'), default=str)}")
         return _add(s, el, t, {**_attrs(el), **channels("children", [_drawn(s, c, False) for c in kids])})
     if t == "clip":
         if len(kids) != 2:
@@ -282,6 +286,8 @@ def _drawn(s: Scope, el: Element, top: bool) -> NodeRef:
 
 
 _BOARD = ("name", "width", "height", "background")
+#: A compound's operations, the draw graph's: its refusal comes here, at declaration, in its words.
+_COMPOUND_OPS = ("unite", "minus", "intersect", "exclude")
 
 
 def _drawing(root: Element, name: str) -> Dict[str, Any]:

@@ -87,6 +87,9 @@ Added
 
 Changed (a document written for 0.6.8 may need an edit)
 
+- `compound(…, op="zork")` is refused at declaration, in the draw graph's words: `compound.op is unite, minus, intersect or exclude,
+  not "zork"`. It used to declare and then fail to draw. An `op` that is not a string was drawn as `unite` and is
+  refused too. No `op` is still `unite`.
 - `commandagi.design.evals`: a metric's `probe` names a task file (`{"kind": "task", "task": "<ref>"}`, an
   `alignment`'s `reference.task`) or another metric file (a `composite` input's `metric`) by ref; a probe that names
   one by node id (`taskId`, `metricId`) is refused with why, as the platform's routes and reader refuse it.
