@@ -8,6 +8,11 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.infra`: a VPN exit, a logged-in state and a vantage as `exit.py`, `session.py` and `vantage.py`, the same
+  elements and documents as the TypeScript SDK's `exit.tsx`, `session.tsx` and `vantage.tsx`, with the same refusals.
+  `exit_with_defaults`, `session_with_defaults` and `vantage_with_defaults` fill what a file does not say. The
+  CommandAGI platform runs only the TSX files: its monitors read `vantage.tsx` and `session.tsx`, and `make infra-plan`
+  reads `exit.tsx`.
 - A machining setup's `machine` states its own travel: `travelMm` (`travel_mm` in Python and Rust), `[x, y, z]` in mm. A
   stated travel holds a setup that names no unit, and the unit's definition does not replace it.
 - An `override(artboard=…)` takes `no_keys` (`no_keys=["opacity"]`): the clip's keys of those properties do not show on

@@ -108,6 +108,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.business` | a company, an RFC, a case |
 | `commandagi.design.tasks` | a task, a project |
 | `commandagi.design.mounts` | a thread's mounted tasks (`mounts.py`, in the thread's run folder) |
+| `commandagi.design.infra` | a VPN exit (`exit.py`), a logged-in state (`session.py`), a vantage (`vantage.py`). The CommandAGI platform does not run these: its monitors read `vantage.tsx` and `session.tsx`, and `make infra-plan` reads `exit.tsx` |
 | `commandagi.design.evals` | an eval (`eval`: its `case`s), a metric (`metric`) |
 | `commandagi.design.monitors` | a monitor (`monitor.py`, in the folder of the thing it follows) |
 | `commandagi.design.scouts` | a scout's comparison (`scout.py`), a replacement-cost analysis (`replacement.py`) |
