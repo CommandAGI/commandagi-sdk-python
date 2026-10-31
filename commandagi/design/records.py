@@ -42,11 +42,13 @@ RELEASE_FILE_FIELDS = ["path", "digest"]
 RELEASE_CHECK_FIELDS = ["file", "id", "kind", "status", "accepted", "reason"]
 RELEASE_OUTPUT_FIELDS = ["path", "digest", "from", "kind"]
 RELEASE_CHECK_STATUSES = ["passed", "failed", "skipped", "accepted"]
-#: A unit's calibration: the definition it calibrates (a ref), the unit's serial, a note.
-CALIBRATION_FIELDS = ["device", "serial", "note"]
+#: A unit's calibration: the definition it calibrates (a ref), the unit's serial, a note, and who measured its joints
+#: and when (a guided calibration: ``by`` person:<id> | agent:<id>, ``at`` epoch ms).
+CALIBRATION_FIELDS = ["device", "serial", "note", "by", "at"]
 #: One calibrated joint: its zero (rad, what its encoder reads at the chain's zero), its servo's gains, the run that
-#: measured them.
-CALIBRATION_JOINT_FIELDS = ["name", "zero", "kp", "kv", "run"]
+#: measured them, the travel measured end to end (``min``, ``max``: the bus's raw values, min < max), and whether the
+#: joint counts the other way than its definition says (``reversed``).
+CALIBRATION_JOINT_FIELDS = ["name", "zero", "kp", "kv", "run", "min", "max", "reversed"]
 #: One re-zero: the joint, its new zero (rad), when (epoch ms), who (person:<id> | agent:<id>), why.
 REZERO_FIELDS = ["joint", "zero", "at", "by", "reason"]
 #: One calibrated camera: its video channel, the arm it was measured against, its intrinsics (pixels), its extrinsics
@@ -138,6 +140,17 @@ def _calibration(t: DocTree) -> Dict[str, Any]:
             raise ValueError(f"{at}: kp is a positive number (N·m/rad), not {_json(j['kp'])}")
         if "kv" in j and not (_finite(j["kv"]) and j["kv"] >= 0):
             raise ValueError(f"{at}: kv is a number of at least 0 (N·m·s/rad), not {_json(j['kv'])}")
+        if ("min" in j) != ("max" in j):
+            raise ValueError(f"{at}: a measured travel gives both min and max")
+        if "min" in j and not (_finite(j["min"]) and _finite(j["max"]) and j["min"] < j["max"]):
+            raise ValueError(f"{at}: min and max are the bus's values with min < max, not {_json([j['min'], j['max']])}")
+        if "reversed" in j and not isinstance(j["reversed"], bool):
+            raise ValueError(f"{at}: reversed is true or false, not {_json(j['reversed'])}")
+    by, when = t["attrs"].get("by"), t["attrs"].get("at")
+    if by is not None and (not isinstance(by, str) or not re.match(r"^(person|agent):.+", by)):
+        raise ValueError(f"<calibration>: by is person:<id> or agent:<id>, not {_json(by)}")
+    if when is not None and not (_finite(when) and float(when).is_integer()):
+        raise ValueError(f"<calibration>: at is epoch milliseconds, not {_json(when)}")
     last = -math.inf
     for r in listed["rezero"]:
         at = f'<rezero joint="{r.get("joint")}">'
@@ -219,9 +232,12 @@ RELEASE_VOCABULARY = Vocabulary("release", "a hardware release", "release", {
 #: as this unit has them; each ``rezero`` is an event of the unit, oldest first. A joint's zero is its newest re-zero's,
 #: else its ``joint``'s. A re-zero is appended, never edited. A camera unit's calibration holds a ``camera`` per video
 #: channel: its lens and where it is, measured by a run that moved a marker through its view, with the residual that
-#: says how far to trust them; a new run replaces it::
+#: says how far to trust them; a new run replaces it. A guided calibration measures each joint's travel end to end
+#: (``min``, ``max``, the bus's values) and whether it counts the other way than its definition (``reversed``), and says
+#: who measured it and when (``by``, ``at`` on ``calibration``)::
 #:
 #:     calibration(
+#:         joint(name="shoulder_pan", zero=0.031, min=712, max=3391),
 #:         joint(name="shoulder_lift", zero=0.012, kp=12, kv=0.6, run="runs/2026-10-30-lift/run.json"),
 #:         rezero(joint="shoulder_lift", zero=0.015, at=1793318400000, by="person:owner", reason="motor replaced"),
 #:         device="../../devices/so101-follower-arm/definition.tsx", serial="SO101-0007",
