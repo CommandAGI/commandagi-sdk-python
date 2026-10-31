@@ -47,8 +47,9 @@ RELEASE_CHECK_STATUSES = ["passed", "failed", "skipped", "accepted"]
 CALIBRATION_FIELDS = ["device", "serial", "note", "by", "at"]
 #: One calibrated joint: its zero (rad, what its encoder reads at the chain's zero), its servo's gains, the run that
 #: measured them, the travel measured end to end (``min``, ``max``: the bus's raw values, min < max), and whether the
-#: joint counts the other way than its definition says (``reversed``).
-CALIBRATION_JOINT_FIELDS = ["name", "zero", "kp", "kv", "run", "min", "max", "reversed"]
+#: joint counts the other way than its definition says (``reversed``), and the servo id the joint has on this unit's
+#: bus when it is not the definition's (``id``: a servo found by motion in a guided calibration).
+CALIBRATION_JOINT_FIELDS = ["name", "id", "zero", "kp", "kv", "run", "min", "max", "reversed"]
 #: One re-zero: the joint, its new zero (rad), when (epoch ms), who (person:<id> | agent:<id>), why.
 REZERO_FIELDS = ["joint", "zero", "at", "by", "reason"]
 #: One calibrated camera: its video channel, the arm it was measured against, its intrinsics (pixels), its extrinsics
@@ -146,6 +147,11 @@ def _calibration(t: DocTree) -> Dict[str, Any]:
             raise ValueError(f"{at}: min and max are the bus's values with min < max, not {_json([j['min'], j['max']])}")
         if "reversed" in j and not isinstance(j["reversed"], bool):
             raise ValueError(f"{at}: reversed is true or false, not {_json(j['reversed'])}")
+        if "id" in j and not (isinstance(j["id"], int) and not isinstance(j["id"], bool) and 0 <= j["id"] <= 252):
+            raise ValueError(f"{at}: id is the servo's id on this unit's bus (an integer 0..252), not {_json(j['id'])}")
+        twin = next((o for o in listed["joint"] if o is not j and "id" in j and o.get("id") == j["id"]), None)
+        if twin is not None:
+            raise ValueError(f"{at}: servo {j['id']} is also {twin.get('name')}: one servo is one joint")
     by, when = t["attrs"].get("by"), t["attrs"].get("at")
     if by is not None and (not isinstance(by, str) or not re.match(r"^(person|agent):.+", by)):
         raise ValueError(f"<calibration>: by is person:<id> or agent:<id>, not {_json(by)}")

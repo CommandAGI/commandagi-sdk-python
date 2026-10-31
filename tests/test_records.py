@@ -103,6 +103,11 @@ class RecordTests(unittest.TestCase):
             cal(joint(name="a", min=900))
         with self.assertRaisesRegex(ValueError, "min < max"):
             cal(joint(name="a", min=900, max=800))
+        # A joint found by motion on another servo than its definition says: the servo id on this unit's bus.
+        swapped = cal(joint(name="pan", id=2, min=712, max=3391), joint(name="lift", id=1, min=830, max=3270))["document"]
+        self.assertEqual([j["id"] for j in swapped["joints"]], [2, 1])
+        with self.assertRaisesRegex(ValueError, "one servo is one joint"):
+            cal(joint(name="a", id=2), joint(name="b", id=2))
 
     def test_a_run_names_each_record_by_its_call(self):
         out = run_module(
