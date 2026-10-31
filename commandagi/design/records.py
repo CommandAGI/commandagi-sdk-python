@@ -49,7 +49,7 @@ CALIBRATION_FIELDS = ["device", "serial", "note", "by", "at"]
 #: measured them, the travel measured end to end (``min``, ``max``: the bus's raw values, min < max), and whether the
 #: joint counts the other way than its definition says (``reversed``), and the servo id the joint has on this unit's
 #: bus when it is not the definition's (``id``: a servo found by motion in a guided calibration).
-CALIBRATION_JOINT_FIELDS = ["name", "id", "zero", "kp", "kv", "run", "min", "max", "wraps", "reversed"]
+CALIBRATION_JOINT_FIELDS = ["name", "id", "zero", "kp", "kv", "run", "min", "max", "wraps", "offset", "reversed"]
 #: One re-zero: the joint, its new zero (rad), when (epoch ms), who (person:<id> | agent:<id>), why.
 REZERO_FIELDS = ["joint", "zero", "at", "by", "reason"]
 #: One calibrated camera: its video channel, the arm it was measured against, its intrinsics (pixels), its extrinsics
@@ -151,6 +151,9 @@ def _calibration(t: DocTree) -> Dict[str, Any]:
             if wraps:
                 raise ValueError(f"{at}: a travel that wraps goes from min up through the seam to max, so min > max, not {_json([j['min'], j['max']])}")
             raise ValueError(f"{at}: min and max are the bus's values with min < max, not {_json([j['min'], j['max']])}")
+        # offset: the position offset a guided calibration wrote to the servo to move the seam out of the travel.
+        if "offset" in j and not (isinstance(j["offset"], int) and not isinstance(j["offset"], bool) and abs(j["offset"]) <= 2047):
+            raise ValueError(f"{at}: offset is the position offset written to the servo, an integer -2047..2047, not {_json(j['offset'])}")
         if "reversed" in j and not isinstance(j["reversed"], bool):
             raise ValueError(f"{at}: reversed is true or false, not {_json(j['reversed'])}")
         if "id" in j and not (isinstance(j["id"], int) and not isinstance(j["id"], bool) and 0 <= j["id"] <= 252):
