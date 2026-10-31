@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A part's features and a circuit's components keep the call that declared them (`cad.py`, `eda.py`), and the source
+  map gives each list its entries, so an editor writes an edit into the literals of `box(…)` or `component(…)`.
 - A data sheet: `sheet(name=…, source=…, query=…, format=…)` reads a file beside the workbook, an http(s) URL or
   `surface:<id>`, as the TypeScript SDK's `<sheet source>` does; it holds no cells, columns or rows.
 

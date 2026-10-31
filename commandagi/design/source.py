@@ -244,9 +244,17 @@ class SourceMap:
 
     def _value(self, node: ast.expr) -> Dict[str, Any]:
         try:
-            return {"literal": True, "value": _data(ast.literal_eval(node))}
+            out: Dict[str, Any] = {"literal": True, "value": _data(ast.literal_eval(node))}
         except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError, _NotData):
-            return {"literal": False, "expr": ast.get_source_segment(self.text, node) or ""}
+            out = {"literal": False, "expr": ast.get_source_segment(self.text, node) or ""}
+        # A list's entries, each with its span: a literal beside a computed one is written alone.
+        if isinstance(node, (ast.List, ast.Tuple)) and not any(isinstance(x, ast.Starred) for x in node.elts):
+            out["items"] = [self._item(x, i) for i, x in enumerate(node.elts)]
+        return out
+
+    def _item(self, node: ast.expr, i: int) -> Dict[str, Any]:
+        s, e = self._span(node)
+        return {"name": str(i), "start": s, "end": e, "valueStart": s, "valueEnd": e, "line": node.lineno, **self._value(node)}
 
     # ── At run time ──────────────────────────────────────────────────────────────────────────────────────────────
 

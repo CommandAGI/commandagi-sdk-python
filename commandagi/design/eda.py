@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from .ir import Declaration, NodeRef, Out, Scope, channels, current_scope, slug, using
 from .part_fields import part_field_forms
+from .source import here
 
 _SMD = ["F.Cu", "F.Paste", "F.Mask"]
 _TH = ["*.Cu", "*.Mask"]
@@ -170,7 +171,8 @@ def component(ref: str, footprint: Dict[str, Any], value: Optional[str] = None, 
         inputs["attr"] = footprint["attr"]
     if fields:
         inputs["foreign"] = fields
-    node = s.add(part_type_for(pins), inputs, id=f"part_{ref}", label=ref)
+    at = here()
+    node = s.add(part_type_for(pins), inputs, id=f"part_{ref}", label=ref, meta=None if at is None else {"source": at})
     handle = PartRef(s, node.id, ref, [{k: v for k, v in p.items() if k != "pad"} for p in pins], {k.lower(): v for k, v in (aliases or {}).items()})
     s.state["parts"][ref] = handle
     return handle

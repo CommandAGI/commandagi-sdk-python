@@ -17,10 +17,17 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from .graph import CODE_OP
 from .ir import Declaration, NodeRef, Scope, channels, current_scope, using
+from .source import here
 
 PLANES = {"XY": "plane_xy", "XZ": "plane_xz", "YZ": "plane_yz"}
 Vec3 = Sequence[float]
 Vec2 = Sequence[float]
+
+
+def _called() -> Optional[Dict[str, Any]]:
+    """The ``meta`` of a feature: the call of the running file that declared it, for the write-back."""
+    at = here()
+    return None if at is None else {"source": at}
 
 
 def _rad(deg: float) -> float:
@@ -78,7 +85,7 @@ def _feature(what: str, type: str, fields: Dict[str, Any], name: Optional[str], 
     for i in wires:
         if i not in s.nodes:
             raise ValueError(f"{what}: {i} is not a feature of this part")
-    ref = s.add(type, {**fields, **channels(port, [NodeRef(s, i) for i in wires])}, label=name or _default_name(s, type))
+    ref = s.add(type, {**fields, **channels(port, [NodeRef(s, i) for i in wires])}, label=name or _default_name(s, type), meta=_called())
     # A solid that combines with nothing ("new") is a body of its own, whatever it runs after.
     own = fields.get("operation") == "new" or not after
     return Body(s, ref.id, [ref.id] if own else [h for b in after for h in b.heads])
@@ -186,7 +193,7 @@ def sketch(plane: Union[str, Tuple[str, float]], draw: Callable[[SketchBuilder],
         on: Any = _plane_ref(plane if isinstance(plane, str) else plane[0])
     else:
         on = s.add("datumPlane", {"base": PLANES[plane[0]], "offset": plane[1]}, label=f"{plane[0]} + {plane[1]}")
-    ref = s.add("sketch", {"plane": on, "sketch": b.to_sketch()}, label=name or _default_name(s, "sketch"))
+    ref = s.add("sketch", {"plane": on, "sketch": b.to_sketch()}, label=name or _default_name(s, "sketch"), meta=_called())
     return SketchRef(s, ref.id)
 
 
@@ -263,7 +270,7 @@ def chamfer(target: Body, distance: float, edges: Sequence[Vec3], name: Optional
 
 def _seeded(what: str, type: str, seed: Body, fields: Dict[str, Any], name: Optional[str]) -> Body:
     s = _scope(what)
-    ref = s.add(type, {"seed": seed, **fields}, label=name or _default_name(s, type))
+    ref = s.add(type, {"seed": seed, **fields}, label=name or _default_name(s, type), meta=_called())
     return Body(s, ref.id, seed.heads)
 
 
