@@ -90,6 +90,10 @@ Changed (a document written for 0.6.8 may need an edit)
 - `compound(…, op="zork")` is refused at declaration, in the draw graph's words: `compound.op is unite, minus, intersect or exclude,
   not "zork"`. It used to declare and then fail to draw. An `op` that is not a string was drawn as `unite` and is
   refused too. No `op` is still `unite`.
+- A board holds its copper to what it has: a `trace`, `arc`, `via` or `pour` on a layer that is in neither the
+  board's layer table (`BOARD_LAYERS` when it gives none) nor a conductor of its `stack` is refused at declaration
+  ("the board has no copper layer X.Cu (it has F.Cu, B.Cu)"). A via whose two ends are one layer is refused. A board
+  with inner copper states it, in `layers` or a `stack`.
 - `commandagi.design.evals`: a metric's `probe` names a task file (`{"kind": "task", "task": "<ref>"}`, an
   `alignment`'s `reference.task`) or another metric file (a `composite` input's `metric`) by ref; a probe that names
   one by node id (`taskId`, `metricId`) is refused with why, as the platform's routes and reader refuse it.

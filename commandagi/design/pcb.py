@@ -48,7 +48,10 @@ The calls (children are positional; every attribute is a keyword):
     arc(name, layer, width, points, from_, to, net, uuid, kicad)
                                       a circular copper arc: start, a point on it, end.
     via(name, pcb_x, pcb_y, drill, diameter, layers, pads, net, uuid, kicad)
-                                      a plated barrel; ``layers`` defaults to ["F.Cu", "B.Cu"].
+                                      a plated barrel; ``layers`` defaults to ["F.Cu", "B.Cu"], its ends the first and the last, two layers.
+                                      A trace, arc, via or pour names copper the board has: a copper layer of
+                                      its layer table (BOARD_LAYERS when it gives none) or a conductor of its
+                                      cross-section. Any other is refused by name.
     pour(name, layers, points, terminals, net, uuid, kicad)
                                       a copper pour: its boundary on its layers.
 
@@ -200,12 +203,20 @@ def _at(el: Element, prop: str) -> Dict[str, Any]:
     return {"x": v[0], "y": v[1]}
 
 
-def _copper_layers(el: Element, fallback: Optional[List[str]] = None) -> List[str]:
+def _on_board(el: Element, layer: str, board_copper: Optional[List[str]]) -> None:
+    """Holds a layer to the copper the board has. A keep-out is not held here: a stale one is the DRC's ``constraint`` finding."""
+    if board_copper is not None and layer not in board_copper:
+        raise ValueError(f"{_where(el)}: the board has no copper layer {layer} (it has {', '.join(board_copper) or 'none'})")
+
+
+def _copper_layers(el: Element, board_copper: Optional[List[str]] = None, fallback: Optional[List[str]] = None) -> List[str]:
     layers = el.props.get("layers")
     if layers is None:
         layers = fallback
     if not isinstance(layers, (list, tuple)) or len(layers) < 1 or not all(isinstance(l, str) and _COPPER.match(l) for l in layers):
         raise ValueError(f'{_where(el)}: layers is a list of copper layers ("F.Cu", "In1.Cu", "B.Cu")')
+    for l in layers:
+        _on_board(el, l, board_copper)
     return list(layers)
 
 
@@ -491,8 +502,20 @@ def _declare_board(s: Scope, root: Element) -> None:
     has_board = (w is not None or thickness is not None or layers is not None or surface is not None or bool(stacks)
                  or any(el.tag in ("graphic", "text", "dimension", "kicad") for el in children))
 
+    # The copper the board has: its layer table's and its cross-section's conductors, in that order.
+    board_copper: List[str] = []
+
+    def has_copper(layer_name: str) -> None:
+        if _COPPER.match(layer_name) and layer_name not in board_copper:
+            board_copper.append(layer_name)
+
+    for l in layers if layers is not None else BOARD_LAYERS:
+        has_copper(l["name"])
+
     stack_thickness: Optional[float] = None
     if core is not None and copper is not None:
+        has_copper("F.Cu")
+        has_copper("B.Cu")
         stack_thickness = core + 2 * copper
         s.add("eda.stack", {"id": "stack", "domain": "pcb", "units": "mm", "layers": [
             {"name": "F.Cu", "role": "conductor", "thickness": copper},
@@ -506,6 +529,9 @@ def _declare_board(s: Scope, root: Element) -> None:
             "the layers, top first: [{ name, role, thickness, … }, …]")
         if stack_layers is None:
             raise ValueError("<stack> needs layers")
+        for l in stack_layers:
+            if l["role"] == "conductor":
+                has_copper(l["name"])
         domain = _text(el, "domain") or "pcb"
         units = _text(el, "units") or "mm"
         if domain not in ("pcb", "ic"):
@@ -746,6 +772,7 @@ def _declare_board(s: Scope, root: Element) -> None:
             layer = el.props.get("layer")
             if not isinstance(layer, str) or not _COPPER.match(layer):
                 raise ValueError(f'{_where(el)}: layer is a copper layer ("F.Cu", "In1.Cu", "B.Cu")')
+            _on_board(el, layer, board_copper)
             terminals = ends(el, len(pts))
             segment_uuids = _plain(el, "segmentUuids", lambda v: isinstance(v, (list, tuple)) and all(isinstance(u, str) for u in v),
                                    "a list of uuids, one per segment")
@@ -765,9 +792,11 @@ def _declare_board(s: Scope, root: Element) -> None:
             s.add(CONDUCTOR, inputs, id=id_of[id(el)], label="Arc" if el.tag == "arc" else "Trace", meta=_meta(el))
         elif el.tag == "via":
             _refuse_unknown(el, ["name", "pcbX", "pcbY", "drill", "diameter", "layers", "pads", "net", "uuid", "kicad"])
-            layers_ = _copper_layers(el, ["F.Cu", "B.Cu"])
+            layers_ = _copper_layers(el, board_copper, ["F.Cu", "B.Cu"])
             if len(layers_) < 2:
                 raise ValueError(f"{_where(el)}: layers is two or more copper layers")
+            if layers_[0] == layers_[-1]:
+                raise ValueError(f"{_where(el)}: the ends of a via are two layers, not {layers_[0]} twice")
             drill, diameter = _positive(el, "drill", True), _positive(el, "diameter", True)
             if diameter <= drill:
                 raise ValueError(f"{_where(el)}: the diameter is more than the drill")
@@ -799,7 +828,7 @@ def _declare_board(s: Scope, root: Element) -> None:
                 if point < 0 or point >= len(pts):
                     raise ValueError(f"{_where(el)}: the pour has no point {point}")
                 terminals.append(end(sel, el, point))
-            inputs = {"kind": "pour", "points": pts, "layers": _copper_layers(el)}
+            inputs = {"kind": "pour", "points": pts, "layers": _copper_layers(el, board_copper)}
             if terminals:
                 inputs["terminals"] = terminals
             inputs.update(uuid_of(el), **net_of(el), **_kicad(el))

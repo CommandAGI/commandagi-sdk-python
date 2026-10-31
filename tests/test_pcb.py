@@ -13,6 +13,41 @@ def declared(*children, **attrs):
 
 
 class BoardTests(unittest.TestCase):
+    def test_a_boards_copper_is_the_copper_it_has(self):
+        box = {"points": [[0, 0], [9, 0], [9, 9]]}
+        run = {"width": 0.2, "points": [[0, 0], [9, 0]]}
+        curve = {"width": 0.2, "points": [[0, 0], [4, 4], [9, 0]]}
+        barrel = {"pcb_x": 5, "pcb_y": 5, "drill": 0.3, "diameter": 0.6}
+
+        def refused(words, *children, **attrs):
+            with self.assertRaises(ValueError) as caught:
+                declared(*children, **attrs)
+            self.assertEqual(str(caught.exception), words)
+
+        two = "the board has no copper layer X.Cu (it has F.Cu, B.Cu)"
+        refused(f"<trace>: {two}", trace(layer="X.Cu", **run))
+        refused(f"<arc>: {two}", arc(layer="X.Cu", **curve))
+        refused(f"<via>: {two}", via(layers=["X.Cu", "B.Cu"], **barrel))
+        refused(f"<pour>: {two}", pour(layers=["X.Cu"], **box))
+        # A keep-out on copper the board lacks declares: the DRC reports it, `constraint`, and the board still opens.
+        declared(keepout(layers=["X.Cu"], **box))
+        refused("<trace>: the board has no copper layer In1.Cu (it has F.Cu, B.Cu)", trace(layer="In1.Cu", **run), width=9, height=9)
+        refused("<via>: the ends of a via are two layers, not F.Cu twice", via(layers=["F.Cu", "F.Cu"], **barrel))
+        with self.assertRaisesRegex(ValueError, r"the board has no copper layer In1\.Cu"):
+            declared(via(layers=["F.Cu", "In1.Cu", "F.Cu"], **barrel))
+        refused("<via>: the board has no copper layer B.Cu (it has F.Cu)", via(**barrel), layers=[{"ordinal": 0, "name": "F.Cu", "type": "signal"}])
+
+        four = stack(layers=[{"name": n, "role": "conductor", "thickness": 0.035} for n in ["F.Cu", "In1.Cu", "In2.Cu", "B.Cu"]])
+        inner = [trace(layer="In1.Cu", **run), arc(layer="In2.Cu", **curve), via(layers=["F.Cu", "In1.Cu"], **barrel), pour(layers=["In2.Cu"], **box), keepout(layers=["In1.Cu"], **box)]
+        declared(four, *inner)
+        declared(*inner, layers=[{"ordinal": 0, "name": "F.Cu"}, {"ordinal": 1, "name": "In1.Cu"}, {"ordinal": 2, "name": "In2.Cu"}, {"ordinal": 31, "name": "B.Cu"}])
+        refused("<trace>: the board has no copper layer In3.Cu (it has F.Cu, B.Cu, In1.Cu, In2.Cu)", four, trace(layer="In3.Cu", **run))
+        # A mask or a dielectric named like copper is no copper.
+        with self.assertRaisesRegex(ValueError, r"no copper layer In1\.Cu"):
+            declared(stack(layers=[{"name": "F.Cu", "role": "conductor"}, {"name": "In1.Cu", "role": "dielectric"}]), trace(layer="In1.Cu", **run))
+        with self.assertRaisesRegex(ValueError, "layer is a copper layer"):
+            declared(trace(layer="Dwgs.User", **run), layers=[{"ordinal": 0, "name": "F.Cu"}, {"ordinal": 40, "name": "Dwgs.User"}])
+
     def test_a_board_declares_the_board_half(self):
         g = declared(
             component(name="R1", footprint="smd-0805", pcb_x=10, pcb_y=10),
