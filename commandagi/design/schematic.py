@@ -40,10 +40,11 @@ The calls (the first arguments are positional attributes; everything else is a k
                                                                              marker); the electrical rule check does
                                                                              not report them as pins on nothing
     … spice=[{"id", "model", "terminals"}]                                   on any part: its SPICE package bindings
-    … part_number=, manufacturer=, mpn=, rating=, attrs={"Tolerance": "1%"}  on any part but a ground: its engineering
-                                                                             data, each a KiCad property of the part
+    … part_number=, manufacturer=, mpn=, rating=, draw="120 mA",           on any part but a ground: its engineering
+      attrs={"Tolerance": "1%"}                                              data, each a KiCad property of the part
                                                                              (CommandAGI IPN, Manufacturer, MPN, Rating,
-                                                                             and attrs by their own names): the BOM and
+                                                                             its steady draw, and attrs by their own
+                                                                             names): the BOM and
                                                                              the board's footprint carry them;
                                                                              part_fields(inputs) reads them back
     … pinout_verified=, footprint_verified=, package_dimensions=            on any part: how its pinout and its pads

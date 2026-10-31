@@ -157,19 +157,24 @@ result = group(
 
     def test_a_part_states_its_engineering_data_as_kicad_property_forms_read_back_by_part_fields(self):
         n = run(sheet('''    resistor("R1", resistance="3k", sch_x=0, sch_y=0, part_number="MF-R-3K", manufacturer="Yageo", mpn="RC0805FR-073KL",
-             rating="0.125 W"),
+             rating="0.125 W", draw="120 mA"),
     part("K2", symbol="station:SSR", library="station.kicad_sym", sch_x=50.8, sch_y=0, mpn="G3NA-225B",
          attrs={"Tolerance": "1%"}, datasheet="https://example.com/g3na.pdf"),
     part("J1", pins=["1", "2"], part_number="MF-J-2"),
 '''), "fields.sch.py")["nodes"]
         self.assertEqual(n["R1"]["inputs"]["foreign"], [field_form("CommandAGI IPN", "MF-R-3K"), field_form("Manufacturer", "Yageo"),
-                                                        field_form("MPN", "RC0805FR-073KL"), field_form("Rating", "0.125 W")])
+                                                        field_form("MPN", "RC0805FR-073KL"), field_form("Rating", "0.125 W"),
+                                                        field_form("Draw", "120 mA")])
         self.assertEqual(n["K2"]["inputs"]["foreign"], [field_form("MPN", "G3NA-225B"), field_form("Tolerance", "1%"),
                                                         field_form("Datasheet", "https://example.com/g3na.pdf")])
-        self.assertEqual(part_fields(n["R1"]["inputs"]), {"partNumber": "MF-R-3K", "manufacturer": "Yageo", "mpn": "RC0805FR-073KL", "rating": "0.125 W"})
+        self.assertEqual(part_fields(n["R1"]["inputs"]), {"partNumber": "MF-R-3K", "manufacturer": "Yageo", "mpn": "RC0805FR-073KL", "rating": "0.125 W", "draw": "120 mA"})
         self.assertEqual(part_fields(n["K2"]["inputs"]), {"mpn": "G3NA-225B", "datasheet": "https://example.com/g3na.pdf", "attrs": {"Tolerance": "1%"}})
         self.assertEqual(part_fields(n["J1"]["inputs"]), {"partNumber": "MF-J-2"})
         k2 = '    part("K2", symbol="a:B", library="a.kicad_sym", {}),\n'
+        # A part's draw is a number with the unit it measures: a bare number is not a draw.
+        for bad in ('"120"', '"120 V"'):
+            with self.assertRaisesRegex(ValueError, 'draw is text \\("120 mA"\\)'):
+                run(sheet(k2.format(f"draw={bad}")), "fields.sch.py")
         for bad in ('""', "3", '["X"]'):
             with self.assertRaisesRegex(ValueError, r'mpn is text \("RC0805FR-073KL"\)'):
                 run(sheet(k2.format(f"mpn={bad}")), "s.sch.py")

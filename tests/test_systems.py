@@ -5,8 +5,8 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.systems import (bom, budget, check, contribution, converter, frame, hole, interface, load, message,
-                                       mode, param, pin, rail, requirement, requirements, side, system)
+from commandagi.design.systems import (bom, budget, channel, check, contribution, converter, frame, hole, interface, load,
+                                       message, mode, param, pin, rail, requirement, requirements, side, system)
 
 
 class SystemsTests(unittest.TestCase):
@@ -45,12 +45,33 @@ class SystemsTests(unittest.TestCase):
         self.assertEqual(d["rails"], [{"id": "+5V", "voltage": 5, "source": "USB"}, {"id": "VBAT", "voltage": 3.8}])
         self.assertEqual(d["loads"][0]["peakCurrent"], 0.9)
         self.assertEqual(d["budgets"][1]["peak"], True)
+        # A link budget keeps a margin in dB: the power sent and the receiver's sensitivity in dBm, gains and losses in dB.
+        link = declare_document(system(
+            contribution(id="tx", quantity="rf-link", part="U4", end="tx", value=23, unit="dBm", source="datasheet"),
+            contribution(id="antenna", quantity="rf-link", part="A1", value=2.8, unit="dB", source="datasheet"),
+            contribution(id="rx", quantity="rf-link", part="the cell", end="rx", value=-101.5, unit="dBm", source="3GPP TS 36.104"),
+            budget(id="lte", quantity="rf-link", limit=30, unit="dB", frequency=1.7475e9, range=2000)))["document"]
+        self.assertEqual(link["budgets"][0], {"id": "lte", "quantity": "rf-link", "limit": 30, "unit": "dB", "frequency": 1.7475e9, "range": 2000})
+        self.assertEqual(link["contributions"][0]["end"], "tx")
+        # A load that names a circuit part states no current or power: the check reads the draw the part states.
+        drawn = declare_document(system(mode(id="m"), rail(id="r", voltage=3.3), load(id="l", part="ee/main.circuit.py#U1", rail="r", mode="m")))
+        self.assertEqual(drawn["document"]["loads"][0], {"id": "l", "part": "ee/main.circuit.py#U1", "rail": "r", "mode": "m"})
         cases = [
             (budget(id="b", quantity="mass", limit=1, peak=True), "peak is true or false, on a power budget"),
             (load(id="l", part="U1", rail="r", mode="m", current=1, peak_current="2 A"), "peakCurrent is a number"),
             (load(id="l", part="U1", rail="r", mode="m", power=1, duty=0), "duty is the share of time the load draws"),
             (budget(id="b", quantity="Exhaust flow", limit=1, unit="m3/h"),
-             r"<budget id=\"b\">: quantity must be one of mass, power, cost, thermal, or a quantity's name"),
+             r"<budget id=\"b\">: quantity must be one of mass, power, cost, thermal, rf-link, or a quantity's name"),
+            (contribution(id="c", quantity="rf-link", part="U4", value=23, unit="W", source="x"),
+             r'<contribution id="c">: an rf-link contribution is a level in dBm .* or a gain \(\+\) or a loss \(-\) in dB \(got "W"\)'),
+            (contribution(id="c", quantity="rf-link", part="U4", value=23, unit="dBm", source="x"),
+             r'a level in dBm names its end of the link: end="tx" \(the power sent\) or end="rx"'),
+            (contribution(id="c", quantity="mass", part="U4", value=2, unit="g", end="tx", source="x"), "end is tx or rx, on an rf-link contribution"),
+            (budget(id="l", quantity="rf-link", limit=6, unit="dB", frequency=2.4e9), r'<budget id="l">: frequency \(Hz\) and range \(m\) come together'),
+            (budget(id="l", quantity="rf-link", limit=6, unit="dB", margin=0.2), "an rf-link budget's limit is already its margin in dB"),
+            (budget(id="l", quantity="rf-link", limit=6, unit="dBm"), "an rf-link budget's limit is the least margin the link keeps, in dB"),
+            (budget(id="l", quantity="mass", limit=6, range=10), r"range is a number over 0 \(m\), on an rf-link budget"),
+            (budget(id="l", quantity="rf-link", limit=6, frequency=-1, range=10), r"frequency is a number over 0 \(Hz\)"),
             (budget(id="b", quantity="exhaust-flow", limit=600), r'<budget id="b">: a quantity of exhaust-flow states its unit'),
             (contribution(id="c", quantity="exhaust-flow", part="P", value=35, source="datasheet"),
              r'<contribution id="c">: a quantity of exhaust-flow states its unit'),
@@ -60,7 +81,7 @@ class SystemsTests(unittest.TestCase):
             (budget(id="b", quantity="cost", per=100, limit=30), "a cost budget names the design whose logistics roll-up it reads"),
             (contribution(id="c", quantity="cost", part="P", value=1, source="a quote"), "a cost is stated in the design's logistics"),
             (converter(id="c", input="a", output="b", efficiency=88), r"efficiency is a number in \(0, 1\]"),
-            (load(id="l", part="U1", rail="r", mode="m"), r"a load states its current \(A\) or its power \(W\)"),
+            (load(id="l", part="U1", rail="r", mode="m"), r"a load states its current \(A\) or its power \(W\), or names a circuit part whose draw it reads"),
             (contribution(id="c", quantity="mass", part="P", value=1), "source says where the number was read"),
             (check(id="k", kind="erc", of="x"), "kind must be one of interface, trace"),
             (mode(id="m", watts=3), "watts is not read"),
@@ -78,11 +99,14 @@ class SystemsTests(unittest.TestCase):
             message(id="lte-only", text="AT+CNMP=38"),
             param(id="baud", value=115200, unit="Bd"),
             param(id="framing", value="8N1"),
+            channel(dir="duplex", medium="records", format="lines", dialect="at", transport="serial"),
             side(id="base", ref="ee/base.circuit.ts", parts=["J1", "J2"], origin=[0, 1.4], rotation=90, face="back"),
             side(id="firmware", ref="fw/config.h", defines={"BOARD": 1}, pins={"RX_PIN": 4}, params={"BAUD": "baud"}),
             side(id="host", ref="devices/cam/definition.tsx", channel="modem", params={"baud": "baud"}),
             name="Header"))["document"]
         self.assertEqual(d["frame"], {"description": "the base board's top, pin 1 at the origin", "unit": "mm"})
+        self.assertEqual(d["channel"], {"dir": "duplex", "medium": "records", "format": "lines", "dialect": "at", "transport": "serial"},
+                         "the link's own channel, one element")
         self.assertEqual(d["params"][1], {"id": "framing", "value": "8N1"}, "a text a channel states has no unit")
         self.assertEqual(d["sides"][0], {"id": "base", "ref": "ee/base.circuit.ts", "parts": ["J1", "J2"], "origin": [0, 1.4], "rotation": 90, "face": "back"})
         self.assertEqual(d["sides"][1], {"id": "firmware", "ref": "fw/config.h", "defines": {"BOARD": 1}, "pins": {"RX_PIN": 4}, "params": {"BAUD": "baud"}})
@@ -99,12 +123,18 @@ class SystemsTests(unittest.TestCase):
             (param(id="p", value=True), r"value is a number with its unit in unit \(115200\), or a text a channel states"),
             (param(id="p", value="8N1", unit="Bd"), "a parameter stated as a text has no unit"),
             (frame(unit="in"), "positions are in mm"),
+            (channel(description="x"), "<channel>: a channel states what a definition's channel must be: format, dir, medium, dialect or transport"),
+            (channel(format="lines", dir="sideways"), r'dir must be one of in, out, duplex \(got "sideways"\)'),
+            (channel(format="lines", medium="light"), "medium must be one of records, video, audio, bytes"),
+            (channel(format="lines", transport=3), "transport is a name"),
         ]
         for el, msg in cases:
             with self.assertRaisesRegex(ValueError, msg):
                 declare_document(interface(el))
         with self.assertRaisesRegex(ValueError, "<interface> has one <frame>"):
             declare_document(interface(frame(), frame()))
+        with self.assertRaisesRegex(ValueError, "<interface> has one <channel>"):
+            declare_document(interface(channel(format="lines"), channel(format="state")))
 
     def test_a_run_names_each_record_by_its_call(self):
         out = run_module(

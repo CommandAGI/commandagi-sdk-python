@@ -19,6 +19,9 @@ two parts (``.interface.py``), the same documents and the same elements as the T
         bom(ref="bom.csv"),
         budget(id="drive-power", quantity="power", rail="vbat", mode="drive", limit=15, unit="W", margin=0.2),
         budget(id="cost-100", quantity="cost", per=100, currency="USD", limit=40, design="Rover.3d.py"),
+        contribution(id="tx", quantity="rf-link", part="U4", end="tx", value=23, unit="dBm", source="modem datasheet"),
+        contribution(id="rx", quantity="rf-link", part="the cell", end="rx", value=-101.5, unit="dBm", source="3GPP TS 36.104"),
+        budget(id="lte", quantity="rf-link", limit=20, unit="dB", frequency=1.7475e9, range=2000),
         name="Rover",
     )
 
@@ -26,8 +29,13 @@ The rule of the ontology's files: a record is an element and its fields are the 
 keywords: ``verified_by`` is ``verifiedBy``). A requirement is named by a ref, never by an id alone
 (``Rover.req.py#mass``). Nothing adds a default. A ``bom`` gives masses; a cost budget reads the logistics roll-up of
 the design it names (``design``: a 3D document, a schematic or a board with a cost check), the one source of cost, so
-no contribution is a cost. A ``param`` states a number with its unit, or a text a channel states (``param(id="framing",
-value="8N1")``: a format, a dialect, a transport) and then no unit. A side's ``origin``, ``rotation`` (degrees
+no contribution is a cost. A link budget (``quantity="rf-link"``) keeps a margin of at least its limit, in dB: the
+transmitter's power (``end="tx"``, dBm), the gains (+) and losses (-) between in dB, the free-space path loss at its
+``range`` (m) and ``frequency`` (Hz), less the receiver's sensitivity (``end="rx"``, dBm). A load that states no current
+or power names a circuit part (``part="ee/main.circuit.py#U1"``), and the check reads the part's own ``draw``. A
+``param`` states a number with its unit, or a text (``param(id="framing", value="8N1")``) and then no unit; an
+interface's ``channel`` states what a device definition's channel must be (``format``, ``dir``, ``medium``,
+``dialect``, ``transport``). A side's ``origin``, ``rotation`` (degrees
 counter-clockwise) and ``face`` (``front``, or ``back`` for the side read from the mating part, whose frame is mirrored)
 put the interface's frame in the side's. The checks are the host's (``commandagi check``, ``commandagi trace``).
 """
@@ -43,26 +51,32 @@ from .element import define
 
 VERIFICATION_METHODS = ["test", "analysis", "inspection", "demonstration"]
 #: What a budget sums from the design's own records; any other quantity is declared by its contributions, with a unit.
-BUDGET_QUANTITIES = ["mass", "power", "cost", "thermal"]
+BUDGET_QUANTITIES = ["mass", "power", "cost", "thermal", "rf-link"]
+#: The two ends of a link: a level in dBm is the power one end sends, or the least power the other end hears.
+LINK_ENDS = ["tx", "rx"]
 #: A declared quantity's name ("exhaust-flow", "floor-area").
 DECLARED_QUANTITY = re.compile(r"[a-z][a-z0-9-]*")
 SYSTEM_CHECK_KINDS = ["interface", "trace"]
 SIDE_KINDS = ["circuit", "3d", "firmware", "definition"]
+#: A channel's direction, and what it carries: the channel vocabulary of a device definition (docs/devices.md).
+CHANNEL_DIRS = ["in", "out", "duplex"]
+CHANNEL_MEDIA = ["records", "video", "audio", "bytes"]
 
 REQUIREMENT_FIELDS = ["id", "text", "rationale", "method", "verifiedBy", "design", "parent"]
 MODE_FIELDS = ["id", "description"]
 RAIL_FIELDS = ["id", "voltage", "description", "source"]
 CONVERTER_FIELDS = ["id", "input", "output", "efficiency", "source"]
 LOAD_FIELDS = ["id", "part", "rail", "mode", "current", "power", "voltage", "peakCurrent", "peakPower", "inrushCurrent", "duty", "source"]
-CONTRIBUTION_FIELDS = ["id", "quantity", "part", "value", "unit", "qty", "mode", "rail", "source"]
-BUDGET_FIELDS = ["id", "quantity", "limit", "unit", "mode", "rail", "peak", "per", "currency", "design", "resistance", "margin", "source",
-                 "description"]
+CONTRIBUTION_FIELDS = ["id", "quantity", "part", "value", "unit", "qty", "mode", "rail", "end", "source"]
+BUDGET_FIELDS = ["id", "quantity", "limit", "unit", "mode", "rail", "peak", "per", "currency", "design", "resistance", "margin",
+                 "frequency", "range", "source", "description"]
 PIN_FIELDS = ["number", "signal", "dir", "voltage", "gpio", "at", "required", "description"]
 HOLE_FIELDS = ["id", "at", "diameter", "description"]
 MESSAGE_FIELDS = ["id", "text", "code", "define", "dir", "description"]
 PARAM_FIELDS = ["id", "value", "unit", "description"]
 SIDE_FIELDS = ["id", "ref", "kind", "part", "parts", "channel", "origin", "rotation", "face", "defines", "pins", "params", "files",
                "description"]
+CHANNEL_FIELDS = ["format", "dir", "medium", "dialect", "transport", "description"]
 #: The faces a side states: ``front`` (as drawn), or ``back`` (read from the mating part: the frame mirrored through its y axis).
 SIDE_FACES = ["front", "back"]
 
@@ -71,10 +85,11 @@ _CHILDREN = {"holds": "children"}
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "requirements": _CHILDREN, "requirement": {},
     "system": _CHILDREN, "mode": {}, "rail": {}, "converter": {}, "load": {}, "contribution": {}, "bom": {}, "budget": {}, "check": {},
-    "interface": _CHILDREN, "frame": {}, "pin": {}, "hole": {}, "message": {}, "param": {}, "side": {},
+    "interface": _CHILDREN, "frame": {}, "pin": {}, "hole": {}, "message": {}, "param": {}, "channel": {}, "side": {},
 }
 
-__all__ = ["VERIFICATION_METHODS", "BUDGET_QUANTITIES", "SYSTEM_CHECK_KINDS", "SIDE_KINDS", "SIDE_FACES", "SIGNATURES",
+__all__ = ["VERIFICATION_METHODS", "BUDGET_QUANTITIES", "LINK_ENDS", "SYSTEM_CHECK_KINDS", "SIDE_KINDS", "SIDE_FACES",
+           "CHANNEL_DIRS", "CHANNEL_MEDIA", "SIGNATURES",
            "REQUIREMENTS_VOCABULARY", "SYSTEM_VOCABULARY", "INTERFACE_VOCABULARY", *define(globals(), "systems", SIGNATURES)]
 
 
@@ -155,7 +170,9 @@ def _system(t: DocTree) -> Dict[str, Any]:
             e = a.get("efficiency")
             _check(_num(e) and 0 < e <= 1, f"{at}: efficiency is a number in (0, 1] (0.88 for 88 %)")
         if tag == "load":
-            _check("current" in a or "power" in a, f"{at}: a load states its current (A) or its power (W)")
+            _check("current" in a or "power" in a or (isinstance(a.get("part"), str) and "#" in a["part"]),
+                   f"{at}: a load states its current (A) or its power (W), or names a circuit part whose draw it reads "
+                   f'(part="ee/main.circuit.py#U1")')
             for k in ("current", "power", "voltage", "peakCurrent", "peakPower", "inrushCurrent"):
                 _check(k not in a or _num(a[k]), f"{at}: {k} is a number")
             _check("duty" not in a or (_num(a["duty"]) and 0 < a["duty"] <= 1),
@@ -168,6 +185,15 @@ def _system(t: DocTree) -> Dict[str, Any]:
             _check(_num(a.get("value")), f"{at}: value is a number")
             _check(isinstance(a.get("source"), str) and a["source"].strip(),
                    f'{at}: source says where the number was read (a datasheet, a measurement, "estimate: …")')
+            if a.get("quantity") == "rf-link":
+                _check(a.get("unit") in ("dBm", "dB"),
+                       f"{at}: an rf-link contribution is a level in dBm (a transmitter's power, a receiver's sensitivity) or a "
+                       f"gain (+) or a loss (-) in dB (got {json.dumps(a.get('unit'))})")
+                _check(a.get("unit") != "dBm" or a.get("end") in LINK_ENDS,
+                       f'{at}: a level in dBm names its end of the link: end="tx" (the power sent) or end="rx" (the receiver\'s '
+                       f"sensitivity)")
+            _check("end" not in a or (a.get("quantity") == "rf-link" and a["end"] in LINK_ENDS),
+                   f"{at}: end is tx or rx, on an rf-link contribution")
         if tag == "budget":
             _check_quantity(a, at)
             _check(_num(a.get("limit")), f"{at}: limit is a number")
@@ -183,6 +209,14 @@ def _system(t: DocTree) -> Dict[str, Any]:
             if a.get("quantity") == "thermal":
                 _check(isinstance(a.get("mode"), str) and _num(a.get("resistance")),
                        f"{at}: a thermal budget names its mode and the thermal resistance to the ambient (resistance, K/W)")
+            if a.get("quantity") == "rf-link":
+                _check(a.get("unit", "dB") == "dB", f'{at}: an rf-link budget\'s limit is the least margin the link keeps, in dB (unit="dB")')
+                _check("margin" not in a, f"{at}: an rf-link budget's limit is already its margin in dB; it takes no margin fraction")
+                _check(("frequency" in a) == ("range" in a),
+                       f"{at}: frequency (Hz) and range (m) come together: the free-space path loss at that range")
+            for k, u in (("frequency", "Hz"), ("range", "m")):
+                _check(k not in a or (a.get("quantity") == "rf-link" and _num(a[k]) and a[k] > 0),
+                       f"{at}: {k} is a number over 0 ({u}), on an rf-link budget")
         if tag == "check":
             _check(a.get("kind") in SYSTEM_CHECK_KINDS,
                    f"{at}: kind must be one of {', '.join(SYSTEM_CHECK_KINDS)} (got {json.dumps(a.get('kind'))})")
@@ -193,7 +227,7 @@ _INTERFACE_LISTS = {"pin": "pins", "hole": "holes", "message": "messages", "para
 
 
 def _interface(t: DocTree) -> Dict[str, Any]:
-    frame = None
+    frame = channel = None
     for c in t["children"]:
         a, tag = c["attrs"], c["tag"]
         at = _where(tag, "number" if tag == "pin" else "id", a)
@@ -231,8 +265,19 @@ def _interface(t: DocTree) -> Dict[str, Any]:
                    f"{at}: parts is a list of part references, whose pins are the interface's in turn")
             _check("channel" not in a or isinstance(a["channel"], str),
                    f"{at}: channel is the id of a channel of the device definition")
-    rest = [c for c in t["children"] if c["tag"] != "frame"]
-    return {**_own(t["attrs"], ["name", "description"]), **({"frame": frame} if frame is not None else {}), **_lists(rest, _INTERFACE_LISTS)}
+        if tag == "channel":
+            channel = dict(a)
+            _check(any(k in a for k in CHANNEL_FIELDS if k != "description"),
+                   f"{at}: a channel states what a definition's channel must be: format, dir, medium, dialect or transport")
+            _check("dir" not in a or a["dir"] in CHANNEL_DIRS,
+                   f"{at}: dir must be one of {', '.join(CHANNEL_DIRS)} (got {json.dumps(a.get('dir'))})")
+            _check("medium" not in a or a["medium"] in CHANNEL_MEDIA,
+                   f"{at}: medium must be one of {', '.join(CHANNEL_MEDIA)} (got {json.dumps(a.get('medium'))})")
+            for k in ("format", "dialect", "transport"):
+                _check(k not in a or (isinstance(a[k], str) and a[k].strip()), f'{at}: {k} is a name ({k}="serial")')
+    rest = [c for c in t["children"] if c["tag"] not in ("frame", "channel")]
+    return {**_own(t["attrs"], ["name", "description"]), **({"frame": frame} if frame is not None else {}),
+            **({"channel": channel} if channel is not None else {}), **_lists(rest, _INTERFACE_LISTS)}
 
 
 REQUIREMENTS_VOCABULARY = Vocabulary("requirements", "a requirements document", "requirements", {
@@ -259,6 +304,7 @@ INTERFACE_VOCABULARY = Vocabulary("interface", "an interface", "interface", {
     "hole": {"parents": ["interface"], "key": "id", "required": ["id", "at"], "attrs": HOLE_FIELDS},
     "message": {"parents": ["interface"], "key": "id", "required": ["id"], "attrs": MESSAGE_FIELDS},
     "param": {"parents": ["interface"], "key": "id", "required": ["id", "value"], "attrs": PARAM_FIELDS},
+    "channel": {"parents": ["interface"], "single": True, "attrs": CHANNEL_FIELDS},
     "side": {"parents": ["interface"], "key": "id", "required": ["id", "ref"], "attrs": SIDE_FIELDS},
 }, _interface, _never, lambda name: {"name": name})
 
