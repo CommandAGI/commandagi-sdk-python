@@ -49,7 +49,7 @@ CALIBRATION_FIELDS = ["device", "serial", "note", "by", "at"]
 #: measured them, the travel measured end to end (``min``, ``max``: the bus's raw values, min < max), and whether the
 #: joint counts the other way than its definition says (``reversed``), and the servo id the joint has on this unit's
 #: bus when it is not the definition's (``id``: a servo found by motion in a guided calibration).
-CALIBRATION_JOINT_FIELDS = ["name", "id", "zero", "kp", "kv", "run", "min", "max", "wraps", "offset", "reversed"]
+CALIBRATION_JOINT_FIELDS = ["name", "id", "zero", "kp", "kv", "run", "min", "max", "wraps", "offset", "reversed", "disabled", "at"]
 #: One re-zero: the joint, its new zero (rad), when (epoch ms), who (person:<id> | agent:<id>), why.
 REZERO_FIELDS = ["joint", "zero", "at", "by", "reason"]
 #: One calibrated camera: its video channel, the arm it was measured against, its intrinsics (pixels), its extrinsics
