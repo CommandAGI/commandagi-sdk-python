@@ -17,6 +17,16 @@ from typing import Any, Dict, List, Optional
 _ID_SAFE = re.compile(r"[^A-Za-z0-9_.\-]+")
 
 
+def fnv1a(s: str) -> str:
+    """FNV-1a (32 bits) over the UTF-16 code units of ``s``, as eight hex digits (the TypeScript engine's rule)."""
+    h = 0x811C9DC5
+    data = s.encode("utf-16-le", "surrogatepass")
+    for i in range(0, len(data), 2):
+        h ^= data[i] | data[i + 1] << 8
+        h = (h * 0x01000193) & 0xFFFFFFFF
+    return f"{h:08x}"
+
+
 def slug(raw: str, fallback: str = "node") -> str:
     s = _ID_SAFE.sub("_", raw).strip("_")
     return s or fallback

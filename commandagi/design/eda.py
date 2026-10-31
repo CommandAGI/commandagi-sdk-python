@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
-from .ir import Declaration, NodeRef, Out, Scope, channels, current_scope, slug, using
+from .ir import Declaration, NodeRef, Out, Scope, channels, current_scope, fnv1a, slug, using
 from .part_fields import part_field_forms
 from .source import here
 
@@ -63,19 +63,18 @@ class footprints:
         return {"name": "Package_TO_SOT_SMD:SOT-23", "pads": [_smd("1", -1.1375, -0.95, 1.325, 0.6), _smd("2", -1.1375, 0.95, 1.325, 0.6), _smd("3", 1.1375, 0, 1.325, 0.6)], "attr": ["smd"]}
 
 
+# What JavaScript's trim takes off: the format's rule. Python's own strip keeps U+FEFF and takes U+001C to U+001F and U+0085.
+_JS_SPACE = "\t\n\v\f\r \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+
+
 def _pin_label(number: str, name: Optional[str]) -> str:
-    t = (name or "").strip()
+    t = (name or "").strip(_JS_SPACE)
     return number if not t or t == number or t == "~" else f"{number} {t}"
 
 
 def part_type_for(pins: Sequence[Dict[str, Any]]) -> str:
     """``eda.part.`` + FNV-1a over each pin's ``id\\0label``, pins joined by ``\\x01`` (the engine's rule)."""
-    signature = "\x01".join(f"{p['id']}\x00{_pin_label(p['number'], p.get('name'))}" for p in pins)
-    h = 0x811C9DC5
-    for ch in signature:
-        h ^= ord(ch)
-        h = (h * 0x01000193) & 0xFFFFFFFF
-    return f"eda.part.{h:08x}"
+    return "eda.part." + fnv1a("\x01".join(f"{p['id']}\x00{_pin_label(p['number'], p.get('name'))}" for p in pins))
 
 
 class PartRef(NodeRef):

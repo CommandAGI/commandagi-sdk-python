@@ -3,6 +3,7 @@ from (the source map the editor writes edits back with). Run: python -m unittest
 import unittest
 
 from commandagi.design import run_module
+from commandagi.design.eda import part_type_for
 from commandagi.design.schematic import part_fields, sch_symbol_type_for
 
 DIVIDER = '''from commandagi.design.schematic import ground, group, resistor, trace, voltagesource
@@ -226,6 +227,35 @@ def field_form(name, value):
     return lst(sym("property"), {"kind": "atom", "v": name, "q": True}, {"kind": "atom", "v": value, "q": True},
                lst(sym("at"), sym("0"), sym("0"), sym("0")),
                lst(sym("effects"), lst(sym("font"), lst(sym("size"), sym("1.27"), sym("1.27"))), lst(sym("hide"), sym("yes"))))
+
+
+# Each pin list and the type the TypeScript SDK gives it (the format's rule). The same list is in the Rust and TypeScript
+# SDKs' tests: a pin's name is free text, so the trim and the hash are held at their edges.
+PIN_TYPES = [
+    ([("1", "A")], "eda.part.11d4e202"),
+    ([("1", None)], "eda.part.4c80692d"),
+    ([("1", "1")], "eda.part.4c80692d"),
+    ([("1", "~")], "eda.part.4c80692d"),
+    ([("1", " 1 ")], "eda.part.4c80692d"),
+    ([("1", "  ")], "eda.part.4c80692d"),
+    ([("1", " VCC\t"), ("2", "GND")], "eda.part.958542b7"),
+    ([("1", "\ufeffA")], "eda.part.11d4e202"),
+    ([("1", "A\x85")], "eda.part.99209a85"),
+    ([("1", "\x1fA")], "eda.part.c19c17fb"),
+    ([("1", "\u3000A\xa0")], "eda.part.11d4e202"),
+    ([("1", "\U0001F600")], "eda.part.6e272b5a"),
+    ([("1", "\xe9"), ("2", "\U0001D4B1\U0001D49E\U0001D49E")], "eda.part.86adcdfd"),
+]
+
+
+class TypesAcrossSdks(unittest.TestCase):
+    def test_a_part_has_the_type_the_other_sdks_give_its_pins(self):
+        for pins, expected in PIN_TYPES:
+            listed = [{"id": f"p{i + 1}", "number": n, **({} if name is None else {"name": name})} for i, (n, name) in enumerate(pins)]
+            self.assertEqual(part_type_for(listed), expected, pins)
+
+    def test_a_socket_above_the_bmp_hashes_as_two_utf16_units(self):
+        self.assertEqual(sch_symbol_type_for(["p1", "\U0001F600"]), "sch.symbol.701cf2eb")
 
 
 if __name__ == "__main__":

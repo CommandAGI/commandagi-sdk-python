@@ -75,7 +75,7 @@ from typing import Any, Dict, List, Optional
 from .circuit_checks import declare_circuit_checks
 from .eda import circuit, part_type_for
 from .element import Element, child_elements, declares, define
-from .ir import Scope, channels, current_scope, slug
+from .ir import Scope, channels, current_scope, fnv1a, slug
 from .part_fields import FIELD_ARGUMENTS, PART_FIELDS, part_field_forms, part_fields
 
 SCH_WIRE = "sch.wire"
@@ -108,12 +108,7 @@ __all__ = ["SCH_WIRE", "SCH_JUNCTION", "SCH_LABEL", "NET", "ATTACHMENT", "SHEET_
 
 def sch_symbol_type_for(sockets: List[str]) -> str:
     """A placement's node type: ``sch.symbol.`` + FNV-1a over its pin sockets joined by NUL (part of the format)."""
-    signature = "\x00".join(sockets)
-    h = 0x811C9DC5
-    for ch in signature:
-        h ^= ord(ch)
-        h = (h * 0x01000193) & 0xFFFFFFFF
-    return f"sch.symbol.{h:08x}"
+    return "sch.symbol." + fnv1a("\x00".join(sockets))
 
 
 _TWO = {"pin1": "1", "pin2": "2", "left": "1", "right": "2"}

@@ -93,6 +93,9 @@ Changed (a document written for 0.6.8 may need an edit)
 
 Fixed
 
+- A part's `eda.part.` type and a placement's `sch.symbol.` type hash UTF-16 code units, as the format's rule says and
+  as the TypeScript and Rust SDKs do, so a pin name above U+FFFF gives the same type in all three. A pin's name is
+  trimmed as JavaScript trims.
 - 3D: a placed file's `<joint>`s come with it, as `<placement id>/<joint id>` at any depth (`dock_a/palletLift`,
   `bay_1/dock_a/palletLift`). Each is placed as the file's bodies are (its anchor, axis and references), with its
   `fixed` chain, so a sweep in any document above moves what the joint moves in its file:
