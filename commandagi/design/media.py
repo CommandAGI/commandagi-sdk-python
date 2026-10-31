@@ -29,7 +29,9 @@ drawing's parameters, so two artboards of one drawing can say two things). A vid
 at other sizes (``artboard(name="Vertical", width=1080, height=1920)`` in the ``video``, with no ``src``; the video itself
 is the first); an ``override(artboard="Vertical", …)`` in a clip, title or effect sets what it is on that artboard only (a
 ``shape``'s fill, an ``artboard`` clip's drawing ``inputs``, an effect's amount …), and the ``keyframe(property=…)``s inside
-an ``override`` are that artboard's own keys: there the property follows them, not the clip's. Times on a
+an ``override`` are that artboard's own keys: there the property follows them, not the clip's. An ``override`` in an
+``effect`` holds ``keyframe(param=…)``s the same way, and ``no_keys`` on either names what has no keys on that artboard
+(``no_keys=["opacity"]``: the clip's keys of it do not show there). Times on a
 video's timeline are seconds; in a song, beats (an audio clip's ``in``, where it starts in its file, is seconds, as on a
 video). Each node carries the call that declared it in ``meta.source``; what a
 node holds that is not a node (a clip's effects, transition, intro, outro and keyframes; a midi clip's notes; a video's
@@ -240,6 +242,19 @@ OVERRIDE_SHAPE = ("fill", "stroke", "strokeWidth")
 VIDEO_ARTBOARD_PROPS = ("name", "width", "height")
 
 
+def _no_keys(el: Element, keyed: List[Dict[str, Any]], name: Any, allowed: Optional[Tuple[str, ...]] = None) -> List[str]:
+    """What an ``override``'s ``no_keys`` names: each of ``allowed`` (none: any name), and none its own keys also key."""
+    v = el.props.get("noKeys")
+    if v is None:
+        return []
+    if not isinstance(v, (list, tuple)) or not v or any(not isinstance(n, str) or not n or (allowed and n not in allowed) for n in v):
+        raise ValueError(f"{_where(el)}: noKeys is a list of {', '.join(allowed) if allowed else 'params'}, not {json.dumps(v)}")
+    for n in v:
+        if any(t["property"] == name(n) for t in keyed):
+            raise ValueError(f"{_where(el)}: noKeys names {n}, which this override keys")
+    return list(v)
+
+
 def _override_artboard(el: Element, artboards: "set[str]") -> str:
     """The artboard an ``override`` names: one the video declares."""
     a = _str(el, "artboard")
@@ -254,7 +269,7 @@ def _override_artboard(el: Element, artboards: "set[str]") -> str:
 def _clip_override(el: Element, c: Element, artboards: "set[str]") -> Tuple[str, Dict[str, Any]]:
     """One ``override`` in a clip: what the clip is on that artboard."""
     own = list(TITLE_TEXT) if c.type == "title" else ["src"] if c.type == "clip" else list(OVERRIDE_SHAPE) if c.type == "shape" else ["inputs"] if c.type == "artboard" else []
-    _refuse_unknown(el, ["artboard", *OVERRIDE_LOOK, *CLIP_TRANSFORM, *CLIP_COLOR, *CLIP_CROP, *own])
+    _refuse_unknown(el, ["artboard", "noKeys", *OVERRIDE_LOOK, *CLIP_TRANSFORM, *CLIP_COLOR, *CLIP_CROP, *own])
     a = _override_artboard(el, artboards)
     o: Dict[str, Any] = {}
     for k, v in (("opacity", _num(el, "opacity", 0, 1)), ("blendMode", _str(el, "blendMode")), ("fitMode", _str(el, "fitMode", ("fit", "fill", "stretch")))):
@@ -292,7 +307,7 @@ def _clip_override(el: Element, c: Element, artboards: "set[str]") -> Tuple[str,
         inputs = _drawing_inputs(el)
         if inputs:
             o["inputs"] = inputs
-    if not o and not child_elements(el):
+    if not o and el.props.get("noKeys") is None and not child_elements(el):
         raise ValueError(f'{_where(el)} in {_where(c)}: an override names what it sets on artboard "{a}"')
     return a, o
 
@@ -509,11 +524,25 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any], artboards:
                     if on is not None:
                         o["enabled"] = on
                     for pk, pv in k.props.items():
-                        if pk in ("key", "artboard", "enabled"):
+                        if pk in ("key", "artboard", "enabled", "noKeys"):
                             continue
                         if isinstance(pv, bool) or not isinstance(pv, (int, float)) or not math.isfinite(pv):
                             raise ValueError(f'<override artboard="{a}"> in <effect type="{t}">: {pk} is a number, not {json.dumps(pv)}')
                         o.setdefault("params", {})[pk] = pv
+                    # Its own keyframes: on this artboard the param follows them, not the clip's.
+                    fkeys: List[Dict[str, Any]] = []
+                    for kf in child_elements(k):
+                        if kf.type != "keyframe":
+                            raise ValueError(f"<{kf.type}> is not read in an <override> in an <effect> (it holds its artboard's <keyframe param time value>s)")
+                        _refuse_unknown(kf, ["param", "time", "value", "easing", "bezier"])
+                        param = _str(kf, "param")
+                        if not param:
+                            raise ValueError(f"{_where(kf)}: an effect's keyframe names its param")
+                        key(kf, f"effect.{fid}.{param}", fkeys, f"kf_{clip_id}_{a}")
+                    for p in _no_keys(k, fkeys, lambda n: f"effect.{fid}.{n}"):
+                        fkeys.append({"property": f"effect.{fid}.{p}", "keys": []})
+                    if fkeys:
+                        o["keyframes"] = fkeys
                     if not o:
                         raise ValueError(f'<override artboard="{a}"> in <effect type="{t}"> names what it sets')
                     fx_overrides[a] = o
@@ -542,6 +571,8 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any], artboards:
                 if not prop:
                     raise ValueError(f"{_where(k)}: a keyframe names its property ({', '.join(OVERRIDE_ANIMATABLE)})")
                 key(k, prop, okeys, f"kf_{clip_id}_{a}")
+            for p in _no_keys(el, okeys, lambda n: n, OVERRIDE_ANIMATABLE):
+                okeys.append({"property": p, "keys": []})
             if okeys:
                 o["keyframes"] = okeys
             overrides[a] = o

@@ -265,7 +265,17 @@ class VideoVocabularyTests(unittest.TestCase):
             (override(keyframe(property="volume", time=0, value=1), artboard="S"), r'property is one of opacity, transform\.x.*not "volume"'),
             (override(note(pitch=60, start=0, duration=1), artboard="S"), "<note> is not read in an <override>"),
             (override(artboard="S", fill="#fff"), "prop fill is not read on a <override>"),
+            (override(artboard="S", no_keys=["volume"]), "noKeys is a list of opacity"),
+            (override(keyframe(property="opacity", time=0, value=1), artboard="S", no_keys=["opacity"]), "noKeys names opacity, which this override keys"),
         ]
         for el, why in refused:
             with self.assertRaisesRegex(ValueError, why):
                 declare_video(video(track(title(el, text="T", duration=1)), sq))
+        said = declare_video(video(track(title(
+            effect(keyframe(param="amount", time=0, value=0.1), override(keyframe(param="amount", time=0, value=0.5), artboard="S"), type="vignette", amount=0.2),
+            effect(override(artboard="S", no_keys=["amount"]), type="vignette", amount=0.2),
+            override(artboard="S", no_keys=["opacity"]),
+            text="T", duration=1)), sq))["nodes"]["clip_Title"]["inputs"]
+        self.assertEqual(said["overrides"], {"S": {"keyframes": [{"property": "opacity", "keys": []}]}})
+        self.assertEqual(said["effects"][0]["overrides"], {"S": {"keyframes": [{"property": "effect.fx_vignette.amount", "keys": [{"id": "kf_clip_Title_S", "time": 0, "value": 0.5, "easing": "linear"}]}]}})
+        self.assertEqual(said["effects"][1]["overrides"], {"S": {"keyframes": [{"property": "effect.fx_vignette_2.amount", "keys": []}]}})
