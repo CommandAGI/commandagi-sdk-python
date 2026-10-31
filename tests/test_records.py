@@ -91,6 +91,18 @@ class RecordTests(unittest.TestCase):
             cal(camera(**{**cam, "intrinsics": {**cam["intrinsics"], "fx": 0}}))
         with self.assertRaisesRegex(ValueError, "says its reality"):
             cal(camera(**{k: x for k, x in cam.items() if k != "reality"}))
+        # A guided calibration: each joint's measured travel and its direction, who measured it and when.
+        measured = declare_document(calibration(
+            joint(name="pan", zero=0.03, min=712, max=3391), joint(name="lift", zero=-0.1, min=830, max=3270, reversed=True),
+            device="d/definition.tsx", by="person:owner", at=1793318400000))["document"]
+        self.assertEqual(measured, {"device": "d/definition.tsx", "by": "person:owner", "at": 1793318400000,
+                                    "joints": [{"name": "pan", "zero": 0.03, "min": 712, "max": 3391},
+                                               {"name": "lift", "zero": -0.1, "min": 830, "max": 3270, "reversed": True}], "rezeros": []})
+        self.assertEqual(v.from_tree(v.to_tree(measured)), measured)
+        with self.assertRaisesRegex(ValueError, "both min and max"):
+            cal(joint(name="a", min=900))
+        with self.assertRaisesRegex(ValueError, "min < max"):
+            cal(joint(name="a", min=900, max=800))
 
     def test_a_run_names_each_record_by_its_call(self):
         out = run_module(
