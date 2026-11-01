@@ -38,7 +38,7 @@ FLOW_FIELDS = ["name", "description", "of"]
 FLOW_INPUT_FIELDS = ["name", "type", "private", "default", "required", "description"]
 FLOW_TOOL_FIELDS = ["id", "ref", "name", "ratePerHour", "currency", "description"]
 FLOW_STEP_FIELDS = ["id", "order", "kind", "tool", "fixture", "by", "minutes", "setupMinutes", "ratePerHour", "currency", "instruction",
-                    "note", "channel", "ref", "command", "after", "surprise", "surpriseTo"]
+                    "note", "channel", "ref", "command", "skill", "after", "surprise", "surpriseTo"]
 FLOW_PARAM_FIELDS = ["name", "value", "unit", "description"]
 FLOW_MEASURE_FIELDS = ["id", "name", "nominal", "min", "max", "plus", "minus", "unit", "method", "sampling", "acceptance"]
 FLOW_VISIT_FIELDS = ["tool", "minutes", "setupMinutes", "ratePerHour", "currency", "instruction"]
