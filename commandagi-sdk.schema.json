@@ -531,7 +531,7 @@
       },
       {
         "name": "tasks",
-        "doc": "Open work mounted to a thread: the thread's agent is prompted with it until it is done (runs/thread-<id>/mounts.tsx).",
+        "doc": "Open work mounted to a thread: the thread's agent is prompted with it until it is done (mounts.tsx in its run folder).",
         "factory": null,
         "methods": [
           {
