@@ -8,6 +8,7 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.eda`: a footprint dict takes `courtyard` (two corners or a polygon of `{x, y}` in mm): the part's F.CrtYd (B.CrtYd on the bottom). The same as the TypeScript SDK's `Footprint.courtyard`.
 - `commandagi.design.records`: a calibration's `joint()` may carry its measured travel `min`/`max` (the bus's raw values, min < max) and `reversed`; `calibration()` takes `by` and `at` (who measured it and when). The same documents and refusals as the TypeScript SDK.
 - `commandagi.design.infra`: a VPN exit, a logged-in state and a vantage as `exit.py`, `session.py` and `vantage.py`, the same
   elements and documents as the TypeScript SDK's `exit.tsx`, `session.tsx` and `vantage.tsx`, with the same refusals.

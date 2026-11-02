@@ -168,6 +168,14 @@ def component(ref: str, footprint: Dict[str, Any], value: Optional[str] = None, 
         inputs["placement"] = {"x": at[0], "y": at[1], "rot": 0, "side": "top"} if isinstance(at, (tuple, list)) else {"rot": 0, "side": "top", **at}
     if footprint.get("attr"):
         inputs["attr"] = footprint["attr"]
+    cy = footprint.get("courtyard")
+    if cy is not None:
+        if not isinstance(cy, (list, tuple)) or len(cy) < 2 or any(not isinstance(q, dict) or "x" not in q or "y" not in q for q in cy):
+            raise ValueError(f"{ref}: a courtyard is two corners or three or more points, each {{x, y}} in mm")
+        bottom = isinstance(inputs.get("placement"), dict) and inputs["placement"].get("side") == "bottom"
+        inputs["boardArtwork"] = {"graphics": [{"id": "courtyard", "kind": "rect" if len(cy) == 2 else "poly",
+                                                "points": [{"x": -q["x"] if bottom else q["x"], "y": q["y"]} for q in cy],
+                                                "widthMm": 0.05, "layer": "B.CrtYd" if bottom else "F.CrtYd", "filled": False}], "texts": []}
     if fields:
         inputs["foreign"] = fields
     at = here()

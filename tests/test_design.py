@@ -117,6 +117,22 @@ class EdaTests(unittest.TestCase):
             ("Net-(R1-Pad2)", {"pins.1": wire("part_R1", "p2"), "pins.2": wire("part_D1", "p2")}),
         ])
 
+    def test_a_footprints_courtyard_is_the_parts_crtyd(self):
+        fpc = {**footprints.chip("0603", "R"), "courtyard": [{"x": -2, "y": -1}, {"x": 2, "y": 1}]}
+
+        def body():
+            component(ref="R1", footprint=fpc, at=(5, 5))
+            component(ref="R2", footprint=fpc, at={"x": 9, "y": 5, "side": "bottom"})
+            component(ref="R3", footprint=footprints.chip("0603", "R"), at=(12, 5))
+
+        g = circuit("Courtyard", body).ir
+        art = lambda r: g["nodes"]["part_" + r]["inputs"].get("boardArtwork")
+        self.assertEqual((art("R1")["graphics"][0]["kind"], art("R1")["graphics"][0]["layer"], [q["x"] for q in art("R1")["graphics"][0]["points"]]), ("rect", "F.CrtYd", [-2, 2]))
+        self.assertEqual((art("R2")["graphics"][0]["layer"], [q["x"] for q in art("R2")["graphics"][0]["points"]]), ("B.CrtYd", [2, -2]))
+        self.assertIsNone(art("R3"))
+        with self.assertRaisesRegex(ValueError, "R1: a courtyard is two corners"):
+            circuit("X", lambda: component(ref="R1", footprint={**fpc, "courtyard": [{"x": 0, "y": 0}]}))
+
 
 class CadQueryTests(unittest.TestCase):
     def test_box_with_a_grid_of_through_holes_on_its_top_face(self):
