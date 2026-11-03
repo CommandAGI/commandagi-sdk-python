@@ -36,6 +36,10 @@ The calls (the first arguments are positional attributes; everything else is a k
                                                                              a suppressed one (True) is not run and
                                                                              declares nothing
     attachment(name, role=…, file=…, mime=…)                                 a KiCad file the circuit carries
+    … reference="POLY"                                                       on any part: KiCad's reference when another
+                                                                             part has it too; the name stays the part's
+                                                                             own (POLY_2). Said only when it is not the
+                                                                             name
     … no_connect=["3", "4"]                                                  on any part: the pins it leaves open on
                                                                              purpose, by pin number (KiCad's no-connect
                                                                              marker); the electrical rule check does
@@ -202,6 +206,20 @@ def _spice(el: Element) -> Dict[str, Any]:
     return {"spice": _plain(v, f"{_where(el)} spice")}
 
 
+def _reference(el: Element, name: str) -> Dict[str, Any]:
+    """KiCad's reference of a part whose reference another part has too (KiCad's ``microwave`` demo has four
+    footprints called POLY): the part's ``name`` is its own (``POLY_2``), and ``reference="POLY"`` is what KiCad
+    reads. It is said only when it is not the name."""
+    v = el.props.get("reference")
+    if v is None:
+        return {}
+    if not isinstance(v, str) or not v:
+        raise ValueError(f'{_where(el)}: reference is KiCad\'s reference designator ("R1")')
+    if v == name:
+        raise ValueError(f"{_where(el)}: reference is said only when it is not the name")
+    return {"reference": v}
+
+
 def _no_connect(el: Element) -> Dict[str, Any]:
     """The pins a part leaves open on purpose (``no_connect=["3", "4"]``), by pin number, as written."""
     v = el.props.get("noConnect")
@@ -279,7 +297,7 @@ def _netlist_part(s: Scope, el: Element, ref: str) -> Dict[str, Any]:
     value = el.props.get("value")
     if value is not None and not _is_value(value):
         raise ValueError(f'{_where(el)}: value is a value ("LM358", 1000), not {value!r}')
-    inputs: Dict[str, Any] = {"ref": ref}
+    inputs: Dict[str, Any] = {"ref": ref, **_reference(el, ref)}
     if value is not None:
         inputs["value"] = _value_text(value)
     if symbol is not None:
@@ -302,7 +320,7 @@ def declare_sheet(children: List[Element]) -> None:
     for el in declare_circuit_checks(s, list(children)):
         ideal = SHEET_PARTS.get(el.tag)
         if ideal:
-            _refuse_unknown(el, ["name", "spice", "noConnect", *_PLACE, *([ideal["value"]] if ideal["value"] else []),
+            _refuse_unknown(el, ["name", "reference", "spice", "noConnect", *_PLACE, *([ideal["value"]] if ideal["value"] else []),
                                  *(["excitation"] if ideal.get("excitation") else []), *([] if ideal.get("power") else _FIELD_PROPS)])
             ref = el.props.get("name")
             if not isinstance(ref, str) or not ref:
@@ -317,7 +335,7 @@ def declare_sheet(children: List[Element]) -> None:
             if raw is not None and not _is_value(raw):
                 raise ValueError(f"{_where(el)}: {ideal['value']} is a value (\"1k\", 1000), not {raw!r}")
             value = ideal.get("power") or (None if raw is None else _value_text(raw))
-            inputs: Dict[str, Any] = {"ref": ref}
+            inputs: Dict[str, Any] = {"ref": ref, **_reference(el, ref)}
             if value is not None:
                 inputs["value"] = value
             inputs.update(symbol=ideal["symbol"], pins=pins, units=1)
@@ -334,7 +352,7 @@ def declare_sheet(children: List[Element]) -> None:
             parts[ref] = placed
             continue
         if el.tag == "part":
-            _refuse_unknown(el, ["name", "symbol", "library", "value", "pins", "spice", "noConnect", *_FIELD_PROPS, *_PLACE])
+            _refuse_unknown(el, ["name", "reference", "symbol", "library", "value", "pins", "spice", "noConnect", *_FIELD_PROPS, *_PLACE])
             ref = _str(el, "name", "the part's reference (U1)")
             if ref in parts:
                 raise ValueError(f"two parts are called {ref}")
@@ -350,7 +368,7 @@ def declare_sheet(children: List[Element]) -> None:
             raw = el.props.get("value")
             if raw is not None and not _is_value(raw):
                 raise ValueError(f"{_where(el)}: value is a value (\"LM358\", 1000), not {raw!r}")
-            inputs = {"ref": ref}
+            inputs = {"ref": ref, **_reference(el, ref)}
             if raw is not None:
                 inputs["value"] = _value_text(raw)
             # The pins are the library's: the editor reads them (and the part's type) from the library file.

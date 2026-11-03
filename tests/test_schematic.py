@@ -145,6 +145,12 @@ result = group(
         # A board-only footprint (a logo) is a part with no pins.
         logo = run(sheet('''    part("G1", value="LOGO", pins=[]),\n''', "Logo"), "logo.sch.py")["nodes"]
         self.assertEqual(logo["G1"]["inputs"], {"ref": "G1", "value": "LOGO", "pins": []})
+        # Two parts KiCad calls POLY: the second has a name of its own and says KiCad's reference.
+        poly = run(sheet('''    part("POLY", pins=["1"]),\n    part("POLY_2", reference="POLY", pins=["1"]),\n''', "Poly"), "poly.sch.py")["nodes"]
+        self.assertEqual(poly["POLY_2"]["inputs"]["reference"], "POLY")
+        self.assertNotIn("reference", poly["POLY"]["inputs"])
+        with self.assertRaisesRegex(Exception, "reference is said only when it is not the name"):
+            run(sheet('''    part("POLY", reference="POLY", pins=["1"]),\n''', "Poly"), "poly.sch.py")
 
 
     def test_a_part_names_the_pins_it_leaves_open_on_purpose_by_pin_number(self):

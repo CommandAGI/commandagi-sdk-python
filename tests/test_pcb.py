@@ -122,7 +122,10 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(g["nodes"]["fp_U1"]["inputs"], {"ref": "U1", "footprint": "Package_SO:SOIC-8", "library": "footprints.pretty",
                                                          "placement": {"x": 12, "y": 8, "rot": 90, "side": "top"}})
         with self.assertRaisesRegex(ValueError, "its ref, \"Library:Footprint\""):
-            declared(component(name="U1", footprint="SOIC-8", library="footprints.pretty"))
+            declared(component(name="U1", footprint="Package_SO/SOIC-8", library="footprints.pretty"))
+        # A footprint id KiCad gave no library nickname is its bare name: the library names the file.
+        bare = declared(component(name="POLY", footprint="POLY", library="board.pretty", pcb_x=1, pcb_y=2))
+        self.assertEqual(bare["nodes"]["fp_POLY"]["inputs"]["footprint"], "POLY")
         with self.assertRaisesRegex(ValueError, "a footprint library folder"):
             declared(component(name="U1", footprint="Package_SO:SOIC-8", library="SOIC-8.kicad_mod"))
         # A second variant of one footprint is its own file in the folder; the part still names the footprint it is.

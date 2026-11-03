@@ -40,7 +40,8 @@ The calls (children are positional; every attribute is a keyword):
                                       patterns (BOARD_FOOTPRINTS), or a library footprint by its ref
                                       ("Package_SO:SOIC-8") in the ``.pretty`` folder ``library`` names (or the
                                       one ``.kicad_mod`` in it that it names: the file of a second variant of one
-                                      footprint, "board.pretty/SOIC-8 2.kicad_mod"). ``ref_at``
+                                      footprint, "board.pretty/SOIC-8 2.kicad_mod"; with a library, a footprint id
+                                      KiCad gave no library nickname is its bare name, "POLY"). ``ref_at``
                                       and ``value_at`` [x, y] are where its reference and value texts sit (mm, in
                                       the footprint's own frame).
     trace(name, layer, width, points, rule, from_, to, net, surface, uuid, segment_uuids, kicad)
@@ -695,8 +696,10 @@ def _declare_board(s: Scope, root: Element) -> None:
             if library is not None:
                 if not isinstance(library, str) or not re.search(r"\.pretty(/|/[^/]+\.kicad_mod)?$", library, re.IGNORECASE):
                     raise ValueError(f"{_where(el)}: library names a footprint library folder (a .pretty) or one .kicad_mod in it, not {json.dumps(library)}")
-                if not isinstance(fp, str) or not re.match(r"^[^:]+:[^:/]+$", fp):
-                    raise ValueError(f'{_where(el)}: a library footprint is its ref, "Library:Footprint" ("Package_SO:SOIC-8"), not {json.dumps(fp)}')
+                # A footprint id with no library nickname (KiCad wrote (footprint "POLY")) is its bare name: the library names the file.
+                if not isinstance(fp, str) or not re.match(r"^([^:]+:)?[^:/]+$", fp):
+                    raise ValueError(f'{_where(el)}: a library footprint is its ref, "Library:Footprint" ("Package_SO:SOIC-8"), '
+                                     f'or the bare name KiCad gave it ("POLY"), not {json.dumps(fp)}')
             elif not isinstance(fp, str) or (fp not in BOARD_FOOTPRINTS and not re.match(r"^[^:]+:[^:/]+$", fp)):
                 raise ValueError(f"{_where(el)}: footprint is one of {', '.join(BOARD_FOOTPRINTS)}, or a library footprint by its ref "
                                  f'("Package_SO:SOIC-8") with its library, not {json.dumps(fp)}')
