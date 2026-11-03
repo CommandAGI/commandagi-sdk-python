@@ -157,6 +157,20 @@ class SketchBuilder:
         i = f"s{self._n}"
         self.segments[i] = {**seg, "id": i}
 
+    def point(self, at: Vec2) -> "SketchBuilder":
+        """A point by itself: where a line the editor draws starts."""
+        self._point(at[0], at[1])
+        return self
+
+    def line(self, points: Sequence[Vec2]) -> "SketchBuilder":
+        """An open polyline through these points."""
+        if len(points) < 2:
+            raise ValueError("a line needs at least two points")
+        ids = [self._point(p[0], p[1]) for p in points]
+        for a, b in zip(ids, ids[1:]):
+            self._seg({"type": "line", "a": a, "b": b})
+        return self
+
     def polygon(self, points: Sequence[Vec2]) -> "SketchBuilder":
         if len(points) < 3:
             raise ValueError("a polygon needs at least three points")
@@ -186,9 +200,8 @@ def sketch(plane: Union[str, Tuple[str, float]], draw: Callable[[SketchBuilder],
     """A sketch on a datum plane (``"XY"``), or offset along its normal (``("XY", 5)``)."""
     s = _scope("sketch()")
     b = SketchBuilder()
+    # An empty sketch is where the editor's Sketch tool starts: it draws nothing until its first point.
     draw(b)
-    if not b.segments:
-        raise ValueError("this sketch draws nothing")
     if isinstance(plane, str) or not plane[1]:
         on: Any = _plane_ref(plane if isinstance(plane, str) else plane[0])
     else:

@@ -370,5 +370,6 @@ def finish(graph: Dict[str, Any], m: Optional[SourceMap], document: Optional[Dic
     _resolve_meta(graph.get("meta"), m)
     if document is not None and isinstance(document.get("sources"), dict):
         document["sources"] = _resolve_map(document["sources"], m)
-    if m.evaluations:
+    # A part with no call yet takes its map too: the editor writes its first call by it.
+    if m.evaluations or (graph.get("meta") or {}).get("domain") == "cad":
         graph["meta"] = {**(graph.get("meta") or {}), "sourceMap": m.to_json()}
