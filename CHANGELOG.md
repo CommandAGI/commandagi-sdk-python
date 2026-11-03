@@ -8,6 +8,7 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.media`: a speaker's track, `track(kind="audio", speaker="Cici", turns=passes["C"], src="stems/take.voices.wav")`, makes that speaker's turns in the pass its clips; `denoise(reduction, floor)` and `loudness(target, peak)` are audio effects. The same as the TypeScript SDK.
 - `commandagi.design`: a sketch's builder draws `s.point([x, y])` and `s.line([[x, y], ...])` (an open polyline), and `sketch()` takes a sketch that draws nothing yet (`lambda s: s`). A part with no call yet gives its run the file's map, so the editor writes its first call. The same as the TypeScript SDK.
 - `commandagi.design.eda`: a footprint dict takes `courtyard` (two corners or a polygon of `{x, y}` in mm): the part's F.CrtYd (B.CrtYd on the bottom). The same as the TypeScript SDK's `Footprint.courtyard`.
 - `commandagi.design.records`: a calibration's `joint()` may carry its measured travel `min`/`max` (the bus's raw values, min < max) and `reversed`; `calibration()` takes `by` and `at` (who measured it and when). The same documents and refusals as the TypeScript SDK.

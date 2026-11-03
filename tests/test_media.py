@@ -145,6 +145,23 @@ if __name__ == "__main__":
 
 
 class VideoVocabularyTests(unittest.TestCase):
+    def test_a_speaker_track_makes_the_speakers_turns_its_clips(self):
+        from commandagi.design.media import denoise, loudness
+        p = {"take": "IMG_1", "in": 10, "out": 16, "by": "voices.py turns",
+             "turns": [{"who": "Ann", "from": 10, "to": 12, "says": "Hi"}, {"who": "Bo", "from": 12, "to": 14, "says": "Yo"},
+                       {"who": "Ann", "from": 14, "to": 17, "says": "Bye"}]}
+        n = declare_video(video(track(denoise(reduction=20), name="A1", kind="audio", speaker="Ann", turns=p, src="stems/IMG_1.wav", volume=1.5),
+                                loudness(target=-16)))["nodes"]
+        t = n["track_A1"]["inputs"]
+        self.assertEqual(t["speaker"], "Ann")
+        self.assertEqual(t["turns"], {"take": "IMG_1", "in": 10, "out": 16, "src": "stems/IMG_1.wav", "count": 2, "by": "voices.py turns"})
+        self.assertEqual(t["audioEffects"], [{"id": "afx_denoise", "type": "denoise", "enabled": True, "params": {"reduction": 20, "floor": -50}}])
+        clips = [[c["inputs"]["start"], c["inputs"]["inPoint"], c["inputs"]["duration"], c["inputs"]["turn"]] for c in n.values() if c["type"] == "video.clip"]
+        self.assertEqual(clips, [[0, 10, 2, {"who": "Ann", "says": "Hi"}], [4, 14, 2, {"who": "Ann", "says": "Bye"}]])
+        self.assertEqual(n["composite"]["inputs"]["masterEffects"], [{"id": "afx_loudness", "type": "loudness", "enabled": True, "params": {"target": -16, "peak": -1}}])
+        with self.assertRaisesRegex(ValueError, "a speaker's track is an audio track"):
+            declare_video(video(track(speaker="Ann", turns=p, src="a.wav")))
+
     def test_crop_a_lut_transition_settings_audio_effects_and_a_bezier_key(self):
         from commandagi.design.media import compressor, distortion, eq, filter, gain
         n = declare_video(video(

@@ -56,7 +56,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "shape": _HOLDS, "adjustment": _HOLDS,
     "midi": _HOLDS, "effect": _HOLDS,
     "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {}, "override": _HOLDS,
-    "synth": {}, "sampler": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {},
+    "synth": {}, "sampler": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {}, "denoise": {}, "loudness": {},
 }
 
 __all__ = ["MEDIA_ROOTS", "SIGNATURES", "declare_video", "declare_song", "media_kind", "pitch_of", "pitch_name", "tempo_of",
@@ -182,12 +182,16 @@ VIDEO_AUDIO_EFFECTS: Dict[str, Dict[str, Any]] = {
     "reverb": {"decay": 2, "mix": 0.35},
     "compressor": {"threshold": -24, "ratio": 4, "attack": 0.003, "release": 0.25},
     "distortion": {"amount": 0.4, "mix": 1},
+    # The room taken out (ffmpeg's afftdn) and the level a format asks for (EBU R128): the headless renderer runs both.
+    "denoise": {"reduction": 12, "floor": -50},
+    "loudness": {"target": -14, "peak": -1},
 }
 FILTER_MODES = ("lowpass", "highpass", "bandpass")
 FILTER_DEFAULTS = {"lowpass": {"frequency": 1200, "q": 1}, "highpass": {"frequency": 300, "q": 1}, "bandpass": {"frequency": 1500, "q": 2}}
 _AUDIO_BOUNDS = {"gain": (0, 16), "lowGain": (-40, 40), "midGain": (-40, 40), "highGain": (-40, 40), "freq": (10, 24000), "q": (0.0001, 100),
                  "time": (0, 2), "feedback": (0, 0.95), "mix": (0, 1), "decay": (0.01, 20), "threshold": (-100, 0), "ratio": (1, 20),
-                 "attack": (0, 1), "release": (0, 1), "amount": (0, 1)}
+                 "attack": (0, 1), "release": (0, 1), "amount": (0, 1), "reduction": (0.01, 97), "floor": (-80, -20), "target": (-70, -5),
+                 "peak": (-9, 0)}
 
 
 def _audio_effect(el: Element, make_id: Callable[[str], str]) -> Dict[str, Any]:
@@ -594,6 +598,45 @@ def _clip_children(c: Element, clip_id: str, sources: Dict[str, Any], artboards:
     return transition_in, anims, effects, audio, keyframes, notes, overrides
 
 
+#: A speaker's track: who it is, the pass of a take their turns are in, and the sound those turns are cut from.
+_SPEAKER_PROPS = ("speaker", "turns", "src")
+#: The prop a clip made from a turn carries to its node (``turn``: who said it and the words); code never writes it.
+_TURN = "\u0000turn"
+
+
+def _speaker_track(tr: Element, kind: str) -> Optional[Dict[str, Any]]:
+    """``track(kind="audio", speaker="Cici", turns=passes["C"], src="stems/IMG_2781.voices.wav")``: speaker segmentation as a
+    track (the TypeScript SDK's ``speakerTrack``). Each of the speaker's turns in the pass is a clip of ``src``."""
+    if all(tr.props.get(k) is None for k in _SPEAKER_PROPS):
+        return None
+    name, src, p = _str(tr, "speaker"), _str(tr, "src"), tr.props.get("turns")
+    if kind != "audio":
+        raise ValueError(f'{_where(tr)}: a speaker\'s track is an audio track (kind="audio")')
+    if not name or not src or not isinstance(p, dict):
+        raise ValueError(f"{_where(tr)}: a speaker's track names the speaker, its turns (one pass of a passes.json) and the sound (src)")
+    if re.match(r"^[a-z]+:|^/", src, re.I):
+        raise ValueError(f"{_where(tr)}: src is a path relative to this file, not {src}")
+    if media_kind(src) in (None, "image"):
+        raise ValueError(f"{_where(tr)}: {src} is not a sound or a video this editor reads")
+    t0, t1, turns = p.get("in"), p.get("out"), p.get("turns")
+    if not isinstance(t0, (int, float)) or not isinstance(t1, (int, float)) or not t1 > t0 or not isinstance(turns, list):
+        raise ValueError(f"{_where(tr)}: turns is one pass of a passes.json: {{ take, in, out, turns: [{{ who, from, to, says }}] }}")
+    clips: List[Element] = []
+    for t in turns:
+        if not isinstance(t, dict) or not isinstance(t.get("who"), str) or not isinstance(t.get("from"), (int, float)) \
+                or not isinstance(t.get("to"), (int, float)) or not t["to"] > t["from"]:
+            raise ValueError(f"{_where(tr)}: a turn is {{ who, from, to, says }} with from before to")
+        if t["who"] != name or t["to"] <= t0 or t["from"] >= t1:
+            continue
+        a, b = max(t["from"], t0), min(t["to"], t1)
+        says = t["says"] if isinstance(t.get("says"), str) else ""
+        clips.append(Element("clip", {"src": src, "name": says[:40] or name, "start": a - t0, "in": a, "out": b, _TURN: {"who": name, "says": says}}, [], None))
+    text = {k: p[k] for k in ("take", "by", "note") if isinstance(p.get(k), str)}
+    info = {**({"take": text["take"]} if "take" in text else {}), "in": t0, "out": t1, "src": src, "count": len(clips),
+            **({"by": text["by"]} if "by" in text else {}), **({"note": text["note"]} if "note" in text else {})}
+    return {"name": name, "turns": info, "clips": clips}
+
+
 def declare_video(root: Element) -> Dict[str, Any]:
     """Declare a video (``video(...)`` and its tracks) as the video editor's own op graph."""
     _refuse_unknown(root, ["name", *VIDEO_SETTINGS])
@@ -646,15 +689,16 @@ def declare_video(root: Element) -> Dict[str, Any]:
             continue
         if tr.type != "track":
             raise ValueError(f"<{tr.type}> is not read in a <video> (it holds <track>, <artboard>, <marker> and the master's audio effects)")
-        _refuse_unknown(tr, ["name", "kind", "muted", "hidden", "locked", "volume", "height"])
+        _refuse_unknown(tr, ["name", "kind", "muted", "hidden", "locked", "volume", "height", *_SPEAKER_PROPS])
         kind = _or(_str(tr, "kind", VIDEO_TRACK_KINDS), "video")
         track_name = _or(_str(tr, "name"), "A" if kind == "audio" else "M" if kind == "midi" else "V")
+        speaker = _speaker_track(tr, kind)
         track_id = new_id(f"track_{track_name}")
         clip_wires: List[Any] = []
         track_fx: List[Dict[str, Any]] = []
         track_sources: Dict[str, Any] = {}
         track_fx_id = _ids()
-        for c in child_elements(tr):
+        for c in (speaker["clips"] if speaker else []) + child_elements(tr):
             nested: Optional[Dict[str, Any]] = None
             if c.type in VIDEO_AUDIO_EFFECTS:
                 fx = _audio_effect(c, track_fx_id)
@@ -662,7 +706,7 @@ def declare_video(root: Element) -> Dict[str, Any]:
                 track_sources[f"audio:{fx['id']}"] = c.source
                 continue
             if c.type == "clip":
-                _refuse_unknown(c, ["src", "link", *_CLIP_PROPS])
+                _refuse_unknown(c, ["src", "link", _TURN, *_CLIP_PROPS])
                 src = _str(c, "src")
                 if not src:
                     raise ValueError('<clip> names its media file (src="media/take-1.mp4", relative to this file)')
@@ -830,6 +874,8 @@ def declare_video(root: Element) -> Dict[str, Any]:
             if c.type == "midi":
                 inputs["midi"] = {"notes": notes, "instrument": _or(_str(c, "instrument", MIDI_INSTRUMENTS), MIDI_CLIP["instrument"]),
                                   "gain": _or(_num(c, "gain", 0), MIDI_CLIP["gain"])}
+            if _TURN in c.props:
+                inputs["turn"] = c.props[_TURN]
             inputs["source"] = source
             nodes[clip_id] = _node(clip_id, "video.clip", inputs, clip_name, _meta_of(c, sources))
             clip_wires.append(_wire(clip_id, "frames"))
@@ -838,6 +884,9 @@ def declare_video(root: Element) -> Dict[str, Any]:
                                         "volume": _or(_num(tr, "volume", 0), 1)}
         if track_fx:
             track_inputs["audioEffects"] = track_fx
+        if speaker:
+            track_inputs["speaker"] = speaker["name"]
+            track_inputs["turns"] = speaker["turns"]
         for i, w in enumerate(clip_wires):
             track_inputs[f"clips.{i + 1}"] = w
         nodes[track_id] = _node(track_id, "video.track", track_inputs, track_name, _meta_of(tr, track_sources))
