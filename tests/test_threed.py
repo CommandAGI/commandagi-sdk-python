@@ -275,6 +275,18 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(str(caught.exception),
                          '<meshBody id="world/t">: worldCollider/nx: must be at least 2 (got 1); worldRestitution: must be at most 1 (got 2)')
 
+    def test_tactile_places_a_grid_of_taxels_on_a_face_of_a_body(self):
+        src = ("from commandagi.design.threed import *\n"
+               "result = part(\n"
+               "    box(id='jaw', name='Jaw', center=[-22, 0, 21], size=[4, 24, 38], operation='new'),\n"
+               "    tactile(id='pad', body='Jaw', at=[-20, 0, 20], normal=[1, 0, 0], along=[0, 1, 0], rows=4, cols=4, pitch=5),\n"
+               "    name='Jaw',\n"
+               ")\n")
+        n = run_module(src, "J.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["tactile"]["inputs"]["value"], [{"id": "pad", "body": "Jaw", "at": [-20, 0, 20], "normal": [1, 0, 0], "along": [0, 1, 0], "rows": 4, "cols": 4, "pitch": 5}])
+        with self.assertRaisesRegex(ValueError, "rows"):
+            run_module(src.replace("rows=4", "rows=0"), "J.3d.py")
+
     def test_checks_accepts_permits_and_fasteners_are_the_documents_lists(self):
         src = ("from commandagi.design.threed import *\n"
                "result = assembly(\n"

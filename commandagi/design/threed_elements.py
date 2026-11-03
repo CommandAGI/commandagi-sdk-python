@@ -850,6 +850,11 @@ _SweepFeatureOptional = TypedDict("_SweepFeatureOptional", {"frame": Literal["mi
 class SweepFeature(_SweepFeatureRequired, _SweepFeatureOptional):
     pass
 
+_TactileSkinRequired = TypedDict("_TactileSkinRequired", {"id": str, "body": str, "at": 'Vec3', "normal": 'Vec3', "along": 'Vec3', "rows": int, "cols": int, "pitch": float})
+_TactileSkinOptional = TypedDict("_TactileSkinOptional", {"face": 'TopoTarget', "thickness": float, "saturation": float}, total=False)
+class TactileSkin(_TactileSkinRequired, _TactileSkinOptional):
+    pass
+
 #: A BINDING: this conductor is electrically joined to that pad. L3, and L2.
 _TerminalBindingRequired = TypedDict("_TerminalBindingRequired", {"point": str, "pad": str})
 _TerminalBindingOptional = TypedDict("_TerminalBindingOptional", {}, total=False)
