@@ -552,6 +552,12 @@ _PermittedFindingOptional = TypedDict("_PermittedFindingOptional", {"process": s
 class PermittedFinding(_PermittedFindingRequired, _PermittedFindingOptional):
     pass
 
+#: A PLACE ON THE EARTH: a supplier's warehouse, a fab, a forwarder's hub, the builder's bench.
+_PlaceRequired = TypedDict("_PlaceRequired", {"name": str, "lat": float, "lon": float})
+_PlaceOptional = TypedDict("_PlaceOptional", {"country": str}, total=False)
+class Place(_PlaceRequired, _PlaceOptional):
+    pass
+
 #: One body of a placed 3D document moved in its file's frame (`<externalPart moves>`).
 _PlacedMoveRequired = TypedDict("_PlacedMoveRequired", {"body": str, "placement": 'Placement'})
 _PlacedMoveOptional = TypedDict("_PlacedMoveOptional", {}, total=False)
@@ -661,6 +667,12 @@ class ShellFeature(_ShellFeatureRequired, _ShellFeatureOptional):
 _ShippingRequired = TypedDict("_ShippingRequired", {})
 _ShippingOptional = TypedDict("_ShippingOptional", {"hsCode": str, "origin": str, "hazmat": str, "packaged": 'PackagedSize', "packaging": str}, total=False)
 class Shipping(_ShippingRequired, _ShippingOptional):
+    pass
+
+#: ONE LEG OF A PART'S TRIP: a carrier's service to a place, how long it takes and what it costs.
+_ShippingLegRequired = TypedDict("_ShippingLegRequired", {"to": 'Place', "carrier": str})
+_ShippingLegOptional = TypedDict("_ShippingLegOptional", {"service": str, "transitDays": float, "cost": float, "currency": str}, total=False)
+class ShippingLeg(_ShippingLegRequired, _ShippingLegOptional):
     pass
 
 __SkeletonFeature21Required = TypedDict("__SkeletonFeature21Required", {})
@@ -841,7 +853,7 @@ class SubdivBodyFeature(_SubdivBodyFeatureRequired, _SubdivBodyFeatureOptional):
 
 #: WHO SELLS A PART, AND ON WHAT TERMS: one supplier's offer (docs/formats.md § logistics). The quantity terms (`stock`, `moq`, `orderMultiple`, `leadTimeDays`, `priceBreaks`) are the ones a component catalog's offer states. A price or a stock says where and when it was read (`source`, `date`).
 _SupplierOfferRequired = TypedDict("_SupplierOfferRequired", {"name": str})
-_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "leadTimeDays": float, "stock": int, "source": str, "date": str}, total=False)
+_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "leadTimeDays": float, "stock": int, "source": str, "date": str, "from": 'Place', "legs": List['ShippingLeg']}, total=False)
 class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
     pass
 
