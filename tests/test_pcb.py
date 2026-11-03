@@ -125,6 +125,9 @@ class BoardTests(unittest.TestCase):
             declared(component(name="U1", footprint="SOIC-8", library="footprints.pretty"))
         with self.assertRaisesRegex(ValueError, "a footprint library folder"):
             declared(component(name="U1", footprint="Package_SO:SOIC-8", library="SOIC-8.kicad_mod"))
+        # A second variant of one footprint is its own file in the folder; the part still names the footprint it is.
+        v = declared(component(name="U2", footprint="Package_SO:SOIC-8", library="footprints.pretty/SOIC-8 2.kicad_mod", pcb_x=1, pcb_y=2))
+        self.assertEqual(v["nodes"]["fp_U2"]["inputs"]["library"], "footprints.pretty/SOIC-8 2.kicad_mod")
 
     def test_a_polygon_says_its_arcs(self):
         pts = [[0, 0], [1, 0], [2, 1], [3, 0], [3, 3]]

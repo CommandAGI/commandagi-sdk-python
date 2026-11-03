@@ -142,6 +142,9 @@ result = group(
         self.assertEqual(n["net_N1"]["inputs"], {"pins.1": wire("U1", "p1"), "pins.2": wire("C1", "p1")})
         self.assertEqual(n["source_schematic.kicad_sch"]["inputs"], {"name": "schematic.kicad_sch", "role": "schematic", "file": "Rail.kicad_sch"})
         self.assertEqual(n["net_N1"]["meta"]["source"]["tag"], "net")
+        # A board-only footprint (a logo) is a part with no pins.
+        logo = run(sheet('''    part("G1", value="LOGO", pins=[]),\n''', "Logo"), "logo.sch.py")["nodes"]
+        self.assertEqual(logo["G1"]["inputs"], {"ref": "G1", "value": "LOGO", "pins": []})
 
 
     def test_a_part_names_the_pins_it_leaves_open_on_purpose_by_pin_number(self):

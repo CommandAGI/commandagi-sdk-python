@@ -26,7 +26,8 @@ The calls (the first arguments are positional attributes; everything else is a k
     netlabel(net, connection)                                                a label naming the net of a pin
     part(name, symbol="Lib:Name", library="x.kicad_sym", value=…)            a library part: its symbol named by its
                                                                              library ref in a .kicad_sym, by path
-    part(name, value=…, symbol=…, pins=[…])                                  a part of a netlist circuit (no sheet)
+    part(name, value=…, symbol=…, pins=[…])                                  a part of a netlist circuit (no sheet);
+                                                                             pins=[] for a board-only footprint (a logo)
     net(name, pins=[".C1 > .pin1", …])                                       a stored net of a netlist circuit
     unit(part, unit, sch_x=, sch_y=, sch_rotation=, sch_mirror=, sch_style=)  where unit n (2 or more) of a part sits;
                                                                              the part's own sch_x, sch_y place unit 1
@@ -261,7 +262,8 @@ def _netlist_part(s: Scope, el: Element, ref: str) -> Dict[str, Any]:
             raise ValueError(f"{_where(el)}: a part that lists its pins is a netlist circuit's; it has no "
                              f"{'library' if p == 'library' else 'place on the sheet'}")
     raw = el.props.get("pins")
-    if not isinstance(raw, (list, tuple)) or not raw:
+    # A part with no pins is a board-only footprint (a logo, a mounting mark: KiCad's ``board_only``): ``pins=[]``.
+    if not isinstance(raw, (list, tuple)):
         raise ValueError(f'{_where(el)}: pins is a list of pin numbers (["1", "2"]) or of {{ number, name }}')
     pins = []
     for i, p in enumerate(raw):
