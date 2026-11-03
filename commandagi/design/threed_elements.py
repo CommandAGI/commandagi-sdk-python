@@ -374,8 +374,8 @@ _JointReferenceOptional = TypedDict("_JointReferenceOptional", {"direction": 'Ve
 class JointReference(_JointReferenceRequired, _JointReferenceOptional):
     pass
 
-#: HOW A CHECK MOVES A JOINT: `sweep={{ joint: "ramJ", step: 10 }}`. The values are spread evenly over the joint's `limits`, both ends included; where a pair starts or stops clashing (or being too near) between two values, the value is found to 0.1 mm or 0.1°. A value is the joint's displacement from the pose the document draws: millimetres along a prismatic joint's axis, radians about a revolute joint's axis through its anchor.
-_JointSweepRequired = TypedDict("_JointSweepRequired", {"joint": str})
+#: HOW A CHECK MOVES ITS JOINTS: `sweep={{ joints: ["X", "Z"], step: 5 }}`. Each joint's values are spread evenly over its `limits` (a cylindrical joint's slide over its `travel`, as the axis `<id>:slide`), both ends included, and every combination is a pose. Where a pair starts or stops clashing (or being too near) between two values, the value is found to 0.1 mm or 0.1°; between poses, the kernel proves the pair apart or splits the cell (docs/formats.md § design checks, over the joints' ranges). A value is the joint's own: millimetres along a prismatic joint's axis, radians about a revolute, screw or cylindrical joint's axis through its anchor.
+_JointSweepRequired = TypedDict("_JointSweepRequired", {"joints": List[str]})
 _JointSweepOptional = TypedDict("_JointSweepOptional", {"samples": int, "step": float}, total=False)
 class JointSweep(_JointSweepRequired, _JointSweepOptional):
     pass

@@ -6,6 +6,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 ## Unreleased
 
+Changed
+
+- `check(sweep=...)` names the joints it moves: `sweep={'joints': ['X', 'Z'], 'step': 10}` (was `'joint'`). Several joints are swept as a grid, and a loop a swept joint closes is solved at each pose. The same as the TypeScript SDK.
+
 Added
 
 - `commandagi.design.media`: a speaker's track, `track(kind="audio", speaker="Cici", turns=passes["C"], src="stems/take.voices.wav")`, makes that speaker's turns in the pass its clips; `denoise(reduction, floor)` and `loudness(target, peak)` are audio effects. The same as the TypeScript SDK.
