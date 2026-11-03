@@ -48,7 +48,12 @@ CASE_ORIGINS = ["public", "synthetic", "own-run"]
 #: What a workload needs of a model: a hard gate, never a score.
 WORKLOAD_NEEDS = ["tools", "structured", "image"]
 #: The checks a case may name, cheapest first (a judge's rubric only where no check exists).
-CHECK_KINDS = ["exact", "oneOf", "number", "contains", "regex", "json", "letter", "literal", "tool", "program"]
+CHECK_KINDS = ["exact", "oneOf", "number", "contains", "regex", "json", "letter", "literal", "tool", "program", "kernel"]
+#: The file a ``kernel`` check measures: a solid (``bracket.3d.tsx``) or a schematic (``divider.sch.tsx``), alone.
+KERNEL_FILE = re.compile(r"^[^/]+\.(?:3d|sch)\.(?:[jt]sx|py|rs)$", re.I)
+#: What a ``kernel`` check may expect of a solid, and of a schematic.
+SOLID_MEASURES = ["volume", "bbox", "bodies", "holes"]
+CIRCUIT_MEASURES = ["parts", "nets", "connections"]
 
 REPLACEMENT_FIELDS = ["product", "vendor", "url", "asOf", "by", "readme"]
 LAYER_FIELDS = ["kind", "title"]
@@ -81,7 +86,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 }
 
 __all__ = ["SCOUT_FIELDS", "CONFIGURATION_FIELDS", "WORKLOAD_FIELDS", "CASE_FIELDS", "JUDGE_FIELDS", "CASE_ORIGINS",
-           "WORKLOAD_NEEDS", "CHECK_KINDS", "REPLACEMENT_FIELDS", "LAYER_FIELDS", "CAPABILITY_FIELDS", "EVIDENCE_FIELDS",
+           "WORKLOAD_NEEDS", "CHECK_KINDS", "KERNEL_FILE", "SOLID_MEASURES", "CIRCUIT_MEASURES", "REPLACEMENT_FIELDS", "LAYER_FIELDS", "CAPABILITY_FIELDS", "EVIDENCE_FIELDS",
            "DECISION_FIELDS", "ECONOMICS_FIELDS", "LAYER_KINDS", "CAPABILITY_NEEDS", "CAPABILITY_HAVES",
            "CAPABILITY_EFFORTS", "EVIDENCE_CLAIMS", "DECISION_CHOICES", "SIGNATURES", "SCOUT_VOCABULARY",
            "REPLACEMENT_VOCABULARY", "SCOUTS", *define(globals(), "scouts", SIGNATURES)]
@@ -172,6 +177,38 @@ def _check(t: DocTree) -> None:
             raise ValueError(f"{_where(t)} check: program is {{ data: [[x, y], …] }}")
         if "tolerance" in p and not (_number(p["tolerance"]) and p["tolerance"] >= 0):
             raise ValueError(f"{_where(t)} check: program tolerance is a number of 0 or more")
+    if "kernel" in x:
+        _kernel_check(t, x["kernel"])
+
+
+def _kernel_check(t: DocTree, k: object) -> None:
+    """A ``kernel`` check: the file it measures, and only the measures that file's kind has."""
+    if not (isinstance(k, dict) and isinstance(k.get("as"), str) and KERNEL_FILE.match(k["as"])):
+        raise ValueError(f'{_where(t)} check: kernel is {{ as: "bracket.3d.tsx" | "divider.sch.tsx", expect }} — a solid or a schematic, one file')
+    for key in k:
+        if key not in ("as", "expect", "tolerance", "oriented"):
+            raise ValueError(f"{_where(t)} check: kernel has no {key}")
+    solid = re.search(r"\.3d\.", k["as"], re.I) is not None
+    allowed = SOLID_MEASURES if solid else CIRCUIT_MEASURES
+    e = k.get("expect")
+    if not (isinstance(e, dict) and e):
+        raise ValueError(f"{_where(t)} check: kernel expect names at least one of {', '.join(allowed)}")
+    for key, v in e.items():
+        if key not in allowed:
+            raise ValueError(f"{_where(t)} check: a {'solid' if solid else 'schematic'} has no measure {key} ({', '.join(allowed)})")
+        if key in ("bodies", "holes", "parts", "nets") and not (isinstance(v, int) and not isinstance(v, bool) and v >= 0):
+            raise ValueError(f"{_where(t)} check: kernel {key} is a count")
+        if key == "volume" and not (_number(v) and v > 0):
+            raise ValueError(f"{_where(t)} check: kernel volume is mm³, more than 0")
+        if key == "bbox" and not (isinstance(v, list) and len(v) == 3 and all(_number(n) and n >= 0 for n in v)):
+            raise ValueError(f"{_where(t)} check: kernel bbox is [x, y, z] mm")
+        if key == "connections" and not (isinstance(v, list) and v and all(
+                isinstance(g, list) and len(g) >= 2 and all(isinstance(p, str) and re.fullmatch(r"[^.\s]+\.[^.\s]+", p) for p in g) for g in v)):
+            raise ValueError(f'{_where(t)} check: kernel connections is a list of pin groups ([["R1.2", "R2.1"]]), each on one net')
+    if "tolerance" in k and not (_number(k["tolerance"]) and 0 <= k["tolerance"] < 1):
+        raise ValueError(f"{_where(t)} check: kernel tolerance is a share, 0 to under 1")
+    if "oriented" in k and (not isinstance(k["oriented"], bool) or not solid):
+        raise ValueError(f"{_where(t)} check: kernel oriented is true or false, on a solid")
 
 
 def _tools_of(t: DocTree) -> None:

@@ -145,6 +145,10 @@ class ScoutTests(unittest.TestCase):
                 {"name": "a", "parameters": {}, "results": [{"when": {"x": 1}, "result": "r"}]}]},
             r"program is \{ data: \[\[x, y\], …\] \}": {"check": {"program": {"data": []}}},
             "program tolerance is a number of 0 or more": {"check": {"program": {"data": [[1, 4]], "tolerance": -1}}},
+            "a solid or a schematic, one file": {"check": {"kernel": {"as": "world.tsx", "expect": {"parts": 1}}}},
+            "a solid has no measure nets": {"check": {"kernel": {"as": "plate.3d.tsx", "expect": {"nets": 2}}}},
+            "connections is a list of pin groups": {"check": {"kernel": {"as": "divider.sch.tsx", "expect": {"connections": [["R1"]]}}}},
+            "names at least one of volume, bbox, bodies, holes": {"check": {"kernel": {"as": "plate.3d.tsx", "expect": {}}}},
         }.items():
             with self.assertRaisesRegex(ValueError, why, msg=why):
                 one(**attrs)()
@@ -153,6 +157,11 @@ class ScoutTests(unittest.TestCase):
                      id="w"), budget=1))
         self.assertEqual(prog["document"]["workloads"][0]["cases"][0]["check"],
                          {"program": {"data": [[1, 4], [2, 7], [5, 16]]}})
+        # A kernel check measures a solid or a schematic: each kind has its own measures.
+        for check in ({"kernel": {"as": "plate.3d.tsx", "expect": {"volume": 3858.6, "bbox": [40, 20, 5], "bodies": 1, "holes": 1}, "tolerance": 0.01}},
+                      {"kernel": {"as": "divider.sch.tsx", "expect": {"parts": 3, "nets": 3, "connections": [["R1.2", "R2.1"]]}}}):
+            k = declare_document(scout(workload(case(id="c", from_="synthetic", prompt="p", check=check), id="w"), budget=1))
+            self.assertEqual(k["document"]["workloads"][0]["cases"][0]["check"], check)
 
     def test_a_replacement_analysis_declares_its_layers_capabilities_and_decision(self):
         doc = declare_document(replacement(

@@ -12,6 +12,7 @@ Changed
 
 Added
 
+- A scout's case may be checked by the kernel: `check={"kernel": {"as": "plate.3d.tsx", "expect": {"volume": 13928.8, "bbox": [60, 40, 6], "bodies": 1, "holes": 4}}}` builds the answer as a solid and holds its measures; `"as": "divider.sch.tsx"` reads it into its netlist and holds `parts`, `nets` and `connections`. The same as the TypeScript SDK.
 - `joint(requires={'j_lid': 100})`: a joint moves only while other joints sit at a pose (a value, or a range `[from, to]`), and `check(sweep={'joints': ['j_lift'], 'with': {'guard': 60}})` holds other joints at a value. The same as the TypeScript SDK. For microfab: IC1-22 and PCBC-24 are closed; ROUTER-12 (the whole machine's check at fine sweep steps) does not reproduce: the router at steps 5 / 5 / 2 runs whole in 107 s with the same verdicts as at 20 / 10 / 5.
 - `commandagi.design.schematic`: a part says KiCad's reference when another part has it too, `part("POLY_2", reference="POLY", …)` (said only when it is not the name). `commandagi.design.pcb`: `component(library=…)` takes a footprint id with no library nickname as KiCad wrote it, `footprint="POLY"`. The same as the TypeScript SDK.
 - `commandagi.design.media`: a speaker's track, `track(kind="audio", speaker="Cici", turns=passes["C"], src="stems/take.voices.wav")`, makes that speaker's turns in the pass its clips; `denoise(reduction, floor)` and `loudness(target, peak)` are audio effects. The same as the TypeScript SDK.
