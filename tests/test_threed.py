@@ -211,12 +211,12 @@ class ThreeDTests(unittest.TestCase):
             slot(name="dynamics", value={"ground": {"enabled": True}}),
             joint(id="j1", kind="revolute", a="base", b="arm", anchor=[0, 0, 40], axis=[0, 0, 1], limits=[-1.5, 1.5],
                   ref_a={"kind": "face", "point": [0, 0, 40], "direction": [0, 0, 1]}),
-            joint(id="j2", kind="screw", a="arm", anchor=[0, 0, 0], pitch=2),
+            joint(id="j2", kind="screw", a="arm", anchor=[0, 0, 0], pitch=2, requires={"j1": [0, 1.5]}),
             sheet(id="sheet1", views=[{"id": "front", "view": "front"}, {"id": "top", "view": "top"}], title={"drawnBy": "JV"}),
             name="P"))["nodes"]
         self.assertEqual(n["bodyMeta"]["inputs"], {"base": {"engineering": engineering}})
         # The joints are the `joints` port of the document's dynamics, beside what its slot holds.
-        self.assertEqual(n["dynamics"]["inputs"], {"ground": {"enabled": True}, "joints": [j1, {"id": "j2", "kind": "screw", "a": "arm", "anchor": [0, 0, 0], "pitch": 2}]})
+        self.assertEqual(n["dynamics"]["inputs"], {"ground": {"enabled": True}, "joints": [j1, {"id": "j2", "kind": "screw", "a": "arm", "anchor": [0, 0, 0], "pitch": 2, "requires": {"j1": [0, 1.5]}}]})
         self.assertEqual(n["dynamics"]["type"], "3d.dynamics")
         # A sheet's fields with a default may be left out.
         self.assertEqual(n["drawings"]["inputs"], {"value": [{
@@ -299,6 +299,12 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(n["accepted"]["inputs"]["value"][0]["maxVolume"], 3200)
         with self.assertRaisesRegex(ValueError, "sweep/samples: must be at least 2"):
             run_module(swept.replace("'step': 10", "'samples': 1"), "S.3d.py")
+        # IC1-22, PCBC-24: a sweep holds another joint (with).
+        held = swept.replace("'step': 10}", "'step': 10, 'with': {'lid': 1.5}}")
+        n = run_module(held, "S.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["checks"]["inputs"]["value"][0]["sweep"]["with"], {"lid": 1.5})
+        with self.assertRaisesRegex(ValueError, "sweep/with/lid"):
+            run_module(held.replace("'lid': 1.5", "'lid': 'open'"), "S.3d.py")
 
     def test_an_envelope_declares_its_mounting_holes_and_a_library_its_sizes(self):
         src = ("from commandagi.design.threed import *\n"

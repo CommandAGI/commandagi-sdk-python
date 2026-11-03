@@ -264,7 +264,7 @@ class _DynamicsJoint6(__DynamicsJoint6Required, __DynamicsJoint6Optional):
 
 #: A joint between two bodies: its kind, its axis, its limits and the two references it binds. `<joint>` in code.
 _DynamicsJointRequired = TypedDict("_DynamicsJointRequired", {"id": str, "kind": 'JointKind', "a": str, "anchor": 'Vec32'})
-_DynamicsJointOptional = TypedDict("_DynamicsJointOptional", {"b": str, "axis": 'Vec32', "refA": 'JointReference', "refB": 'JointReference', "limits": Tuple[float, float], "travel": Tuple[float, float], "pitch": float, "efficiency": float, "home": float, "homeTravel": float, "actuator": '_DynamicsJoint6'}, total=False)
+_DynamicsJointOptional = TypedDict("_DynamicsJointOptional", {"b": str, "axis": 'Vec32', "refA": 'JointReference', "refB": 'JointReference', "limits": Tuple[float, float], "travel": Tuple[float, float], "pitch": float, "efficiency": float, "home": float, "homeTravel": float, "requires": Dict[str, Union[float, Tuple[float, float]]], "actuator": '_DynamicsJoint6'}, total=False)
 class DynamicsJoint(_DynamicsJointRequired, _DynamicsJointOptional):
     pass
 
@@ -376,7 +376,7 @@ class JointReference(_JointReferenceRequired, _JointReferenceOptional):
 
 #: HOW A CHECK MOVES ITS JOINTS: `sweep={{ joints: ["X", "Z"], step: 5 }}`. Each joint's values are spread evenly over its `limits` (a cylindrical joint's slide over its `travel`, as the axis `<id>:slide`), both ends included, and every combination is a pose. Where a pair starts or stops clashing (or being too near) between two values, the value is found to 0.1 mm or 0.1°; between poses, the kernel proves the pair apart or splits the cell (docs/formats.md § design checks, over the joints' ranges). A value is the joint's own: millimetres along a prismatic joint's axis, radians about a revolute, screw or cylindrical joint's axis through its anchor.
 _JointSweepRequired = TypedDict("_JointSweepRequired", {"joints": List[str]})
-_JointSweepOptional = TypedDict("_JointSweepOptional", {"samples": int, "step": float}, total=False)
+_JointSweepOptional = TypedDict("_JointSweepOptional", {"samples": int, "step": float, "with": Dict[str, float]}, total=False)
 class JointSweep(_JointSweepRequired, _JointSweepOptional):
     pass
 
