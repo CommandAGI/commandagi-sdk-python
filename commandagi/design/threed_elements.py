@@ -552,9 +552,9 @@ _PartMassOptional = TypedDict("_PartMassOptional", {}, total=False)
 class PartMass(_PartMassRequired, _PartMassOptional):
     pass
 
-#: WHAT ONE ORDER NEEDS OF A PART BEYOND `qty × N` (docs/formats.md § logistics, the need): true of the part whatever the order, so the design states it. need(N) = (qty × N + spares) plus attrition, rounded up to `multiple`.
+#: WHAT ONE ORDER NEEDS OF A PART BEYOND `qty × N` (docs/formats.md § logistics, the need): true of the part whatever the order, so the design states it. need(N) = (qty × N + spares) plus attrition, rounded up to `multiple`. A count loses whole parts (its attrition rounds up to one); a measure (a unit other than `each`, or a share) loses its share.
 _PartNeedRequired = TypedDict("_PartNeedRequired", {})
-_PartNeedOptional = TypedDict("_PartNeedOptional", {"spares": int, "attrition": float, "attritionMin": int, "multiple": int}, total=False)
+_PartNeedOptional = TypedDict("_PartNeedOptional", {"spares": float, "attrition": float, "attritionMin": float, "multiple": float}, total=False)
 class PartNeed(_PartNeedRequired, _PartNeedOptional):
     pass
 
@@ -651,7 +651,7 @@ class ProductFacts(_ProductFactsRequired, _ProductFactsOptional):
 
 #: A PART OF THE PRODUCT WITH NO GEOMETRY HERE: `<item>` (a cable in the box, foam tape, or another design by `ref`).
 _ProductItemRequired = TypedDict("_ProductItemRequired", {"id": str, "name": str})
-_ProductItemOptional = TypedDict("_ProductItemOptional", {"qty": int, "ref": str, "engineering": 'PartEngineering'}, total=False)
+_ProductItemOptional = TypedDict("_ProductItemOptional", {"qty": float, "unit": 'QuantityUnit', "ref": str, "engineering": 'PartEngineering'}, total=False)
 class ProductItem(_ProductItemRequired, _ProductItemOptional):
     pass
 
@@ -888,7 +888,7 @@ class SplitFeature(_SplitFeatureRequired, _SplitFeatureOptional):
 
 #: THE STOCK A MADE PART USES, AS ITS SUPPLIER SELLS IT: `make.stock`.
 _StockMaterialRequired = TypedDict("_StockMaterialRequired", {"name": str, "perPart": float})
-_StockMaterialOptional = TypedDict("_StockMaterialOptional", {"partNumber": str, "suppliers": List['SupplierOffer']}, total=False)
+_StockMaterialOptional = TypedDict("_StockMaterialOptional", {"partNumber": str, "unit": 'QuantityUnit', "suppliers": List['SupplierOffer']}, total=False)
 class StockMaterial(_StockMaterialRequired, _StockMaterialOptional):
     pass
 
@@ -900,7 +900,7 @@ class SubdivBodyFeature(_SubdivBodyFeatureRequired, _SubdivBodyFeatureOptional):
 
 #: WHO SELLS A PART, AND ON WHAT TERMS: one supplier's offer (docs/formats.md § logistics). The quantity terms (`stock`, `moq`, `orderMultiple`, `leadTimeDays`, `priceBreaks`) are the ones a component catalog's offer states. A price or a stock says where and when it was read (`source`, `date`).
 _SupplierOfferRequired = TypedDict("_SupplierOfferRequired", {"name": str})
-_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "leadTimeDays": float, "leadTimeDaysHigh": float, "stock": int, "preorder": int, "pool": str, "incoming": List['IncomingLot'], "kind": Literal["stock", "quote", "listing", "broker"], "confidence": Literal["firm", "indication"], "samplesDays": float, "tooling": Union[float, Literal["unknown"]], "service": str, "via": str, "source": str, "date": str, "dates": 'OfferDates', "supplier": str}, total=False)
+_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "pack": float, "leadTimeDays": float, "leadTimeDaysHigh": float, "stock": int, "preorder": int, "pool": str, "incoming": List['IncomingLot'], "kind": Literal["stock", "quote", "listing", "broker"], "confidence": Literal["firm", "indication"], "samplesDays": float, "tooling": Union[float, Literal["unknown"]], "service": str, "via": str, "source": str, "date": str, "dates": 'OfferDates', "supplier": str}, total=False)
 class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
     pass
 
@@ -1443,6 +1443,9 @@ OffsetJoin = Literal["miter", "round", "bevel"]
 
 #: WHERE A SKETCH LIVES. Three kinds, and the third is not a plane at all.
 PlaneRef = Union['_PlaneRef18', '_PlaneRef19', '_PlaneRef20']
+
+#: What a quantity is counted in: parts (`each`), grams, kilograms, metres, millimetres or millilitres.
+QuantityUnit = Literal["mm", "each", "g", "kg", "m", "ml"]
 
 #: How an end is held: soldered to a pad or a joint, crimped, inserted in a socket, or pinned at a point (free to turn).
 RodHold = Literal["solder", "crimp", "insert", "pin"]

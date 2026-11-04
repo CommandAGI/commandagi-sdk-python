@@ -133,6 +133,8 @@ class LogisticsTests(unittest.TestCase):
         for el, message in (
             (threed.body(id="b", engineering={"vendor": {"name": "X"}}), "vendor"),
             (threed.item(id="t", name="T", qty=0), "qty"),
+            (threed.item(id="w", name="Webbing", qty=0.64, unit="yd"), "unit"),
+            (threed.item(id="w", name="Webbing", engineering={"suppliers": [{"name": "eBay", "pack": 0}]}), "pack"),
             (threed.body(id="b", engineering={"lifecycle": {"status": "dead"}}), "status"),
         ):
             with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
@@ -145,6 +147,11 @@ class LogisticsTests(unittest.TestCase):
         for need, message in (({"multiple": 0}, "multiple"), ({"panels": 2}, "panels")):
             with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
                 threed.declare_threed(threed.part(threed.item(id="pin", name="Pin", engineering={"need": need}), name="P"))
+        # A bulk quantity: 0.64 m of webbing a product, a third of a strip, an offer that sells it in 2 m strips.
+        strip = {"process": "purchased", "need": {"attrition": 0.05, "spares": 0.5},
+                 "suppliers": [{"name": "eBay", "pack": 2, "currency": "USD", "priceBreaks": [{"quantity": 1, "unitPrice": 2.23}]}]}
+        threed.declare_threed(threed.part(threed.item(id="web", name="Webbing", qty=0.64, unit="m", engineering=strip), name="P"))
+        threed.declare_threed(threed.part(threed.item(id="foam", name="Foam strip", qty=0.3333), name="P"))
 
     def test_a_3d_documents_product_is_a_list_of_the_document_and_stock_and_shutoff_are_engineering_fields(self):
         product = {"id": "kit", "name": "Sensor kit", "compliance": {"eccn": "EAR99", "certifications": ["CE"]},
@@ -158,6 +165,7 @@ class LogisticsTests(unittest.TestCase):
         for el, message in (
             (threed.product(id="kit"), "name"),
             (threed.item(id="b", name="B", engineering={"make": {"stock": {"name": "S", "perPart": 0}}}), "perPart"),
+            (threed.item(id="b", name="B", engineering={"make": {"stock": {"name": "S", "perPart": 88, "unit": "lb"}}}), "unit"),
         ):
             with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
                 threed.declare_threed(threed.part(el, name="P"))
@@ -209,6 +217,7 @@ class LogisticsTests(unittest.TestCase):
         sheet(schematic.part("U4", pins=["1"], suppliers=[{"name": "X", "preorder": -3898}]))  # more promised than held
         for kw, message in (
             ({"suppliers": [{"name": "X", "preorder": 1.5}]}, "preorder is a whole number"),
+            ({"suppliers": [{"name": "X", "pack": 0}]}, "pack is what one unit sold holds"),
             ({"suppliers": [{"name": "X", "via": "suppliers/jlcpcb.supplier.tsx"}]}, "names that supplier's service"),
             ({"suppliers": [{"name": "X", "incoming": [{"quantity": 3000, "date": "soon"}]}]}, r"incoming is a list of \{ quantity, date \}"),
             ({"suppliers": [{"name": "X", "dates": {"colour": "2026-11-03"}}]}, r"dates is \{ <term>: YYYY-MM-DD \}"),

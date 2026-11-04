@@ -11,7 +11,7 @@ form the board editor writes), so the BOM, the KiCad board and a 3D body's join 
                                                                            <YYYY-MM-DD>", "measured <YYYY-MM-DD>[, <how>]")
     package_dimensions=                                                     its datasheet package ("<n> pins, pitch
                                                                            <mm> mm, body <l> x <w> mm")
-    suppliers=[{"name", "sku", "url", "currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays",
+    suppliers=[{"name", "sku", "url", "currency", "priceBreaks", "moq", "orderMultiple", "pack", "leadTimeDays",
                 "leadTimeDaysHigh", "stock", "preorder", "pool", "incoming", "kind", "confidence", "samplesDays",
                 "tooling", "service", "via", "supplier", "source", "date", "dates"}]
     alternates=[{"manufacturer", "mpn", "note", "approved", "differences", "datasheet", "suppliers"}]
@@ -77,7 +77,7 @@ _CHOICES = {
 }
 _COUNTS = {"lifecycle.onHand", "lifecycle.reorderPoint"}
 _DATES = {"lifecycle.lastTimeBuy", "lifecycle.date"}
-_OFFER_TERMS = ["currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays", "leadTimeDaysHigh", "stock", "preorder", "pool",
+_OFFER_TERMS = ["currency", "priceBreaks", "moq", "orderMultiple", "pack", "leadTimeDays", "leadTimeDaysHigh", "stock", "preorder", "pool",
                 "incoming", "kind", "confidence", "samplesDays", "tooling", "service", "via", "supplier", "url", "source", "date", "dates"]
 _NEED_KEYS = ["spares", "attrition", "attritionMin", "multiple"]
 _OFFER_KINDS = ["stock", "quote", "listing", "broker"]
@@ -201,6 +201,8 @@ def check_offers(where: str, v: Any) -> List[Dict[str, Any]]:
             raise ValueError(f"{at}: moq is a whole number, 1 or more")
         if s.get("orderMultiple") is not None and not _whole(s["orderMultiple"], 1):
             raise ValueError(f"{at}: orderMultiple is a whole number, 1 or more")
+        if s.get("pack") is not None and not (_number(s["pack"]) and s["pack"] > 0):
+            raise ValueError(f"{at}: pack is what one unit sold holds, more than 0")
         if s.get("stock") is not None and not _whole(s["stock"], 0):
             raise ValueError(f"{at}: stock is a whole number")
         if s.get("leadTimeDays") is not None and not (_number(s["leadTimeDays"]) and s["leadTimeDays"] >= 0):
