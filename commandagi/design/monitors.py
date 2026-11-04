@@ -14,7 +14,7 @@ account's Drive, never written in the file::
 
 A monitor's ``class`` is written ``class_`` (a Python keyword). A follow names the followed monitor's folder, relative
 to this monitor's folder, and takes the records its ``when`` (a record predicate, like a discover's) holds for. Nothing adds a default: what the file does not say, the document does not have. A monitor's
-``sameAs``, ``sources``, ``follows``, ``derives``, ``wakes`` and ``discovers`` are always lists. A ``derive`` names an
+``sameAs``, ``sources``, ``follows``, ``derives``, ``wakes``, ``discovers`` and ``judges`` are always lists. A ``derive`` names an
 operator and, per port, the folder of the monitor whose records go in: ``derive(id="vwap", op="vwap",
 inputs={"trades": "../trades"}, params={"window": "1m"})``. A ``discover`` gives each thing its records name a folder
 and a thread of its own, an instance of a class (``<file>#<Component>``)::
@@ -41,6 +41,9 @@ FOLLOW_FIELDS = ["monitor", "when"]
 WAKE_FIELDS = ["match", "every", "prompt"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since"]
 DISCOVER_FIELDS = ["into", "of", "when", "slug", "class", "props", "name", "max", "visibility"]
+MONITOR_JUDGE_FIELDS = ["id", "of", "rubric", "model"]
+#: What a judge judges: each turn of the thread's agents, or each turn on a mounted task.
+MONITOR_JUDGE_OF = ["turn", "task"]
 #: The most new folders a discover writes a tick.
 DISCOVER_MAX = 50
 #: Who may read a file a discover writes (docs/monitors.md § own thread or record).
@@ -65,9 +68,10 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "derive": {},
     "wake": {},
     "discover": {},
+    "judge": {},
 }
 
-__all__ = ["MONITOR_FIELDS", "SUBJECT", "SOURCE_FIELDS", "FOLLOW_FIELDS", "DERIVE_FIELDS", "WAKE_FIELDS", "DISCOVER_FIELDS",
+__all__ = ["MONITOR_FIELDS", "SUBJECT", "SOURCE_FIELDS", "FOLLOW_FIELDS", "DERIVE_FIELDS", "WAKE_FIELDS", "DISCOVER_FIELDS", "MONITOR_JUDGE_FIELDS", "MONITOR_JUDGE_OF",
            "DISCOVER_MAX", "VISIBILITIES", "VIAS", "VM_VIAS", "MODES", "UNIT_REF", "SIGNATURES", "duration_seconds", "monitor_with_defaults", "MONITOR_VOCABULARY",
            *define(globals(), "monitors", SIGNATURES)]
 
@@ -298,7 +302,21 @@ def _monitor(t: DocTree) -> Dict[str, Any]:
         wakes.append(_said(c["attrs"], WAKE_FIELDS))
     derives = [_derive(c) for c in parts("derive")]
     return {**_said(t["attrs"], MONITOR_FIELDS), "sources": [_source(c) for c in parts("source")], "follows": follows,
-            "derives": derives, "wakes": wakes, "discovers": [_discover(c) for c in parts("discover")]}
+            "derives": derives, "wakes": wakes, "discovers": [_discover(c) for c in parts("discover")],
+            "judges": [_judge(c) for c in parts("judge")]}
+
+
+def _judge(t: DocTree) -> Dict[str, Any]:
+    """A judge of the monitor's thread (docs/monitors.md § a cloud thread's judge): when a turn or a task's turn ends,
+    the model reads the trace with the rubric, and its verdict is a record of the thread (an opinion, never evidence)."""
+    for k in ("id", "rubric", "model"):
+        _text(t, k)
+    if not _WORD.match(t["attrs"].get("id") or ""):
+        raise ValueError(f"{_where(t)} id is a word (letters, digits, _ and -)")
+    _one_of(t, "of", MONITOR_JUDGE_OF)
+    if not re.search(r"\.md$", t["attrs"].get("rubric") or "", re.I):
+        raise ValueError(f'{_where(t)} rubric is a .md file ("./rubric.md"), not {t["attrs"].get("rubric")!r}')
+    return _said(t["attrs"], MONITOR_JUDGE_FIELDS)
 
 
 def _never(_: Any) -> DocTree:
@@ -312,6 +330,7 @@ MONITOR_VOCABULARY = Vocabulary("monitor", "a monitor", "monitor", {
     "derive": {"parents": ["monitor"], "key": "id", "required": ["id", "op", "inputs"], "attrs": DERIVE_FIELDS},
     "wake": {"parents": ["monitor"], "required": ["prompt"], "attrs": WAKE_FIELDS},
     "discover": {"parents": ["monitor"], "required": ["slug", "class"], "attrs": DISCOVER_FIELDS},
+    "judge": {"parents": ["monitor"], "key": "id", "required": ["id", "of", "rubric", "model"], "attrs": MONITOR_JUDGE_FIELDS},
 }, _monitor, _never)
 
 register_vocabulary(MONITOR_VOCABULARY, "monitors")
@@ -340,4 +359,5 @@ def monitor_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
             "derives": [{"id": d["id"], "op": d["op"], "inputs": d["inputs"], "params": d.get("params", {}),
                          "since": d.get("since")} for d in m.get("derives", [])],
             "wakes": [{"match": w.get("match"), "every": w.get("every"), "prompt": w["prompt"]} for w in m.get("wakes", [])],
-            "discovers": [disc(d) for d in m.get("discovers", [])]}
+            "discovers": [disc(d) for d in m.get("discovers", [])],
+            "judges": [{"id": j["id"], "of": j["of"], "rubric": j["rubric"], "model": j["model"]} for j in m.get("judges", [])]}

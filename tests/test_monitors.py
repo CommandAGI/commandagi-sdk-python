@@ -5,7 +5,7 @@ import re
 import unittest
 
 from commandagi.design.documents import declare_document
-from commandagi.design.monitors import derive, discover, follows, monitor, monitor_with_defaults, source, wake
+from commandagi.design.monitors import derive, discover, follows, judge, monitor, monitor_with_defaults, source, wake
 
 
 def corporation(cik, ticker, name):
@@ -25,7 +25,7 @@ class MonitorTests(unittest.TestCase):
             "follows": [{"monitor": "../../central-banks/fed", "when": {"class": "fomc.*"}}],
             "derives": [],
             "wakes": [{"match": "sec.filing.8-k*", "prompt": "Say what the report changes."}],
-            "discovers": []})
+            "discovers": [], "judges": []})
         self.assertEqual(monitor_with_defaults(d["document"])["follows"], [{"monitor": "../../central-banks/fed", "when": {"class": "fomc.*"}}])
         with self.assertRaisesRegex(ValueError, "sameAs is a list of subjects"):
             declare_document(monitor(same_as=["NVDA"]))
@@ -37,6 +37,17 @@ class MonitorTests(unittest.TestCase):
             declare_document(monitor(wake(every="8d", prompt="p")))
         with self.assertRaisesRegex(ValueError, "not both"):
             declare_document(monitor(wake(match="x.*", every="1d", prompt="p")))
+
+    def test_a_judge_names_what_it_judges_its_rubric_and_its_model(self):
+        d = declare_document(monitor(judge(id="claims", of="task", rubric="./rubric.md", model="fireworks/glm-5p3")))
+        self.assertEqual(d["document"]["judges"], [{"id": "claims", "of": "task", "rubric": "./rubric.md", "model": "fireworks/glm-5p3"}])
+        self.assertEqual(monitor_with_defaults(d["document"])["judges"], d["document"]["judges"])
+        with self.assertRaisesRegex(ValueError, 'of is "turn", "task"'):
+            declare_document(monitor(judge(id="j", of="thread", rubric="r.md", model="m")))
+        with self.assertRaisesRegex(ValueError, "rubric is a .md file"):
+            declare_document(monitor(judge(id="j", of="turn", rubric="r.txt", model="m")))
+        with self.assertRaisesRegex(ValueError, "needs model"):
+            declare_document(monitor(judge(id="j", of="turn", rubric="r.md")))
 
     def test_refusals(self):
         def one(*children):
