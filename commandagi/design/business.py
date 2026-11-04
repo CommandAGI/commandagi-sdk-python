@@ -14,7 +14,9 @@ open as ``<Name>.company.py``, ``<name>.rfc.py`` and ``<name>.case.py``, and the
     )
 
 Each call is one element (``./element.py``): its children positional, its attributes as snake_case keywords
-(``fiscal_year_end=`` is ``fiscalYearEnd``). ``document_of`` reads one into the document the apps use: the company
+(``fiscal_year_end=`` is ``fiscalYearEnd``). A group names its subsidiaries
+(``Subsidiary(file="Acme UK.company.py", ownership="100")``) and its typed documents (``Paper(Signature(party=…),
+kind="nda", file="Acme/Documents/NDA.md")``; docs/company-substrate.md). ``document_of`` reads one into the document the apps use: the company
 itself, or an RFC's or a case's ``{"id"?, "draft"}``. The standard's parts REF their files (the journal stays hledger,
 the cap table Open Cap Table Format). A change's ``parameter`` is the draft's ``key``. Beside the document, ``sources``
 names the call each part was written in, by path (``""`` the root, ``entity``, ``options/0/changes/1``). An unknown
@@ -32,7 +34,7 @@ _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters"},
-                "many": {"registrations": "Registration"}},
+                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper"}},
     "Entity": {"props": {"jurisdiction": _TEXT, "form": _TEXT, "taxClassification": _TEXT, "name": _TEXT, "formed": _TEXT,
                          "fiscalYearEnd": _TEXT, "ids": _RECORD, "operatesIn": _TEXTS, "conditions": _RECORD}, "required": ["jurisdiction"]},
     "Registration": {"props": {"kind": _TEXT, "jurisdiction": _TEXT, "id": _TEXT, "issued": _TEXT, "expires": _TEXT, "file": _TEXT}, "required": ["kind"]},
@@ -41,6 +43,14 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "People": {"props": {"folder": _TEXT}, "required": ["folder"]},
     "Calendar": {"props": {"folder": _TEXT}, "required": ["folder"]},
     "Matters": {"props": {"folder": _TEXT}, "required": ["folder"]},
+    # A group's subsidiary: its own company file, by ref (docs/company-substrate.md § entities).
+    "Subsidiary": {"props": {"file": _TEXT, "ownership": _AMOUNT, "since": _TEXT, "method": _TEXT}, "required": ["file", "ownership"]},
+    # A typed document: a file of the company it describes (docs/company-substrate.md § documents).
+    "Paper": {"props": {"kind": _TEXT, "title": _TEXT, "file": _TEXT, "status": _TEXT, "parties": _TEXTS, "jurisdiction": _TEXT,
+                        "effective": _TEXT, "expires": _TEXT, "renewal": _TEXT, "noticeDays": _AMOUNT},
+              "required": ["kind", "file"], "many": {"signatures": "Signature", "versions": "Version"}},
+    "Signature": {"props": {"party": _TEXT, "signer": _TEXT, "capacity": _TEXT, "date": _TEXT, "method": _TEXT, "evidence": _TEXT}, "required": ["party"]},
+    "Version": {"props": {"file": _TEXT, "date": _TEXT, "note": _TEXT}, "required": ["file"]},
     "Rfc": {"props": {"id": _TEXT, "procedure": _TEXT, "title": _TEXT, "body": _TEXT, "target": _TEXT, "engineJson": _TEXT}, "many": {"options": "Option"}},
     "Option": {"props": {"title": _TEXT, "summary": _TEXT}, "many": {"changes": "Change"}},
     "Change": {"props": {"op": _TEXT, "parameter": _TEXT, "value": _TEXT, "dutyId": _TEXT, "title": _TEXT, "text": _TEXT, "protects": _TEXTS,
@@ -168,9 +178,20 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
     on = any(one[f] for f in ("books", "captable", "people", "calendar", "matters")) or bool(registrations)
     standard = {"enabled": True, "books": ref("books", "journal"), "captable": ref("captable", "ocf"), "people": ref("people", "folder"),
                 "calendar": ref("calendar", "folder"), "registrations": registrations, "matters": ref("matters", "folder")} if on else {"enabled": False}
+    subsidiaries = [dict(x["props"]) for x in node["many"]["subsidiaries"]]
+    papers = []
+    for x in node["many"]["papers"]:
+        paper = dict(x["props"])
+        if x["many"]["signatures"]:
+            paper["signatures"] = [dict(n["props"]) for n in x["many"]["signatures"]]
+        if x["many"]["versions"]:
+            paper["versions"] = [dict(n["props"]) for n in x["many"]["versions"]]
+        papers.append(paper)
+    # Each area's field is absent when the file names none of it (docs/company-substrate.md § how an area joins).
     return {"format": "commandagi-company", "name": p["name"], "about": p.get("about", ""),
             **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
-            "dashboard": p.get("dashboard"), "entity": entity, "standard": standard}
+            "dashboard": p.get("dashboard"), "entity": entity, "standard": standard,
+            **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {})}
 
 
 def _with_id(node: Dict[str, Any], draft: Dict[str, Any]) -> Dict[str, Any]:

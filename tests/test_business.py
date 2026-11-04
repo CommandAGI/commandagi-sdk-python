@@ -3,8 +3,8 @@
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.business import (Books, CapTable, Case, Change, Company, Entity, Harm, Option, Registration, Relief, Rfc,
-                                        document_of)
+from commandagi.design.business import (Books, CapTable, Case, Change, Company, Entity, Harm, Option, Paper, Registration, Relief, Rfc,
+                                        Signature, Subsidiary, Version, document_of)
 
 
 class BusinessTests(unittest.TestCase):
@@ -66,6 +66,22 @@ class BusinessTests(unittest.TestCase):
         self.assertEqual((sources["options/0/changes/0"]["tag"], sources["options/0/changes/0"]["line"]), ("Change", 3))
         self.assertEqual(sources["options/0/changes/0"]["props"]["duty_id"]["value"], "rest")
         self.assertEqual((sources["options/1"]["tag"], sources["options/1"]["line"]), ("Option", 4))
+
+    def test_a_group_names_its_subsidiaries_and_its_papers(self):
+        d = document_of(Company(
+            Subsidiary(file="Acme UK.company.tsx", ownership="100", since="2026-01-10"),
+            Paper(Signature(party="Acme Inc.", signer="Ada Park", date="2026-01-20", method="wet"), Version(file="Acme/Lease v1.pdf", date="2026-01-02"),
+                  kind="agreement", file="Acme/Lease.pdf", status="signed", parties=["Acme Inc.", "Pier 9 LLC"], expires="2027-01-31",
+                  renewal="1 year", notice_days="90"),
+            name="Acme"))
+        self.assertEqual(d["document"], {"format": "commandagi-company", "name": "Acme", "about": "", "files": [], "dashboard": None, "entity": None,
+  "standard": {"enabled": False},
+  "subsidiaries": [{"file": "Acme UK.company.tsx", "ownership": "100", "since": "2026-01-10"}],
+  "papers": [{"kind": "agreement", "file": "Acme/Lease.pdf", "status": "signed", "parties": ["Acme Inc.", "Pier 9 LLC"], "expires": "2027-01-31", "renewal": "1 year", "noticeDays": "90",
+              "signatures": [{"party": "Acme Inc.", "signer": "Ada Park", "date": "2026-01-20", "method": "wet"}],
+              "versions": [{"file": "Acme/Lease v1.pdf", "date": "2026-01-02"}]}]})
+        with self.assertRaisesRegex(ValueError, "<Subsidiary> needs ownership"):
+            document_of(Company(Subsidiary(file="B.company.py"), name="X"))
 
 
 if __name__ == "__main__":

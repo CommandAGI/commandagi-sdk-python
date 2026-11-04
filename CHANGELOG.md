@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `Company` takes `Subsidiary(file=, ownership=, since=, method=)` (each its own company file, by ref) and
+  `Paper(Signature(...), Version(...), kind=, file=, status=, parties=, effective=, expires=, renewal=, notice_days=)`.
+  The document gains `subsidiaries` and `papers`, absent when the file names none. The same in the TypeScript and Rust
+  SDKs (CommandAGI's docs/company-substrate.md).
 - `body(material=…)` is a physically based material: a `preset` (now with `anodized-aluminum`, `stainless-steel`,
   `abs`, `pbt`, `pc`, `petg`, `pla`, `glass`, `pcb`) and the fields it changes (`ior`, `transmission`, `thickness`,
   `clearcoat`, `clearcoatRoughness`, `anisotropy`, `emissive`, `emissiveIntensity`, `texture`), checked against the
