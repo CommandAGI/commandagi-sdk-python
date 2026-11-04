@@ -31,13 +31,14 @@ from .business_equity import EQUITY_TAGS, rounds_of
 from .business_finance import COMPANY_FINANCE_MANY, COMPANY_FINANCE_ONE, FINANCE_TAGS, finance_of
 from .company_formation import FILING_PAPER_PROPS, FORMATION_LISTS, FORMATION_TAGS, formation_of
 from .element import Element, child_elements, declares, define
+from .people_ops import PEOPLE_OPS_TAGS, team_of
 
 _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
 
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
-                        **COMPANY_FINANCE_ONE},
+                        **COMPANY_FINANCE_ONE, "team": "Team"},
                 "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS}},
     # A priced round, pro forma, and its investments (./business_equity.py).
     **EQUITY_TAGS,
@@ -69,6 +70,7 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Harm": {"props": {"id": _TEXT, "interest": _TEXT, "description": _TEXT, "amount": _AMOUNT}, "required": ["id"]},
     "Relief": {"props": {"kind": _TEXT, "description": _TEXT, "harmIds": _TEXTS, "amount": _AMOUNT, "days": _AMOUNT}, "required": ["kind"]},
     **FINANCE_TAGS,
+    **PEOPLE_OPS_TAGS,
 }
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``): a tag that takes child tags holds children.
@@ -204,7 +206,8 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
             **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
             "dashboard": p.get("dashboard"), "entity": entity, "standard": standard,
             **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {}),
-            **({"finance": finance} if finance else {}), **formation_of(node), **({"rounds": rounds} if rounds else {})}
+            **({"finance": finance} if finance else {}), **formation_of(node), **({"rounds": rounds} if rounds else {}),
+            **({"team": team_of(one["team"])} if one["team"] else {})}
 
 
 def _with_id(node: Dict[str, Any], draft: Dict[str, Any]) -> Dict[str, Any]:
