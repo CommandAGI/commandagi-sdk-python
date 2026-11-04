@@ -27,14 +27,16 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List, Optional
 
+from .business_finance import COMPANY_FINANCE_MANY, COMPANY_FINANCE_ONE, FINANCE_TAGS, finance_of
 from .element import Element, child_elements, declares, define
 
 _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
 
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
-                "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters"},
-                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper"}},
+                "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
+                        **COMPANY_FINANCE_ONE},
+                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", **COMPANY_FINANCE_MANY}},
     "Entity": {"props": {"jurisdiction": _TEXT, "form": _TEXT, "taxClassification": _TEXT, "name": _TEXT, "formed": _TEXT,
                          "fiscalYearEnd": _TEXT, "ids": _RECORD, "operatesIn": _TEXTS, "conditions": _RECORD}, "required": ["jurisdiction"]},
     "Registration": {"props": {"kind": _TEXT, "jurisdiction": _TEXT, "id": _TEXT, "issued": _TEXT, "expires": _TEXT, "file": _TEXT}, "required": ["kind"]},
@@ -61,12 +63,13 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
              "many": {"harms": "Harm", "relief": "Relief"}},
     "Harm": {"props": {"id": _TEXT, "interest": _TEXT, "description": _TEXT, "amount": _AMOUNT}, "required": ["id"]},
     "Relief": {"props": {"kind": _TEXT, "description": _TEXT, "harmIds": _TEXTS, "amount": _AMOUNT, "days": _AMOUNT}, "required": ["kind"]},
+    **FINANCE_TAGS,
 }
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``): a tag that takes child tags holds children.
 SIGNATURES: Dict[str, Dict[str, Any]] = {t: ({"holds": "children"} if s.get("one") or s.get("many") else {}) for t, s in BUSINESS_TAGS.items()}
 
-__all__ = ["BUSINESS_TAGS", "SIGNATURES", "read_business_node", "sources_of", "company_of", "rfc_of", "case_of", "document_of",
+__all__ = ["BUSINESS_TAGS", "SIGNATURES", "read_business_node", "sources_of", "company_of", "rfc_of", "case_of", "document_of", "finance_of",
            *define(globals(), "business", SIGNATURES)]
 
 
@@ -187,11 +190,13 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
         if x["many"]["versions"]:
             paper["versions"] = [dict(n["props"]) for n in x["many"]["versions"]]
         papers.append(paper)
+    finance = finance_of(node)
     # Each area's field is absent when the file names none of it (docs/company-substrate.md § how an area joins).
     return {"format": "commandagi-company", "name": p["name"], "about": p.get("about", ""),
             **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
             "dashboard": p.get("dashboard"), "entity": entity, "standard": standard,
-            **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {})}
+            **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {}),
+            **({"finance": finance} if finance else {})}
 
 
 def _with_id(node: Dict[str, Any], draft: Dict[str, Any]) -> Dict[str, Any]:
