@@ -1,0 +1,19 @@
+{
+  "about": "One golden for the three SDKs' pattern operation (sdk/typescript, sdk/python, sdk/rust): a circular pattern that says operation and consumes and a linear pattern that says neither, read as the pattern nodes' inputs. The reader, not the SDK, gives a pattern that says neither the operation and consumes of the feature it repeats (docs/formats.md). `refused` is an operation that is not one: refused with a message that holds `says`.",
+  "nodes": {
+    "ring": {
+      "seedFeature": "cut",
+      "axis": { "type": "datumAxis", "axis": "Z" },
+      "count": 4,
+      "operation": "cut",
+      "consumes": ["a"]
+    },
+    "row": {
+      "seedFeature": "cut",
+      "direction": [1, 0, 0],
+      "spacing": 10,
+      "count": 3
+    }
+  },
+  "refused": { "operation": "smash", "says": "operation" }
+}

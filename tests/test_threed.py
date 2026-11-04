@@ -287,6 +287,27 @@ class ThreeDTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "rows"):
             run_module(src.replace("rows=4", "rows=0"), "J.3d.py")
 
+    def test_pattern_takes_operation_and_consumes_and_reads_as_the_golden(self):
+        # pattern_operation.json is the golden of the three SDKs (pattern-operation.golden.json in the TypeScript SDK): a
+        # pattern says operation and consumes like the feature it repeats, or says neither.
+        import json
+        import pathlib
+        golden = json.loads((pathlib.Path(__file__).parent / "pattern_operation.json").read_text(encoding="utf-8"))
+        src = ("from commandagi.design.threed import *\n"
+               "result = part(\n"
+               "    box(id='a', name='A', center=[0, 0, 5], size=[40, 40, 10], operation='new'),\n"
+               "    box(id='b', name='B', center=[0, 0, 25], size=[40, 40, 10], operation='new'),\n"
+               "    cylinder(id='cut', name='Cut', center=[10, 0, -5], axis=[0, 0, 1], radius=2, height=50, operation='cut', consumes=['a']),\n"
+               "    circularPattern(id='ring', seed_feature='cut', axis={'type': 'datumAxis', 'axis': 'Z'}, count=4, operation='cut', consumes=['a']),\n"
+               "    linearPattern(id='row', seed_feature='cut', direction=[1, 0, 0], spacing=10, count=3),\n"
+               "    name='Two boxes',\n"
+               ")\n")
+        n = run_module(src, "Two boxes.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["ring"]["inputs"], golden["nodes"]["ring"])
+        self.assertEqual(n["row"]["inputs"], golden["nodes"]["row"])
+        with self.assertRaisesRegex(ValueError, golden["refused"]["says"]):
+            run_module(src.replace("operation='cut', consumes=['a']),\n    linear", "operation=%r, consumes=['a']),\n    linear" % golden["refused"]["operation"]), "Two boxes.3d.py")
+
     def test_contact_is_the_dynamics_contacts_list_and_the_twin_reads_as_the_golden(self):
         # contacts.json is the golden of the three SDKs (contacts.golden.json in the TypeScript SDK): the twin document
         # each declares in its own language, read as the dynamics node's contacts.

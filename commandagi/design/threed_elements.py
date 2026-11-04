@@ -89,7 +89,7 @@ class CheckRegion(_CheckRegionRequired, _CheckRegionOptional):
     pass
 
 _CircularPatternFeatureRequired = TypedDict("_CircularPatternFeatureRequired", {"type": Literal["circularPattern"], "seedFeature": str, "axis": 'AxisRef', "id": str, "name": str})
-_CircularPatternFeatureOptional = TypedDict("_CircularPatternFeatureOptional", {"count": int, "angle": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_CircularPatternFeatureOptional = TypedDict("_CircularPatternFeatureOptional", {"count": int, "angle": float, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CircularPatternFeature(_CircularPatternFeatureRequired, _CircularPatternFeatureOptional):
     pass
 
@@ -422,7 +422,7 @@ class Lifecycle(_LifecycleRequired, _LifecycleOptional):
     pass
 
 _LinearPatternFeatureRequired = TypedDict("_LinearPatternFeatureRequired", {"type": Literal["linearPattern"], "seedFeature": str, "id": str, "name": str})
-_LinearPatternFeatureOptional = TypedDict("_LinearPatternFeatureOptional", {"direction": 'Vec3', "spacing": float, "count": int, "direction2": 'Vec3', "spacing2": float, "count2": int, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_LinearPatternFeatureOptional = TypedDict("_LinearPatternFeatureOptional", {"direction": 'Vec3', "spacing": float, "count": int, "direction2": 'Vec3', "spacing2": float, "count2": int, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class LinearPatternFeature(_LinearPatternFeatureRequired, _LinearPatternFeatureOptional):
     pass
 
@@ -571,7 +571,7 @@ class PartNeed(_PartNeedRequired, _PartNeedOptional):
     pass
 
 _PathPatternFeatureRequired = TypedDict("_PathPatternFeatureRequired", {"type": Literal["pathPattern"], "seedFeature": str, "path": 'SweepPath', "id": str, "name": str})
-_PathPatternFeatureOptional = TypedDict("_PathPatternFeatureOptional", {"count": int, "alignToPath": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_PathPatternFeatureOptional = TypedDict("_PathPatternFeatureOptional", {"count": int, "alignToPath": bool, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class PathPatternFeature(_PathPatternFeatureRequired, _PathPatternFeatureOptional):
     pass
 
@@ -1172,19 +1172,19 @@ class MakeHumanProps(_MakeHumanPropsRequired, _MakeHumanPropsOptional):
 
 #: The keywords of linearPattern(…): the LinearPatternFeature fields, in snake_case.
 _LinearPatternPropsRequired = TypedDict("_LinearPatternPropsRequired", {"seed_feature": str, "id": str})
-_LinearPatternPropsOptional = TypedDict("_LinearPatternPropsOptional", {"direction": 'Vec3', "spacing": float, "count": int, "direction2": 'Vec3', "spacing2": float, "count2": int, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_LinearPatternPropsOptional = TypedDict("_LinearPatternPropsOptional", {"direction": 'Vec3', "spacing": float, "count": int, "direction2": 'Vec3', "spacing2": float, "count2": int, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class LinearPatternProps(_LinearPatternPropsRequired, _LinearPatternPropsOptional):
     pass
 
 #: The keywords of circularPattern(…): the CircularPatternFeature fields, in snake_case.
 _CircularPatternPropsRequired = TypedDict("_CircularPatternPropsRequired", {"seed_feature": str, "axis": 'AxisRef', "id": str})
-_CircularPatternPropsOptional = TypedDict("_CircularPatternPropsOptional", {"count": int, "angle": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_CircularPatternPropsOptional = TypedDict("_CircularPatternPropsOptional", {"count": int, "angle": float, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class CircularPatternProps(_CircularPatternPropsRequired, _CircularPatternPropsOptional):
     pass
 
 #: The keywords of pathPattern(…): the PathPatternFeature fields, in snake_case.
 _PathPatternPropsRequired = TypedDict("_PathPatternPropsRequired", {"seed_feature": str, "path": 'SweepPath', "id": str})
-_PathPatternPropsOptional = TypedDict("_PathPatternPropsOptional", {"count": int, "align_to_path": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_PathPatternPropsOptional = TypedDict("_PathPatternPropsOptional", {"count": int, "align_to_path": bool, "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class PathPatternProps(_PathPatternPropsRequired, _PathPatternPropsOptional):
     pass
 
