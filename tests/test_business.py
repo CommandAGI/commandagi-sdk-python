@@ -3,8 +3,8 @@
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.business import (Books, CapTable, Case, Change, Company, Entity, Harm, Option, Paper, Registration, Relief, Rfc,
-                                        Signature, Subsidiary, Version, document_of)
+from commandagi.design.business import (Books, CapTable, Case, Change, Company, Entity, Harm, Investment, Option, Paper, Registration,
+                                        Relief, Rfc, Round, Signature, Subsidiary, Version, document_of)
 
 
 class BusinessTests(unittest.TestCase):
@@ -48,6 +48,21 @@ class BusinessTests(unittest.TestCase):
             Books(CapTable(ocf="x"), journal="j")
         with self.assertRaisesRegex(TypeError, "fiscalYearEnd is written fiscal_year_end"):
             Entity(jurisdiction="US", fiscalYearEnd="12-31")
+
+    def test_a_round_is_the_companys_rounds(self):
+        # The same round as business.test.ts: the document's rounds, each with its investments, in the order written.
+        d = document_of(Company(
+            CapTable(ocf="Kite Works/captable/"),
+            Round(Investment(stakeholder="Lead Fund", amount="5000000"), Investment(stakeholder="Ada Lovelace", amount=250000),
+                  name="Series A", date="2027-03-01", pre_money="20000000", currency="USD", pool_target="0.10"),
+            name="Kite Works"))
+        self.assertEqual(d["document"]["rounds"], [{"name": "Series A", "date": "2027-03-01", "preMoney": "20000000", "currency": "USD", "poolTarget": "0.10",
+                                                    "investments": [{"stakeholder": "Lead Fund", "amount": "5000000"}, {"stakeholder": "Ada Lovelace", "amount": 250000}]}])
+        self.assertNotIn("rounds", document_of(Company(name="Bare"))["document"])
+        with self.assertRaisesRegex(ValueError, "<Round> needs preMoney"):
+            document_of(Company(Round(name="Seed"), name="X"))
+        with self.assertRaisesRegex(ValueError, "<Investment> has no attribute shares"):
+            document_of(Company(Round(Investment(stakeholder="A", amount="1", shares=2), name="Seed", pre_money="1"), name="X"))
 
     def test_run_module_names_each_part_by_its_call(self):
         out = run_module(
