@@ -287,6 +287,21 @@ class ThreeDTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "rows"):
             run_module(src.replace("rows=4", "rows=0"), "J.3d.py")
 
+    def test_a_rod_is_a_feature_held_at_ports_and_port_is_the_documents_ports_list(self):
+        # The TypeScript and Rust SDKs read the same fields (threed.test.ts, threed.rs).
+        src = ("from commandagi.design.threed import *\n"
+               "result = part(\n"
+               "    box(id='board', name='Board', center=[80, 0, 4], size=[165, 55, 8.5], operation='new'),\n"
+               "    port(id='a', body='board', at=[0, 0, 8.5], axis=[0, 0, -1], hold='insert', depth=6, retention=1, count=63, pitch=2.54),\n"
+               "    rod(id='j1', name='Jumper', material='WIRE-22AWG-SOLID-PVC', from_={'port': 'a3'}, to={'port': 'a12'}, slack=0.2),\n"
+               "    name='Board',\n"
+               ")\n")
+        n = run_module(src, "B.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["ports"]["inputs"]["value"][0]["hold"], "insert")
+        self.assertEqual(n["j1"]["inputs"]["to"], {"port": "a12"})
+        with self.assertRaisesRegex(ValueError, "hold"):
+            run_module(src.replace("hold='insert'", "hold='glue'"), "B.3d.py")
+
     def test_checks_accepts_permits_and_fasteners_are_the_documents_lists(self):
         src = ("from commandagi.design.threed import *\n"
                "result = assembly(\n"

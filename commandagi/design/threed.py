@@ -74,6 +74,8 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
     tactile(id=, body=, face=, at=, normal=, along=, rows=, cols=, pitch=, thickness=, saturation=)
                                               a tactile skin: a grid of taxels on one face of a body, which a device
                                               definition's tactile channel records
+    port(id=, body=, at=, axis=, hold=, depth=, retention=, count=, pitch=, dir=, groups=, first=)
+                                              where a rod's end can be held: a pad, a joint, a socket, a row of them
     slot(name=, value=)                       any other field of the document, whole
 
 The reader declares the document's graph exactly: a feature is a node of its type with its fields as ports, a plane a
@@ -109,7 +111,7 @@ from .threed_schema import SCHEMA
 THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
-_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "item", "assemble", "library", "product", "point", "constraint", "projection", "line", "circle",
+_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "port", "item", "assemble", "library", "product", "point", "constraint", "projection", "line", "circle",
                  "arc", "spline", "ellipse", "ellipseArc", "input"}
 #: A sketch's segment kinds, by tag.
 SKETCH_SEGMENTS: List[str] = ["line", "circle", "arc", "spline", "ellipse", "ellipseArc"]
@@ -125,7 +127,7 @@ _VIEW_ATTRS = ["semanticVisibility"]
 _PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step", "tolerance"]
 #: Document fields a slot may not hold: they have elements of their own, or are the graph itself.
 _NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility",
-              "drawings", "checks", "accepted", "permitted", "fasteners", "tactile", "items", "assemblySteps", "library", "products"}
+              "drawings", "checks", "accepted", "permitted", "fasteners", "tactile", "ports", "items", "assemblySteps", "library", "products"}
 #: Elements that are the items of a list the document holds: the tag, the document field (its node), the port of that
 #: node that holds the list, and the definition each item is checked against (``SCHEMA["$defs"]``).
 THREED_LISTS: Dict[str, Dict[str, str]] = {
@@ -137,6 +139,7 @@ THREED_LISTS: Dict[str, Dict[str, str]] = {
     "permitted": {"node": "permitted", "port": "value", "def": "PermittedFinding"},
     "fastener": {"node": "fasteners", "port": "value", "def": "FastenerStack"},
     "tactile": {"node": "tactile", "port": "value", "def": "TactileSkin"},
+    "port": {"node": "ports", "port": "value", "def": "Port"},
     "item": {"node": "items", "port": "value", "def": "ProductItem"},
     "assemble": {"node": "assemblySteps", "port": "value", "def": "AssemblyStep"},
     "library": {"node": "library", "port": "value", "def": "LibraryData"},
@@ -149,7 +152,7 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the 3D document: what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "part": _HOLDS, "assembly": _HOLDS, "parameter": {}, "plane": {}, "body": {}, "slot": {}, "feature": {},
-    "joint": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "tactile": {}, "item": {}, "assemble": {}, "library": {}, "product": {},
+    "joint": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "tactile": {}, "port": {}, "item": {}, "assemble": {}, "library": {}, "product": {},
     **{t: (_HOLDS if t == "sketch" else {}) for t in THREED_FEATURES},
     "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {},
 }
