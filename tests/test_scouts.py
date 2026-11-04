@@ -2,6 +2,8 @@
 (scouts.test.ts in that SDK, the same examples): each is its record both ways, and what would make a run dishonest is
 refused with why (a customer's case, a case with two scorers, two incumbents, a check with no kind). Run: python -m
 unittest discover -s tests"""
+import json
+import pathlib
 import unittest
 
 from commandagi.design import run_module
@@ -162,6 +164,22 @@ class ScoutTests(unittest.TestCase):
                       {"kernel": {"as": "divider.sch.tsx", "expect": {"parts": 3, "nets": 3, "connections": [["R1.2", "R2.1"]]}}}):
             k = declare_document(scout(workload(case(id="c", from_="synthetic", prompt="p", check=check), id="w"), budget=1))
             self.assertEqual(k["document"]["workloads"][0]["cases"][0]["check"], check)
+
+    def test_a_kernel_check_takes_the_spec_graders_fields_the_same_as_the_other_sdks(self):
+        # kernel_specs.json is the golden of the three SDKs: the spec grader's ten hand-checked parts, a face distance,
+        # an ISO 286 class by name and a gap by body pair, and what is refused.
+        golden = json.loads((pathlib.Path(__file__).parent / "kernel_specs.json").read_text(encoding="utf-8"))
+
+        def scout_of(kernel):
+            return declare_document(scout(workload(case(id="c", from_="synthetic", prompt="p", check={"kernel": kernel}), id="w"), budget=1))
+
+        self.assertEqual(len(golden["valid"]), 13)
+        for row in golden["valid"]:
+            self.assertEqual(scout_of(row["kernel"])["document"]["workloads"][0]["cases"][0]["check"]["kernel"], row["kernel"], row["name"])
+        for row in golden["invalid"]:
+            with self.assertRaises(ValueError, msg=row["name"]) as caught:
+                scout_of(row["kernel"])
+            self.assertIn(row["error"], str(caught.exception), row["name"])
 
     def test_a_replacement_analysis_declares_its_layers_capabilities_and_decision(self):
         doc = declare_document(replacement(

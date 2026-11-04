@@ -8,6 +8,11 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A scout's `kernel` check takes a part's whole spec, the same in the TypeScript, Python and Rust SDKs (one golden fixture): a size as
+  deviations, a range or an ISO 286 class by name (`{ nominal: 30, class: "H7" }`, checked against the SDK's own class
+  tables); `holes` as groups (`count`, `diameter`, `through`, `depth`, `axis`, `at`, `position`); `mass` with its density;
+  `gap`; `gaps`, a gap for each named pair of bodies; and `faces`, the distance between two named flat faces (`{ body?, at,
+  normal? }`, as a PMI anchor names a face), for a wall's thickness or a step's height. A malformed one is refused by name.
 - `rod(…)` and `port(…)`: a rod (a wire, a lead, a string, a hair, a flat flex) is a 3D feature with its section, its material (a
   rods row: a wire's layers) and its ends held at ports or on bodies; a port is where a rod's end can be held (a pad,
   a socket, a breadboard's row of them), the document's `ports`. A placement's `ends` holds its file's rods' ends.

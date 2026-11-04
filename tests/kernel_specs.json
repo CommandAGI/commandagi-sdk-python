@@ -1,0 +1,1247 @@
+{
+ "about": "One golden for the three SDKs' <scout> kernel check (sdk/typescript, sdk/python, sdk/rust): `valid` are the ten hand-checked parts of cad-spec-grader.eval.tsx exactly as it states them, and three more that use a face distance, an ISO 286 class by name and a gap by body pair; each `invalid` is refused with a message that holds `error`. The same file is in each SDK's tests and in tests/workbench/fixtures/cad-spec-grader/ (a test holds the four copies equal).",
+ "valid": [
+  {
+   "name": "plate-four-holes",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 80,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 50,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 8,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "volume": 30905.21779207703,
+     "holes": [
+      {
+       "count": 4,
+       "diameter": {
+        "nominal": 6.6,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         -32,
+         -17,
+         0
+        ],
+        [
+         32,
+         -17,
+         0
+        ],
+        [
+         -32,
+         17,
+         0
+        ],
+        [
+         32,
+         17,
+         0
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "l-bracket",
+   "kernel": {
+    "as": "bracket.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 60,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 50,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "volume": 24389.80093337345,
+     "holes": [
+      {
+       "count": 4,
+       "diameter": {
+        "nominal": 5.5,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "at": [
+        [
+         0,
+         -10,
+         35
+        ],
+        [
+         0,
+         10,
+         35
+        ],
+        [
+         40,
+         -10,
+         0
+        ],
+        [
+         40,
+         10,
+         0
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "blind-block",
+   "kernel": {
+    "as": "block.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 30,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 25,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "volume": 28492.0355262769,
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 8,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": false,
+       "depth": {
+        "nominal": 15,
+        "upper": 0.1,
+        "lower": -0.1
+       },
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         25
+        ]
+       ]
+      },
+      {
+       "count": 2,
+       "diameter": {
+        "nominal": 4,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        1,
+        0
+       ],
+       "at": [
+        [
+         -12,
+         0,
+         8
+        ],
+        [
+         12,
+         0,
+         8
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "flange",
+   "kernel": {
+    "as": "flange.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 90,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 90,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 12,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "mass": {
+      "nominal": 170.85,
+      "upper": 1.7,
+      "lower": -1.7,
+      "density": 2.7
+     },
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 30,
+        "upper": 0.021,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         0
+        ]
+       ]
+      },
+      {
+       "count": 6,
+       "diameter": {
+        "nominal": 9,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         35,
+         0,
+         0
+        ],
+        [
+         17.500000000000004,
+         30.31088913245535,
+         0
+        ],
+        [
+         -17.499999999999993,
+         30.310889132455355,
+         0
+        ],
+        [
+         -35,
+         4.2862637970157365e-15,
+         0
+        ],
+        [
+         -17.500000000000014,
+         -30.310889132455348,
+         0
+        ],
+        [
+         17.500000000000004,
+         -30.31088913245535,
+         0
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "spacer",
+   "kernel": {
+    "as": "spacer.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 20,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 20,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 35,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "mass": {
+      "nominal": 71.09,
+      "upper": 0.71,
+      "lower": -0.71,
+      "density": 7.85
+     },
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 8.4,
+        "upper": 0.05,
+        "lower": -0.05
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         0
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "pin-in-bore",
+   "kernel": {
+    "as": "pin.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 2,
+     "bbox": [
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "gap": {
+      "nominal": 0.1,
+      "upper": 0.005,
+      "lower": -0.005
+     },
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 12.2,
+        "upper": 0.01,
+        "lower": -0.01
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         0
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "lid-gap",
+   "kernel": {
+    "as": "lid.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 2,
+     "bbox": [
+      {
+       "nominal": 60,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 35,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "volume": 81454.732755698,
+     "gap": {
+      "nominal": 1,
+      "upper": 0.01,
+      "lower": -0.01
+     },
+     "holes": [
+      {
+       "count": 4,
+       "diameter": {
+        "nominal": 3.4,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         -25,
+         -15,
+         31
+        ],
+        [
+         25,
+         -15,
+         31
+        ],
+        [
+         -25,
+         15,
+         31
+        ],
+        [
+         25,
+         15,
+         31
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "counterbore-plate",
+   "kernel": {
+    "as": "counterbore.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 50,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 50,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 12,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "volume": 28430.71163767883,
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 6.6,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         0
+        ]
+       ]
+      },
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 11,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": false,
+       "depth": {
+        "nominal": 6.5,
+        "upper": 0.1,
+        "lower": -0.1
+       },
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         12
+        ]
+       ]
+      },
+      {
+       "count": 4,
+       "diameter": {
+        "nominal": 4.5,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         -19,
+         -19,
+         0
+        ],
+        [
+         19,
+         -19,
+         0
+        ],
+        [
+         -19,
+         19,
+         0
+        ],
+        [
+         19,
+         19,
+         0
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "stepped-shaft",
+   "kernel": {
+    "as": "shaft.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 20,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 20,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 50,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "volume": 11490.375130504668,
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 5,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": false,
+       "depth": {
+        "nominal": 10,
+        "upper": 0.1,
+        "lower": -0.1
+       },
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         50
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "boss-plate",
+   "kernel": {
+    "as": "bosses.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 60,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 60,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 13,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "volume": 18289.02652413026,
+     "holes": [
+      {
+       "count": 4,
+       "diameter": {
+        "nominal": 4,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "depth": {
+        "nominal": 13,
+        "upper": 0.1,
+        "lower": -0.1
+       },
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         -20,
+         -20,
+         0
+        ],
+        [
+         20,
+         -20,
+         0
+        ],
+        [
+         -20,
+         20,
+         0
+        ],
+        [
+         20,
+         20,
+         0
+        ]
+       ]
+      },
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 20,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         0
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "l-bracket-wall",
+   "kernel": {
+    "as": "bracket.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 60,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 50,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "volume": 24389.80093337345,
+     "holes": [
+      {
+       "count": 4,
+       "diameter": {
+        "nominal": 5.5,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "at": [
+        [
+         0,
+         -10,
+         35
+        ],
+        [
+         0,
+         10,
+         35
+        ],
+        [
+         40,
+         -10,
+         0
+        ],
+        [
+         40,
+         10,
+         0
+        ]
+       ]
+      }
+     ],
+     "faces": [
+      {
+       "name": "wall thickness",
+       "between": [
+        {
+         "at": [
+          0,
+          0,
+          30
+         ],
+         "normal": [
+          -1,
+          0,
+          0
+         ]
+        },
+        {
+         "at": [
+          6,
+          0,
+          30
+         ],
+         "normal": [
+          1,
+          0,
+          0
+         ]
+        }
+       ],
+       "distance": {
+        "nominal": 6,
+        "upper": 0.1,
+        "lower": -0.1
+       }
+      },
+      {
+       "name": "base thickness",
+       "between": [
+        {
+         "at": [
+          30,
+          0,
+          0
+         ],
+         "normal": [
+          0,
+          0,
+          -1
+         ]
+        },
+        {
+         "at": [
+          30,
+          0,
+          6
+         ],
+         "normal": [
+          0,
+          0,
+          1
+         ]
+        }
+       ],
+       "distance": {
+        "nominal": 6,
+        "upper": 0.1,
+        "lower": -0.1
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "flange-by-class",
+   "kernel": {
+    "as": "flange.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 1,
+     "bbox": [
+      {
+       "nominal": 90,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 90,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 12,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "mass": {
+      "nominal": 170.85,
+      "upper": 1.7,
+      "lower": -1.7,
+      "density": 2.7
+     },
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 30,
+        "class": "H7"
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         0
+        ]
+       ]
+      },
+      {
+       "count": 6,
+       "diameter": {
+        "nominal": 9,
+        "upper": 0.1,
+        "lower": 0
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         35,
+         0,
+         0
+        ],
+        [
+         17.500000000000004,
+         30.31088913245535,
+         0
+        ],
+        [
+         -17.499999999999993,
+         30.310889132455355,
+         0
+        ],
+        [
+         -35,
+         4.2862637970157365e-15,
+         0
+        ],
+        [
+         -17.500000000000014,
+         -30.310889132455348,
+         0
+        ],
+        [
+         17.500000000000004,
+         -30.31088913245535,
+         0
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "pin-gap-by-name",
+   "kernel": {
+    "as": "pin.3d.tsx",
+    "oriented": true,
+    "expect": {
+     "bodies": 2,
+     "bbox": [
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      },
+      {
+       "nominal": 40,
+       "upper": 0.1,
+       "lower": -0.1
+      }
+     ],
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 12.2,
+        "upper": 0.01,
+        "lower": -0.01
+       },
+       "through": true,
+       "axis": [
+        0,
+        0,
+        1
+       ],
+       "at": [
+        [
+         0,
+         0,
+         0
+        ]
+       ]
+      }
+     ],
+     "gaps": [
+      {
+       "between": [
+        "block",
+        "pin"
+       ],
+       "gap": {
+        "nominal": 0.1,
+        "upper": 0.005,
+        "lower": -0.005
+       }
+      }
+     ]
+    }
+   }
+  }
+ ],
+ "invalid": [
+  {
+   "name": "a hole group without a diameter",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "holes": [
+      {
+       "count": 1
+      }
+     ]
+    }
+   },
+   "error": "holes[0] needs a diameter"
+  },
+  {
+   "name": "a class nobody knows",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "holes": [
+      {
+       "count": 1,
+       "diameter": {
+        "nominal": 30,
+        "class": "Q9"
+       }
+      }
+     ]
+    }
+   },
+   "error": "there is no tolerance class"
+  },
+  {
+   "name": "a class and deviations",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "bbox": [
+      {
+       "nominal": 30,
+       "class": "H7",
+       "upper": 0.1,
+       "lower": 0
+      },
+      1,
+      1
+     ]
+    }
+   },
+   "error": "give the class or the deviations, not both"
+  },
+  {
+   "name": "a gap of one body with itself",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "gaps": [
+      {
+       "between": [
+        "a",
+        "a"
+       ],
+       "gap": 1
+      }
+     ]
+    }
+   },
+   "error": "gaps is a list of { between: [body, body], gap }"
+  },
+  {
+   "name": "a face without a point",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "faces": [
+      {
+       "between": [
+        {
+         "normal": [
+          0,
+          0,
+          1
+         ]
+        },
+        {
+         "at": [
+          0,
+          0,
+          1
+         ]
+        }
+       ],
+       "distance": 1
+      }
+     ]
+    }
+   },
+   "error": "faces is a list of"
+  },
+  {
+   "name": "a mass without a density",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "mass": {
+      "nominal": 100
+     }
+    }
+   },
+   "error": "mass is { nominal, upper, lower, density }"
+  },
+  {
+   "name": "a range upside down",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "gap": {
+      "min": 2,
+      "max": 1
+     }
+    }
+   },
+   "error": "the range's min is above its max"
+  },
+  {
+   "name": "a schematic with faces",
+   "kernel": {
+    "as": "divider.sch.tsx",
+    "expect": {
+     "faces": [
+      {
+       "between": [
+        {
+         "at": [
+          0,
+          0,
+          0
+         ]
+        },
+        {
+         "at": [
+          0,
+          0,
+          1
+         ]
+        }
+       ],
+       "distance": 1
+      }
+     ]
+    }
+   },
+   "error": "a schematic has no measure faces"
+  },
+  {
+   "name": "a zero axis",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "holes": [
+      {
+       "count": 1,
+       "diameter": 5,
+       "axis": [
+        0,
+        0,
+        0
+       ]
+      }
+     ]
+    }
+   },
+   "error": "holes[0] axis is a direction"
+  },
+  {
+   "name": "a size with a field it has not",
+   "kernel": {
+    "as": "plate.3d.tsx",
+    "expect": {
+     "bbox": [
+      {
+       "nominal": 5,
+       "tolerance": 0.1
+      },
+      1,
+      1
+     ]
+    }
+   },
+   "error": "a size has no field tolerance"
+  }
+ ]
+}

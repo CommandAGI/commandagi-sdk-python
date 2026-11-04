@@ -35,6 +35,7 @@ from typing import Any, Dict, List, Optional
 
 from .documents import DocTree, Vocabulary, _json, register_vocabulary
 from .element import define
+from .tolerances import tolerance_limits
 
 SCOUT_FIELDS = ["title", "budget", "repeats", "margin", "relativeMargin", "errorFloor", "minCalls", "minCases",
                 "resamples", "alpha", "seed", "maxCases", "readme"]
@@ -52,7 +53,7 @@ CHECK_KINDS = ["exact", "oneOf", "number", "contains", "regex", "json", "letter"
 #: The file a ``kernel`` check measures: a solid (``bracket.3d.tsx``) or a schematic (``divider.sch.tsx``), alone.
 KERNEL_FILE = re.compile(r"^[^/]+\.(?:3d|sch)\.(?:[jt]sx|py|rs)$", re.I)
 #: What a ``kernel`` check may expect of a solid, and of a schematic.
-SOLID_MEASURES = ["volume", "bbox", "bodies", "holes"]
+SOLID_MEASURES = ["volume", "bbox", "bodies", "holes", "mass", "gap", "gaps", "faces"]
 CIRCUIT_MEASURES = ["parts", "nets", "connections"]
 
 REPLACEMENT_FIELDS = ["product", "vendor", "url", "asOf", "by", "readme"]
@@ -181,6 +182,60 @@ def _check(t: DocTree) -> None:
         _kernel_check(t, x["kernel"])
 
 
+_SIZE_FORM = "a size is a number, { nominal, upper, lower }, { nominal, class } or { min, max }"
+_HOLE_FORM = "holes is a count, or a list of groups { count, diameter, through?, depth?, axis?, at?, position? }"
+_GAPS_FORM = "gaps is a list of { between: [body, body], gap }"
+_FACES_FORM = "faces is a list of { name?, between: [face, face], distance }, a face being { body?, at: [x, y, z], normal? }"
+
+
+def _count(v: Any) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+
+def _point(p: Any) -> bool:
+    return isinstance(p, list) and len(p) == 3 and all(_number(n) for n in p)
+
+
+def _size_problem(v: Any) -> Optional[str]:
+    """What is wrong with a size a kernel check states (a number, deviations, a class by name or a range), or None."""
+    if _number(v):
+        return None if v >= 0 else "a size is not below 0"
+    if not isinstance(v, dict):
+        return _SIZE_FORM
+    for key in v:
+        if key not in ("nominal", "upper", "lower", "class", "min", "max"):
+            return f"a size has no field {key} (nominal, upper, lower, class, min, max)"
+    if "nominal" in v:
+        if "min" in v or "max" in v:
+            return "a size is a nominal with deviations or a class, or a range, not both"
+        if not _number(v["nominal"]) or v["nominal"] < 0:
+            return _SIZE_FORM
+        if "class" in v:
+            if "upper" in v or "lower" in v:
+                return "give the class or the deviations, not both"
+            try:
+                tolerance_limits(v["nominal"], {"class": v["class"]})
+            except ValueError as e:
+                return str(e)
+            return None
+        for k in ("upper", "lower"):
+            if k in v and not _number(v[k]):
+                return f"{k} is a number of millimetres"
+        if _number(v.get("upper")) and _number(v.get("lower")) and v["upper"] < v["lower"]:
+            return "the upper deviation is below the lower"
+        return None
+    if "class" in v or "upper" in v or "lower" in v:
+        return "deviations and a class go with a nominal"
+    if "min" not in v and "max" not in v:
+        return _SIZE_FORM
+    for k in ("min", "max"):
+        if k in v and not _number(v[k]):
+            return f"{k} is a number of millimetres"
+    if _number(v.get("min")) and _number(v.get("max")) and v["min"] > v["max"]:
+        return "the range's min is above its max"
+    return None
+
+
 def _kernel_check(t: DocTree, k: object) -> None:
     """A ``kernel`` check: the file it measures, and only the measures that file's kind has."""
     if not (isinstance(k, dict) and isinstance(k.get("as"), str) and KERNEL_FILE.match(k["as"])):
@@ -193,15 +248,85 @@ def _kernel_check(t: DocTree, k: object) -> None:
     e = k.get("expect")
     if not (isinstance(e, dict) and e):
         raise ValueError(f"{_where(t)} check: kernel expect names at least one of {', '.join(allowed)}")
+
+    def refuse(message: str) -> None:
+        raise ValueError(f"{_where(t)} check: kernel {message}")
+
+    def size(what: str, v: Any) -> None:
+        problem = _size_problem(v)
+        if problem:
+            refuse(f"{what}: {problem}")
+
     for key, v in e.items():
         if key not in allowed:
             raise ValueError(f"{_where(t)} check: a {'solid' if solid else 'schematic'} has no measure {key} ({', '.join(allowed)})")
-        if key in ("bodies", "holes", "parts", "nets") and not (isinstance(v, int) and not isinstance(v, bool) and v >= 0):
-            raise ValueError(f"{_where(t)} check: kernel {key} is a count")
-        if key == "volume" and not (_number(v) and v > 0):
-            raise ValueError(f"{_where(t)} check: kernel volume is mm³, more than 0")
-        if key == "bbox" and not (isinstance(v, list) and len(v) == 3 and all(_number(n) and n >= 0 for n in v)):
-            raise ValueError(f"{_where(t)} check: kernel bbox is [x, y, z] mm")
+        if key in ("bodies", "parts", "nets") and not _count(v):
+            refuse(f"{key} is a count")
+        if key == "holes" and not isinstance(v, list) and not _count(v):
+            refuse(_HOLE_FORM)
+        if key == "holes" and isinstance(v, list):
+            if not v:
+                refuse(_HOLE_FORM)
+            for i, h in enumerate(v):
+                at = f"holes[{i}]"
+                if not isinstance(h, dict):
+                    refuse(_HOLE_FORM)
+                for f in h:
+                    if f not in ("count", "diameter", "through", "depth", "axis", "at", "position"):
+                        refuse(f"{at} has no field {f}")
+                if not _count(h.get("count")):
+                    refuse(f"{at} count is a count")
+                if "diameter" not in h:
+                    refuse(f"{at} needs a diameter")
+                size(f"{at} diameter", h["diameter"])
+                if "depth" in h:
+                    size(f"{at} depth", h["depth"])
+                if "through" in h and not isinstance(h["through"], bool):
+                    refuse(f"{at} through is true or false")
+                if "axis" in h and not (_point(h["axis"]) and any(n != 0 for n in h["axis"])):
+                    refuse(f"{at} axis is a direction [x, y, z]")
+                if "at" in h and not (isinstance(h["at"], list) and h["at"] and all(_point(p) for p in h["at"])):
+                    refuse(f"{at} at is a list of points [x, y, z]")
+                if "position" in h and not (_number(h["position"]) and h["position"] > 0):
+                    refuse(f"{at} position is mm above 0")
+        if key == "volume":
+            if _number(v) and not v > 0:
+                refuse("volume is mm³, more than 0")
+            if not _number(v):
+                size("volume", v)
+        if key == "bbox":
+            if not (isinstance(v, list) and len(v) == 3):
+                refuse("bbox is [x, y, z] mm")
+            for i, n in enumerate(v):
+                size(f"bbox[{i}]", n)
+        if key == "mass":
+            ok = (isinstance(v, dict) and _number(v.get("nominal")) and v["nominal"] > 0 and _number(v.get("density")) and v["density"] > 0
+                  and all(f in ("nominal", "upper", "lower", "density") for f in v) and all(f not in v or _number(v[f]) for f in ("upper", "lower")))
+            if not ok:
+                refuse("mass is { nominal, upper, lower, density } in grams and g/cm³")
+        if key == "gap":
+            size("gap", v)
+        if key == "gaps":
+            if not (isinstance(v, list) and v):
+                refuse(_GAPS_FORM)
+            for i, g in enumerate(v):
+                ok = (isinstance(g, dict) and all(f in ("between", "gap") for f in g) and isinstance(g.get("between"), list) and len(g["between"]) == 2
+                      and all(isinstance(n, str) and n for n in g["between"]) and g["between"][0] != g["between"][1])
+                if not ok:
+                    refuse(_GAPS_FORM)
+                size(f"gaps[{i}] gap", g.get("gap"))
+        if key == "faces":
+            if not (isinstance(v, list) and v):
+                refuse(_FACES_FORM)
+            for i, f in enumerate(v):
+                ok = (isinstance(f, dict) and all(n in ("name", "between", "distance") for n in f) and (f.get("name") is None or (isinstance(f["name"], str) and f["name"] != ""))
+                      and isinstance(f.get("between"), list) and len(f["between"]) == 2
+                      and all(isinstance(s, dict) and all(n in ("body", "at", "normal") for n in s) and _point(s.get("at"))
+                              and (s.get("body") is None or (isinstance(s["body"], str) and s["body"] != ""))
+                              and (s.get("normal") is None or (_point(s["normal"]) and any(n != 0 for n in s["normal"]))) for s in f["between"]))
+                if not ok:
+                    refuse(_FACES_FORM)
+                size(f"faces[{i}] distance", f.get("distance"))
         if key == "connections" and not (isinstance(v, list) and v and all(
                 isinstance(g, list) and len(g) >= 2 and all(isinstance(p, str) and re.fullmatch(r"[^.\s]+\.[^.\s]+", p) for p in g) for g in v)):
             raise ValueError(f'{_where(t)} check: kernel connections is a list of pin groups ([["R1.2", "R2.1"]]), each on one net')
