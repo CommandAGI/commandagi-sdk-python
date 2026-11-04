@@ -287,6 +287,31 @@ class ThreeDTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "rows"):
             run_module(src.replace("rows=4", "rows=0"), "J.3d.py")
 
+    def test_contact_is_the_dynamics_contacts_list_and_the_twin_reads_as_the_golden(self):
+        # contacts.json is the golden of the three SDKs (contacts.golden.json in the TypeScript SDK): the twin document
+        # each declares in its own language, read as the dynamics node's contacts.
+        import json
+        import pathlib
+        golden = json.loads((pathlib.Path(__file__).parent / "contacts.json").read_text(encoding="utf-8"))
+        src = ("from commandagi.design.threed import *\n"
+               "result = part(\n"
+               "    box(id='table', name='Table', center=[0, 0, 50], size=[400, 200, 100], operation='new'),\n"
+               "    box(id='pad', name='Pad', center=[0, 0, 125], size=[60, 60, 50], operation='new'),\n"
+               "    box(id='ball', name='Ball', center=[-600, 0, 300], size=[40, 40, 40], operation='new'),\n"
+               "    box(id='phantom', name='Phantom', center=[150, 0, 200], size=[40, 40, 40], operation='new'),\n"
+               "    slot(name='dynamics', value={'bindings': [{'feature': 'table', 'solver': 'rigid', 'fixed': True}]}),\n"
+               "    contact(id='grip', a='Pad', b='Table', friction=0.9, report=['normal', 'slip']),\n"
+               "    contact(id='bounce', a='Ball', restitution=0.9),\n"
+               "    contact(id='pass', a='Phantom', b='Table', collide=False, report=[]),\n"
+               "    name='Pad on a table',\n"
+               ")\n")
+        n = run_module(src, "Pad on a table.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["dynamics"]["inputs"]["contacts"], golden["contacts"])
+        with self.assertRaisesRegex(ValueError, golden["refused"]["says"]):
+            run_module(src.replace("friction=0.9", "friction=%s" % golden["refused"]["friction"]), "Pad on a table.3d.py")
+        with self.assertRaisesRegex(ValueError, "report"):
+            run_module(src.replace("report=['normal', 'slip']", "report=['torque']"), "Pad on a table.3d.py")
+
     def test_a_rod_is_a_feature_held_at_ports_and_port_is_the_documents_ports_list(self):
         # The TypeScript and Rust SDKs read the same fields (threed.test.ts, threed.rs).
         src = ("from commandagi.design.threed import *\n"

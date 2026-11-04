@@ -1,0 +1,9 @@
+{
+  "about": "The contact pairs the twin documents declare (Pad on a table.3d.tsx here; the same document in each SDK's test), as each SDK reads them: the dynamics node's contacts. The three SDKs hold this file whole.",
+  "contacts": [
+    { "id": "grip", "a": "Pad", "b": "Table", "friction": 0.9, "report": ["normal", "slip"] },
+    { "id": "bounce", "a": "Ball", "restitution": 0.9 },
+    { "id": "pass", "a": "Phantom", "b": "Table", "collide": false, "report": [] }
+  ],
+  "refused": { "friction": -1, "says": "friction" }
+}

@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- ``contact(id=, a=, b=, collide=, friction=, restitution=, report=)``: a contact pair of a 3D document
+  (``dynamics.contacts``), the same in the TypeScript, Python and Rust SDKs (one golden fixture): its sides named as a
+  check names bodies (no ``b``: the floor), its own friction and restitution, and what a run records of it.
 - A scout's `kernel` check takes a part's whole spec, the same in the TypeScript, Python and Rust SDKs (one golden fixture): a size as
   deviations, a range or an ISO 286 class by name (`{ nominal: 30, class: "H7" }`, checked against the SDK's own class
   tables); `holes` as groups (`count`, `diameter`, `through`, `depth`, `axis`, `at`, `position`); `mass` with its density;

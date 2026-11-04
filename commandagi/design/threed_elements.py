@@ -257,6 +257,12 @@ _DrawingViewSpecOptional = TypedDict("_DrawingViewSpecOptional", {"at": Tuple[fl
 class DrawingViewSpec(_DrawingViewSpecRequired, _DrawingViewSpecOptional):
     pass
 
+#: A CONTACT PAIR: how two sets of bodies touch in a simulation, and what a run records of it. `<contact>` in code (docs/formats.md § contacts). A pad on a part, a gripper's jaw on what it holds, a wheel on the floor: the pair's friction and restitution are the pair's own, not a mix of the two bodies' (a rubber pad on steel grips, the same pad on ice does not). Without `report` the run records every quantity of ContactReport.
+_DynamicsContactRequired = TypedDict("_DynamicsContactRequired", {"id": str, "a": str})
+_DynamicsContactOptional = TypedDict("_DynamicsContactOptional", {"b": str, "collide": bool, "friction": float, "restitution": float, "report": List['ContactReport']}, total=False)
+class DynamicsContact(_DynamicsContactRequired, _DynamicsContactOptional):
+    pass
+
 __DynamicsJoint6Required = TypedDict("__DynamicsJoint6Required", {"mode": Literal["position", "velocity", "torque"]})
 __DynamicsJoint6Optional = TypedDict("__DynamicsJoint6Optional", {"target": float, "gain": float, "maxForce": float, "name": str, "role": str, "ctrlrange": Tuple[float, float]}, total=False)
 class _DynamicsJoint6(__DynamicsJoint6Required, __DynamicsJoint6Optional):
@@ -1416,11 +1422,14 @@ BooleanMode = Literal["new", "add", "cut", "intersect"]
 
 ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", "angle", "horizontal", "vertical", "tangent", "equal", "pointOnLine", "midpoint", "pointOnCircle", "symmetric", "horizontalDistance", "verticalDistance", "radius"]
 
+#: What a run records of a contact pair at each frame: how many points touch, the normal force on `a` (N), how fast `a` slides over `b` there (m/s; 0 while it sticks), and where it is touched (the force-weighted centre of the points).
+ContactReport = Literal["count", "normal", "slip", "point"]
+
 #: A view: a standard view, named by the side of the model the viewer stands on; a section, cut by a plane; or a detail, an enlarged part of another view.
 DrawingViewName = Literal["iso", "front", "top", "right", "left", "bottom", "back", "section", "detail"]
 
 #: How a clearance hole fits its screw (ISO 273: close is fine, normal is medium, loose is coarse).
-FastenerFit = Literal["close", "normal", "loose"]
+FastenerFit = Literal["normal", "close", "loose"]
 
 HoleStyle = Literal["simple", "counterbore", "countersink"]
 

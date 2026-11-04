@@ -63,6 +63,10 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
                                               heading, packed size and mass
     joint(id=, kind=, a=, b=, anchor=, axis=, limits=, …)   a joint between two bodies (``dynamics.joints``): fixed,
                                               revolute, prismatic, cylindrical, planar, screw, spherical or universal
+    contact(id=, a=, b=, collide=, friction=, restitution=, report=)   a contact pair (``dynamics.contacts``): two
+                                              sides of bodies named as a check names them (no ``b``: the ground),
+                                              whether they touch, their own friction and restitution, and what a run
+                                              records of them
     mate(id=, kind=, a=, b=, axis=, …)        a mate between two components of an assembly (``assembly.mates``)
     sheet(id=, size=, scale=, projection=, views=[…], …)    an engineering drawing sheet of the document (``drawings``)
     check(id=, kind=, bodies=, severity=, …)  a check the design must pass (``checks``): interference, clearance,
@@ -111,7 +115,7 @@ from .threed_schema import SCHEMA
 THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
-_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "port", "item", "assemble", "library", "product", "point", "constraint", "projection", "line", "circle",
+_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "contact", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "port", "item", "assemble", "library", "product", "point", "constraint", "projection", "line", "circle",
                  "arc", "spline", "ellipse", "ellipseArc", "input"}
 #: A sketch's segment kinds, by tag.
 SKETCH_SEGMENTS: List[str] = ["line", "circle", "arc", "spline", "ellipse", "ellipseArc"]
@@ -132,6 +136,7 @@ _NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presen
 #: node that holds the list, and the definition each item is checked against (``SCHEMA["$defs"]``).
 THREED_LISTS: Dict[str, Dict[str, str]] = {
     "joint": {"node": "dynamics", "port": "joints", "def": "DynamicsJoint"},
+    "contact": {"node": "dynamics", "port": "contacts", "def": "DynamicsContact"},
     "mate": {"node": "assembly", "port": "mates", "def": "Mate"},
     "sheet": {"node": "drawings", "port": "value", "def": "DrawingSheet"},
     "check": {"node": "checks", "port": "value", "def": "DesignCheck"},
@@ -152,7 +157,7 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the 3D document: what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "part": _HOLDS, "assembly": _HOLDS, "parameter": {}, "plane": {}, "body": {}, "slot": {}, "feature": {},
-    "joint": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "tactile": {}, "port": {}, "item": {}, "assemble": {}, "library": {}, "product": {},
+    "joint": {}, "contact": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "tactile": {}, "port": {}, "item": {}, "assemble": {}, "library": {}, "product": {},
     **{t: (_HOLDS if t == "sketch" else {}) for t in THREED_FEATURES},
     "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {},
 }
