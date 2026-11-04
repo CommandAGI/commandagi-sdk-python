@@ -12,6 +12,9 @@ Changed
 
 Added
 
+- A workflow step waits for an approval: `step(..., approval='agent:reviewer role:release-manager')` names who may
+  give it: a principal (`agent:<id>`, `person:<id>`), a role (`role:<name>`) or the holder of a grant that covers an
+  address (`grant:<address>`). A note step takes none. The same as the TypeScript SDK.
 - A tactile skin on a face of a body: `tactile(id='pad', body='Jaw', at=[-20, 0, 20], normal=[1, 0, 0], along=[0, 1, 0], rows=4, cols=4, pitch=5)` (the document's `tactile` list). The same as the TypeScript SDK.
 - A scout's case may be checked by the kernel: `check={"kernel": {"as": "plate.3d.tsx", "expect": {"volume": 13928.8, "bbox": [60, 40, 6], "bodies": 1, "holes": 4}}}` builds the answer as a solid and holds its measures; `"as": "divider.sch.tsx"` reads it into its netlist and holds `parts`, `nets` and `connections`. The same as the TypeScript SDK.
 - `joint(requires={'j_lid': 100})`: a joint moves only while other joints sit at a pose (a value, or a range `[from, to]`), and `check(sweep={'joints': ['j_lift'], 'with': {'guard': 60}})` holds other joints at a value. The same as the TypeScript SDK. For microfab: IC1-22 and PCBC-24 are closed; ROUTER-12 (the whole machine's check at fine sweep steps) does not reproduce: the router at steps 5 / 5 / 2 runs whole in 107 s with the same verdicts as at 20 / 10 / 5.

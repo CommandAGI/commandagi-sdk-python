@@ -54,6 +54,26 @@ class FlowsTests(unittest.TestCase):
                  "surpriseTo": "claude", "expects": [{"name": "done", "equals": True}]},
             ]})
 
+    def test_an_approval(self):
+        approval = "agent:reviewer person:ada role:release-manager grant:local://desk/home/worlds/shop/world.tsx#arm-1"
+        d = declare_document(flow(step(expect(name="exit", equals=0), id="ship", kind="command", channel="desk", command="ls",
+                                       surprise="parent", approval=approval), name="Ship"))
+        self.assertEqual(d["document"]["steps"][0]["approval"], approval)
+
+        def acting(**a):
+            return flow(step(expect(name="e", equals=1), id="a", kind="command", channel="c", command="ls", surprise="parent", **a))
+        refused = [
+            (acting(approval="person"), r'<step id="a">: approval names a principal .* not "person"'),
+            (acting(approval="agents"), r'not "agents"'),
+            (acting(approval="grant:shop"), r'not "grant:shop"'),
+            (acting(approval=" "), r'<step id="a">: approval names who may approve the step'),
+            (acting(approval="agent:a agent:a"), r'<step id="a">: approval names an approver twice'),
+            (flow(step(id="a", kind="note", approval="agent:a")), r'<step id="a">: a note step does nothing, so it waits for no approval'),
+        ]
+        for root, why in refused:
+            with self.assertRaisesRegex(ValueError, why):
+                declare_document(root)
+
     def test_refusals(self):
         refused = [
             (flow(step(id="a", kind="rest")), r'<step id="a">: kind must be one of work, note, message, command, computer, robot, chain, workflow, decision, agent \(got "rest"\)'),

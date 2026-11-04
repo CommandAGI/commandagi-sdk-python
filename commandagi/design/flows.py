@@ -38,7 +38,7 @@ FLOW_FIELDS = ["name", "description", "of"]
 FLOW_INPUT_FIELDS = ["name", "type", "private", "default", "required", "description"]
 FLOW_TOOL_FIELDS = ["id", "ref", "name", "ratePerHour", "currency", "description"]
 FLOW_STEP_FIELDS = ["id", "order", "kind", "tool", "fixture", "by", "minutes", "setupMinutes", "ratePerHour", "currency", "instruction",
-                    "note", "channel", "ref", "command", "skill", "after", "surprise", "surpriseTo"]
+                    "note", "channel", "ref", "command", "skill", "after", "surprise", "surpriseTo", "approval"]
 FLOW_PARAM_FIELDS = ["name", "value", "unit", "description"]
 FLOW_MEASURE_FIELDS = ["id", "name", "nominal", "min", "max", "plus", "minus", "unit", "method", "sampling", "acceptance"]
 FLOW_VISIT_FIELDS = ["tool", "minutes", "setupMinutes", "ratePerHour", "currency", "instruction"]
@@ -53,6 +53,8 @@ __all__ = ["FLOW_STEP_KINDS", "FLOW_ACTION_KINDS", "FLOW_INPUT_TYPES", "FLOW_SUR
            *define(globals(), "flows", SIGNATURES)]
 
 _ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+#: One approver of a step: a principal, a role, or the holder of a grant that covers an address (flows.ts ``APPROVER``).
+_APPROVER = re.compile(r"(?:(?:agent|person):[A-Za-z0-9._@-]{1,64}|role:[a-z][a-z0-9-]{0,63}|grant:[a-z][a-z0-9+.-]*://\S+)")
 
 
 def _where(tag: str, key: str, a: Dict[str, Any]) -> str:
@@ -158,6 +160,16 @@ def _step(t: DocTree) -> None:
     _check("surprise" not in a or a["surprise"] == "parent" or (isinstance(a.get("surpriseTo"), str) and a["surpriseTo"].strip()),
            f"{at}: surprise {json.dumps(a.get('surprise'))} names who handles it (surpriseTo: an agent or a person)")
     _check(a.get("surprise") != "parent" or "surpriseTo" not in a, f"{at}: a surprise that goes to the parent names no surpriseTo")
+    if "approval" in a:
+        raw = a["approval"]
+        _check(isinstance(raw, str) and raw.strip(),
+               f"{at}: approval names who may approve the step (agent:<id>, person:<id>, role:<name> or grant:<address>, space separated)")
+        who = raw.strip().split()
+        for w in who:
+            _check(bool(_APPROVER.fullmatch(w)),
+                   f"{at}: approval names a principal (agent:<id>, person:<id>), a role (role:<name>) or a grant (grant:<address>), not {json.dumps(w, ensure_ascii=False)}")
+        _check(len(who) == len(set(who)), f"{at}: approval names an approver twice")
+        _check(a.get("kind") != "note", f"{at}: a note step does nothing, so it waits for no approval")
     if "after" in a:
         raw = a["after"]
         _check(isinstance(raw, str) and raw.strip(), f"{at}: after names the steps this one follows (their ids, space separated)")
