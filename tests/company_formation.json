@@ -1,0 +1,34 @@
+{
+  "valid": [
+    {
+      "entity": {"jurisdiction": "US-DE", "form": "corporation", "formed": "2026-01-05", "dissolved": "2026-10-01"},
+      "children": [
+        {"tag": "RegisteredAgent", "attrs": {"jurisdiction": "US-DE", "name": "Agent Co.", "address": "1 Main St, Dover, DE 19901", "since": "2026-01-05"}},
+        {"tag": "Paper", "attrs": {"kind": "filing", "title": "Certificate of Incorporation", "file": "Acme/legal/filings/incorporation.md", "jurisdiction": "US-DE", "rule": "de-certificate-of-incorporation", "status": "accepted", "submitted": "2026-01-04", "accepted": "2026-01-05", "confirmation": "7654321"}},
+        {"tag": "Paper", "attrs": {"kind": "filing", "title": "Franchise tax and annual report", "file": "Acme/legal/filings/2027 annual report.md", "jurisdiction": "US-DE", "rule": "de-corp-franchise-tax", "period": "2026", "due": "2027-03-01", "status": "draft"}}
+      ],
+      "document": {
+        "entity": {"jurisdiction": "US-DE", "form": "corporation", "name": null, "formed": "2026-01-05", "fiscalYearEnd": null, "ids": {}, "operatesIn": [], "dissolved": "2026-10-01"},
+        "registeredAgents": [{"jurisdiction": "US-DE", "name": "Agent Co.", "address": "1 Main St, Dover, DE 19901", "since": "2026-01-05"}],
+        "papers": [
+          {"kind": "filing", "title": "Certificate of Incorporation", "file": "Acme/legal/filings/incorporation.md", "jurisdiction": "US-DE", "rule": "de-certificate-of-incorporation", "status": "accepted", "submitted": "2026-01-04", "accepted": "2026-01-05", "confirmation": "7654321"},
+          {"kind": "filing", "title": "Franchise tax and annual report", "file": "Acme/legal/filings/2027 annual report.md", "jurisdiction": "US-DE", "rule": "de-corp-franchise-tax", "period": "2026", "due": "2027-03-01", "status": "draft"}
+        ]
+      }
+    },
+    {
+      "entity": {"jurisdiction": "US-NY", "form": "llc"},
+      "children": [],
+      "document": {
+        "entity": {"jurisdiction": "US-NY", "form": "llc", "name": null, "formed": null, "fiscalYearEnd": null, "ids": {}, "operatesIn": []},
+        "registeredAgents": null,
+        "papers": null
+      }
+    }
+  ],
+  "invalid": [
+    {"tag": "RegisteredAgent", "attrs": {"name": "A"}, "error": "needs jurisdiction"},
+    {"tag": "RegisteredAgent", "attrs": {"jurisdiction": "US-DE"}, "error": "needs name"},
+    {"tag": "RegisteredAgent", "attrs": {"jurisdiction": "US-DE", "name": "A", "phone": "1"}, "error": "has no attribute phone"}
+  ]
+}

@@ -28,6 +28,7 @@ import math
 from typing import Any, Dict, List, Optional
 
 from .business_finance import COMPANY_FINANCE_MANY, COMPANY_FINANCE_ONE, FINANCE_TAGS, finance_of
+from .company_formation import FILING_PAPER_PROPS, FORMATION_LISTS, FORMATION_TAGS, formation_of
 from .element import Element, child_elements, declares, define
 
 _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
@@ -36,9 +37,9 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
                         **COMPANY_FINANCE_ONE},
-                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", **COMPANY_FINANCE_MANY}},
+                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", **COMPANY_FINANCE_MANY, **FORMATION_LISTS}},
     "Entity": {"props": {"jurisdiction": _TEXT, "form": _TEXT, "taxClassification": _TEXT, "name": _TEXT, "formed": _TEXT,
-                         "fiscalYearEnd": _TEXT, "ids": _RECORD, "operatesIn": _TEXTS, "conditions": _RECORD}, "required": ["jurisdiction"]},
+                         "fiscalYearEnd": _TEXT, "ids": _RECORD, "operatesIn": _TEXTS, "conditions": _RECORD, "dissolved": _TEXT}, "required": ["jurisdiction"]},
     "Registration": {"props": {"kind": _TEXT, "jurisdiction": _TEXT, "id": _TEXT, "issued": _TEXT, "expires": _TEXT, "file": _TEXT}, "required": ["kind"]},
     "Books": {"props": {"journal": _TEXT}, "required": ["journal"]},
     "CapTable": {"props": {"ocf": _TEXT}, "required": ["ocf"]},
@@ -49,10 +50,11 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Subsidiary": {"props": {"file": _TEXT, "ownership": _AMOUNT, "since": _TEXT, "method": _TEXT}, "required": ["file", "ownership"]},
     # A typed document: a file of the company it describes (docs/company-substrate.md § documents).
     "Paper": {"props": {"kind": _TEXT, "title": _TEXT, "file": _TEXT, "status": _TEXT, "parties": _TEXTS, "jurisdiction": _TEXT,
-                        "effective": _TEXT, "expires": _TEXT, "renewal": _TEXT, "noticeDays": _AMOUNT},
+                        "effective": _TEXT, "expires": _TEXT, "renewal": _TEXT, "noticeDays": _AMOUNT, **FILING_PAPER_PROPS},
               "required": ["kind", "file"], "many": {"signatures": "Signature", "versions": "Version"}},
     "Signature": {"props": {"party": _TEXT, "signer": _TEXT, "capacity": _TEXT, "date": _TEXT, "method": _TEXT, "evidence": _TEXT}, "required": ["party"]},
     "Version": {"props": {"file": _TEXT, "date": _TEXT, "note": _TEXT}, "required": ["file"]},
+    **FORMATION_TAGS,
     "Rfc": {"props": {"id": _TEXT, "procedure": _TEXT, "title": _TEXT, "body": _TEXT, "target": _TEXT, "engineJson": _TEXT}, "many": {"options": "Option"}},
     "Option": {"props": {"title": _TEXT, "summary": _TEXT}, "many": {"changes": "Change"}},
     "Change": {"props": {"op": _TEXT, "parameter": _TEXT, "value": _TEXT, "dutyId": _TEXT, "title": _TEXT, "text": _TEXT, "protects": _TEXTS,
@@ -174,6 +176,8 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
                        "ids": e.get("ids", {}), "operatesIn": e.get("operatesIn", [])})
         if "conditions" in e:
             entity["conditions"] = e["conditions"]
+        if "dissolved" in e:
+            entity["dissolved"] = e["dissolved"]
 
     def ref(f: str, prop: str) -> Optional[str]:
         return one[f]["props"].get(prop) if one[f] else None
@@ -196,7 +200,7 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
             **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
             "dashboard": p.get("dashboard"), "entity": entity, "standard": standard,
             **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {}),
-            **({"finance": finance} if finance else {})}
+            **({"finance": finance} if finance else {}), **formation_of(node)}
 
 
 def _with_id(node: Dict[str, Any], draft: Dict[str, Any]) -> Dict[str, Any]:
