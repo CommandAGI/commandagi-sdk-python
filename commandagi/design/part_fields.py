@@ -11,9 +11,11 @@ form the board editor writes), so the BOM, the KiCad board and a 3D body's join 
                                                                            <YYYY-MM-DD>", "measured <YYYY-MM-DD>[, <how>]")
     package_dimensions=                                                     its datasheet package ("<n> pins, pitch
                                                                            <mm> mm, body <l> x <w> mm")
-    suppliers=[{"name", "sku", "url", "currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays", "stock",
+    suppliers=[{"name", "sku", "url", "currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays",
+                "leadTimeDaysHigh", "stock", "kind", "confidence", "samplesDays", "tooling", "service", "supplier",
                 "source", "date"}]
-    alternates=[{"manufacturer", "mpn", "note"}]  datasheet="https://…"
+    alternates=[{"manufacturer", "mpn", "note", "approved", "differences", "datasheet", "suppliers"}]
+    datasheet="https://…"
     lifecycle={"status", "lastTimeBuy", "onHand", "reorderPoint", "source", "date"}
     compliance={"rohs", "rohsExemption", "reach", "conflictMinerals", "eccn", "certifications"}
     shipping={"hsCode", "origin", "hazmat", "packaging"}                    its logistics (docs/formats.md § logistics)
@@ -74,7 +76,11 @@ _CHOICES = {
 }
 _COUNTS = {"lifecycle.onHand", "lifecycle.reorderPoint"}
 _DATES = {"lifecycle.lastTimeBuy", "lifecycle.date"}
-_OFFER_TERMS = ["currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays", "stock", "url", "source", "date"]
+_OFFER_TERMS = ["currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays", "leadTimeDaysHigh", "stock", "kind", "confidence",
+                "samplesDays", "tooling", "service", "supplier", "url", "source", "date"]
+_OFFER_KINDS = ["stock", "quote", "listing", "broker"]
+_CONFIDENCES = ["firm", "indication"]
+_ALTERNATE_KEYS = ["manufacturer", "mpn", "note", "approved", "differences", "datasheet", "suppliers"]
 _OFFER_KEYS = ["name", "sku", *_OFFER_TERMS]
 #: The props a part's fields take, in the order their forms are written.
 FIELD_ARGUMENTS: List[str] = [*PART_FIELDS, "attrs", "suppliers", "alternates", "datasheet", "lifecycle", "compliance", "shipping"]
@@ -82,7 +88,7 @@ FIELD_ARGUMENTS: List[str] = [*PART_FIELDS, "attrs", "suppliers", "alternates", 
 OWN_FIELDS = ("Reference", "Value", "Footprint")
 _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-__all__ = ["PART_FIELDS", "FACET_FIELDS", "FIELD_ARGUMENTS", "field_form", "part_field_forms", "part_fields", "check_offers",
+__all__ = ["PART_FIELDS", "FACET_FIELDS", "FIELD_ARGUMENTS", "field_form", "part_field_forms", "part_fields", "check_offers", "check_alternates",
            "check_facet", "js_json"]
 
 
@@ -195,6 +201,20 @@ def check_offers(where: str, v: Any) -> List[Dict[str, Any]]:
             raise ValueError(f"{at}: stock is a whole number")
         if s.get("leadTimeDays") is not None and not (_number(s["leadTimeDays"]) and s["leadTimeDays"] >= 0):
             raise ValueError(f"{at}: leadTimeDays is a number of days")
+        high = s.get("leadTimeDaysHigh")
+        if high is not None and not (_number(high) and high >= 0 and (s.get("leadTimeDays") is None or high >= s["leadTimeDays"])):
+            raise ValueError(f"{at}: leadTimeDaysHigh is a number of days, not under leadTimeDays")
+        if s.get("samplesDays") is not None and not (_number(s["samplesDays"]) and s["samplesDays"] >= 0):
+            raise ValueError(f"{at}: samplesDays is a number of days")
+        if s.get("kind") is not None and s["kind"] not in _OFFER_KINDS:
+            raise ValueError(f"{at}: kind is stock, quote, listing or broker")
+        if s.get("confidence") is not None and s["confidence"] not in _CONFIDENCES:
+            raise ValueError(f"{at}: confidence is firm or indication")
+        if s.get("tooling") is not None and not ((_number(s["tooling"]) and s["tooling"] >= 0) or s["tooling"] == "unknown"):
+            raise ValueError(f'{at}: tooling is a cost, 0 or more, or "unknown"')
+        for k in ("service", "supplier"):
+            if s.get(k) is not None and not _text(s[k]):
+                raise ValueError(f"{at}: {k} is text")
         breaks = s.get("priceBreaks")
         if breaks is not None:
             ok = isinstance(breaks, (list, tuple)) and all(
@@ -206,6 +226,34 @@ def check_offers(where: str, v: Any) -> List[Dict[str, Any]]:
                 raise ValueError(f"{at}: priceBreaks is a list of {{ quantity, unitPrice, unitPriceHigh? }} (quantity a whole number from 1, "
                                  "unitPrice 0 or more, unitPriceHigh not under it)")
         out.append({k: copy.deepcopy(x) for k, x in s.items() if x is not None})
+    return out
+
+
+def check_alternates(where: str, v: Any) -> List[Dict[str, Any]]:
+    """Alternates, each checked: another maker's part, what differs, whether it is approved, and its offers."""
+    if not isinstance(v, (list, tuple)) or not v:
+        raise ValueError(f"{where}: alternates is a list of {{ manufacturer, mpn, note?, approved?, differences?, datasheet?, suppliers? }}")
+    out = []
+    for i, a in enumerate(v):
+        at = f"{where}: alternates[{i}]"
+        if not isinstance(a, dict):
+            raise ValueError(f"{at} is an alternate ({{ manufacturer, mpn, … }})")
+        for k in a:
+            if k not in _ALTERNATE_KEYS:
+                raise ValueError(f"{at}: {k} is not read (it takes {', '.join(_ALTERNATE_KEYS)})")
+        for k in ("manufacturer", "mpn"):
+            if not _text(a.get(k)):
+                raise ValueError(f"{at}: {k} is text")
+        for k in ("note", "datasheet"):
+            if a.get(k) is not None and not _text(a[k]):
+                raise ValueError(f"{at}: {k} is text")
+        if a.get("approved") is not None and not isinstance(a["approved"], bool):
+            raise ValueError(f"{at}: approved is true or false")
+        if a.get("differences") is not None and not (isinstance(a["differences"], (list, tuple)) and all(_text(d) for d in a["differences"])):
+            raise ValueError(f"{at}: differences is a list of text")
+        if a.get("suppliers") is not None:
+            check_offers(at, a["suppliers"])
+        out.append({k: copy.deepcopy(x) for k, x in a.items() if x is not None})
     return out
 
 
@@ -283,11 +331,7 @@ def part_field_forms(where: str, props: Mapping[str, Any]) -> List[Dict[str, Any
         forms += _offer_forms(where, props["suppliers"])
     alternates = props.get("alternates")
     if alternates is not None:
-        if not isinstance(alternates, (list, tuple)) or not alternates or not all(
-                isinstance(a, dict) and _text(a.get("manufacturer")) and _text(a.get("mpn")) and (a.get("note") is None or _text(a["note"]))
-                and all(k in ("manufacturer", "mpn", "note") for k in a) for a in alternates):
-            raise ValueError(f"{where}: alternates is a list of {{ manufacturer, mpn, note? }}")
-        forms.append(field_form("Alternates", js_json(alternates)))
+        forms.append(field_form("Alternates", js_json(check_alternates(where, alternates))))
     datasheet = props.get("datasheet")
     if datasheet is not None:
         if not _text(datasheet):

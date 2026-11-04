@@ -16,9 +16,9 @@ _AcceptedFindingOptional = TypedDict("_AcceptedFindingOptional", {"rule": str, "
 class AcceptedFinding(_AcceptedFindingRequired, _AcceptedFindingOptional):
     pass
 
-#: An approved second source: another maker's part that may be fitted in place of this one.
+#: A SECOND SOURCE WITH ANOTHER MPN: another maker's part that may be fitted in place of this one, what differs (as a person states it: nothing infers it), whether it is approved, and who sells it.
 _AlternateRequired = TypedDict("_AlternateRequired", {"manufacturer": str, "mpn": str})
-_AlternateOptional = TypedDict("_AlternateOptional", {"note": str}, total=False)
+_AlternateOptional = TypedDict("_AlternateOptional", {"note": str, "approved": bool, "differences": List[str], "datasheet": str, "suppliers": List['SupplierOffer']}, total=False)
 class Alternate(_AlternateRequired, _AlternateOptional):
     pass
 
@@ -105,7 +105,7 @@ class CombineFeature(_CombineFeatureRequired, _CombineFeatureOptional):
 
 #: WHAT A PART COMPLIES WITH.
 _ComplianceRequired = TypedDict("_ComplianceRequired", {})
-_ComplianceOptional = TypedDict("_ComplianceOptional", {"rohs": Literal["compliant", "exempt", "non-compliant", "unknown"], "rohsExemption": str, "reach": Literal["compliant", "non-compliant", "unknown", "svhc"], "conflictMinerals": Literal["none", "unknown", "reported"], "eccn": str, "certifications": List[str]}, total=False)
+_ComplianceOptional = TypedDict("_ComplianceOptional", {"rohs": Literal["unknown", "compliant", "exempt", "non-compliant"], "rohsExemption": str, "reach": Literal["unknown", "compliant", "non-compliant", "svhc"], "conflictMinerals": Literal["none", "unknown", "reported"], "eccn": str, "certifications": List[str]}, total=False)
 class Compliance(_ComplianceRequired, _ComplianceOptional):
     pass
 
@@ -841,7 +841,7 @@ class SubdivBodyFeature(_SubdivBodyFeatureRequired, _SubdivBodyFeatureOptional):
 
 #: WHO SELLS A PART, AND ON WHAT TERMS: one supplier's offer (docs/formats.md § logistics). The quantity terms (`stock`, `moq`, `orderMultiple`, `leadTimeDays`, `priceBreaks`) are the ones a component catalog's offer states. A price or a stock says where and when it was read (`source`, `date`).
 _SupplierOfferRequired = TypedDict("_SupplierOfferRequired", {"name": str})
-_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "leadTimeDays": float, "stock": int, "source": str, "date": str, "supplier": str}, total=False)
+_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "leadTimeDays": float, "leadTimeDaysHigh": float, "stock": int, "kind": Literal["stock", "quote", "listing", "broker"], "confidence": Literal["firm", "indication"], "samplesDays": float, "tooling": Union[float, Literal["unknown"]], "service": str, "source": str, "date": str, "supplier": str}, total=False)
 class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
     pass
 

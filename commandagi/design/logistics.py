@@ -24,6 +24,10 @@ and the same elements as the TypeScript SDK's JSX (``commandagi/design`` ``logis
         name="tile kit", quantity=10,
     )
 
+A supplier's ``service(fee(...), id=...)`` is a way to buy through it (pre-order, global sourcing, consignment) with its
+review and buying days and its fees (per order, line or unit). A plan's ``build`` is the day the parts must be at the
+builder, and ``source(use(offer=...), part=..., strategy=...)`` says how one line is filled (single, fill, split, dual).
+
 A route's legs run in order from the supplier's ``location``; a leg that names a place (``to``, ``lat``, ``lon``) ends
 there, and a leg that names none ends at the builder. Refs are by the plan's folder. Nothing adds a default.
 """
@@ -40,7 +44,13 @@ PLACE_FIELDS = ["name", "lat", "lon", "country", "address"]
 SUPPLIER_FIELDS = ["name", "url", "leadTimeDays", "note"]
 SHIPS_FIELDS = ["carrier", "service", "transitDays", "note"]
 CONTACT_FIELDS = ["name", "role", "email", "phone"]
-LOGISTICS_FIELDS = ["name", "quantity"]
+SERVICE_FIELDS = ["id", "name", "reviewDays", "reviewDaysHigh", "leadTimeDays", "leadTimeDaysHigh", "note"]
+FEE_FIELDS = ["amount", "currency", "per", "each", "note"]
+LOGISTICS_FIELDS = ["name", "quantity", "build"]
+SOURCE_FIELDS = ["part", "strategy"]
+USE_FIELDS = ["offer", "mpn", "qty", "share"]
+FEE_PER = ["order", "line", "unit"]
+STRATEGIES = ["single", "fill", "split", "dual"]
 BOM_FIELDS = ["ref", "qty"]
 LEG_FIELDS = ["carrier", "service", "transitDays", "cost", "currency", "to", "lat", "lon", "country"]
 
@@ -50,14 +60,19 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "location": {},
     "ships": {},
     "contact": {},
+    "service": {"holds": "children"},
+    "fee": {},
     "logistics": {"holds": "children"},
     "bom": {},
     "builder": {},
     "route": {"holds": "children"},
     "leg": {},
+    "source": {"holds": "children"},
+    "use": {},
 }
 
-__all__ = ["PLACE_FIELDS", "SUPPLIER_FIELDS", "SHIPS_FIELDS", "CONTACT_FIELDS", "LOGISTICS_FIELDS", "BOM_FIELDS", "LEG_FIELDS",
+__all__ = ["PLACE_FIELDS", "SUPPLIER_FIELDS", "SHIPS_FIELDS", "CONTACT_FIELDS", "SERVICE_FIELDS", "FEE_FIELDS", "LOGISTICS_FIELDS",
+           "BOM_FIELDS", "LEG_FIELDS", "SOURCE_FIELDS", "USE_FIELDS",
            "SIGNATURES", "SUPPLIER_VOCABULARY", "LOGISTICS_VOCABULARY", *define(globals(), "logistics", SIGNATURES)]
 
 
@@ -111,16 +126,44 @@ def _supplier(t: DocTree) -> Dict[str, Any]:
         if c["tag"] == "contact":
             _text("contact", c["attrs"], CONTACT_FIELDS)
             contacts.append(_fields(c["attrs"], CONTACT_FIELDS))
+    services = [_service(c) for c in t["children"] if c["tag"] == "service"]
     return {**_fields(a, SUPPLIER_FIELDS), **({"location": _place("location", location["attrs"])} if location else {}),
-            "ships": ships, "contacts": contacts}
+            "ships": ships, "contacts": contacts, "services": services}
+
+
+def _currency(tag: str, a: Dict[str, Any]) -> None:
+    if "currency" in a and not (isinstance(a["currency"], str) and re.fullmatch(r"[A-Z]{3}", a["currency"])):
+        raise ValueError(f'<{tag}> currency is ISO 4217 ("USD")')
+
+
+def _service(t: DocTree) -> Dict[str, Any]:
+    a = t["attrs"]
+    _text("service", a, ["id", "name", "note"])
+    _count("service", a, ["reviewDays", "reviewDaysHigh", "leadTimeDays", "leadTimeDaysHigh"])
+    fees = []
+    for c in t["children"]:
+        if c["tag"] != "fee":
+            continue
+        f = c["attrs"]
+        _text("fee", f, ["note"])
+        if not (_number(f.get("amount")) and f["amount"] >= 0):
+            raise ValueError("<fee> amount is a number, 0 or more")
+        if "currency" not in f:
+            raise ValueError("<fee> states its currency")
+        _currency("fee", f)
+        if f.get("per") not in FEE_PER:
+            raise ValueError("<fee> per is order, line or unit")
+        if "each" in f and not (isinstance(f["each"], int) and not isinstance(f["each"], bool) and f["each"] >= 1):
+            raise ValueError("<fee> each is a whole number, 1 or more")
+        fees.append(_fields(f, FEE_FIELDS))
+    return {**_fields(a, SERVICE_FIELDS), "fees": fees}
 
 
 def _leg(c: DocTree) -> Dict[str, Any]:
     a = c["attrs"]
     _text("leg", a, ["carrier", "service", "to"])
     _count("leg", a, ["transitDays", "cost"])
-    if "currency" in a and not (isinstance(a["currency"], str) and re.fullmatch(r"[A-Z]{3}", a["currency"])):
-        raise ValueError('<leg> currency is ISO 4217 ("USD")')
+    _currency("leg", a)
     if "cost" in a and "currency" not in a:
         raise ValueError("<leg> cost states its currency")
     somewhere = any(k in a for k in ("to", "lat", "lon", "country"))
@@ -129,7 +172,9 @@ def _leg(c: DocTree) -> Dict[str, Any]:
 
 def _logistics(t: DocTree) -> Dict[str, Any]:
     a = t["attrs"]
-    _text("logistics", a, ["name"])
+    _text("logistics", a, ["name", "build"])
+    if "build" in a and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", a["build"]):
+        raise ValueError("<logistics> build is YYYY-MM-DD")
     if "quantity" in a and not (isinstance(a["quantity"], int) and not isinstance(a["quantity"], bool) and a["quantity"] > 0):
         raise ValueError("<logistics> quantity is a whole number, 1 or more")
     boms = []
@@ -145,7 +190,28 @@ def _logistics(t: DocTree) -> Dict[str, Any]:
         if r["tag"] == "route":
             _text("route", r["attrs"], ["supplier"])
             routes.append({"supplier": r["attrs"]["supplier"], "legs": [_leg(c) for c in r["children"] if c["tag"] == "leg"]})
-    return {**_fields(a, LOGISTICS_FIELDS), "boms": boms, **({"builder": _place("builder", builder["attrs"])} if builder else {}), "routes": routes}
+    sources = [_source(c) for c in t["children"] if c["tag"] == "source"]
+    return {**_fields(a, LOGISTICS_FIELDS), "boms": boms, **({"builder": _place("builder", builder["attrs"])} if builder else {}), "routes": routes,
+            "sources": sources}
+
+
+def _source(t: DocTree) -> Dict[str, Any]:
+    a = t["attrs"]
+    _text("source", a, ["part"])
+    if a.get("strategy") not in STRATEGIES:
+        raise ValueError("<source> strategy is single, fill, split or dual")
+    uses = []
+    for c in t["children"]:
+        if c["tag"] != "use":
+            continue
+        u = c["attrs"]
+        _text("use", u, ["offer", "mpn"])
+        if "qty" in u and not (_number(u["qty"]) and u["qty"] > 0):
+            raise ValueError("<use> qty is a number above 0")
+        if "share" in u and not (_number(u["share"]) and 0 < u["share"] <= 1):
+            raise ValueError("<use> share is a number above 0, at most 1")
+        uses.append(_fields(u, USE_FIELDS))
+    return {**_fields(a, SOURCE_FIELDS), "uses": uses}
 
 
 def _never(_: Any) -> DocTree:
@@ -157,6 +223,8 @@ SUPPLIER_VOCABULARY = Vocabulary("supplier", "a supplier", "supplier", {
     "location": {"parents": ["supplier"], "single": True, "required": ["name", "lat", "lon"], "attrs": PLACE_FIELDS},
     "ships": {"parents": ["supplier"], "required": ["carrier"], "attrs": SHIPS_FIELDS},
     "contact": {"parents": ["supplier"], "attrs": CONTACT_FIELDS},
+    "service": {"parents": ["supplier"], "required": ["id"], "attrs": SERVICE_FIELDS},
+    "fee": {"parents": ["service"], "required": ["amount", "currency", "per"], "attrs": FEE_FIELDS},
 }, _supplier, _never)
 
 LOGISTICS_VOCABULARY = Vocabulary("logistics", "a logistics plan", "logistics", {
@@ -165,6 +233,8 @@ LOGISTICS_VOCABULARY = Vocabulary("logistics", "a logistics plan", "logistics", 
     "builder": {"parents": ["logistics"], "single": True, "required": ["name", "lat", "lon"], "attrs": PLACE_FIELDS},
     "route": {"parents": ["logistics"], "required": ["supplier"], "attrs": ["supplier"]},
     "leg": {"parents": ["route"], "required": ["carrier"], "attrs": LEG_FIELDS},
+    "source": {"parents": ["logistics"], "required": ["part", "strategy"], "attrs": SOURCE_FIELDS},
+    "use": {"parents": ["source"], "required": ["offer"], "attrs": USE_FIELDS},
 }, _logistics, _never)
 
 for _v in (SUPPLIER_VOCABULARY, LOGISTICS_VOCABULARY):

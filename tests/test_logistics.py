@@ -155,5 +155,22 @@ class LogisticsTests(unittest.TestCase):
                 threed.declare_threed(threed.part(el, name="P"))
 
 
+    def test_an_offers_kind_confidence_tooling_and_lead_range_and_an_alternate_round_trip_through_the_fields(self):
+        quote = {"name": "Kinghelm", "currency": "USD", "priceBreaks": [{"quantity": 5000, "unitPrice": 0.07, "unitPriceHigh": 0.1}], "moq": 5000,
+                 "leadTimeDays": 15, "leadTimeDaysHigh": 20, "kind": "quote", "confidence": "indication", "samplesDays": 14,
+                 "tooling": "unknown", "supplier": "suppliers/kinghelm.supplier.tsx", "source": "maker's blog", "date": "2026-11-03"}
+        alt = {"manufacturer": "YIYUAN", "mpn": "YTC1P-6020-01", "approved": False, "differences": ["rated stroke 1.5 mm, not 2.0 mm"],
+               "suppliers": [{"name": "LCSC", "sku": "C5221290", "stock": 885}]}
+        g = sheet(schematic.part("P1", pins=["1"], mpn="KH-205580-DZ", suppliers=[copy.deepcopy(quote)], alternates=[copy.deepcopy(alt)]))
+        self.assertEqual(props(g["nodes"]["P1"]["inputs"])[1], ["Kinghelm Terms",
+            '{"currency":"USD","priceBreaks":[[5000,0.07,0.1]],"moq":5000,"leadTimeDays":15,"leadTimeDaysHigh":20,"kind":"quote",'
+            '"confidence":"indication","samplesDays":14,"tooling":"unknown","supplier":"suppliers/kinghelm.supplier.tsx","source":"maker\'s blog","date":"2026-11-03"}'])
+        self.assertEqual(part_fields(g["nodes"]["P1"]["inputs"]), {"mpn": "KH-205580-DZ", "suppliers": [quote], "alternates": [alt]})
+        with self.assertRaisesRegex(ValueError, "kind is stock, quote, listing or broker"):
+            sheet(schematic.part("P1", pins=["1"], suppliers=[{"name": "X", "kind": "offer"}]))
+        with self.assertRaisesRegex(ValueError, "alternates\\[0\\]: grade is not read"):
+            sheet(schematic.part("P1", pins=["1"], alternates=[{"manufacturer": "Y", "mpn": "Z", "grade": "A"}]))
+
+
 if __name__ == "__main__":
     unittest.main()
