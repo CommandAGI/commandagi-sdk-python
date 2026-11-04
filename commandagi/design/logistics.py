@@ -30,6 +30,10 @@ builder, and ``source(use(offer=...), part=..., strategy=...)`` says how one lin
 
 A route's legs run in order from the supplier's ``location``; a leg that names a place (``to``, ``lat``, ``lon``) ends
 there, and a leg that names none ends at the builder. Refs are by the plan's folder. Nothing adds a default.
+
+A leg that says ``quote="cheapest"`` (or ``fastest``, a carrier ``usps``, a carrier and its service code
+``usps/PRIORITY_MAIL``) with its parcel ``kg=2.5, mm=[300, 250, 220]`` is quoted live by the shipping interface, beside
+its stated cost (docs/shipping.md); a place's ``postal`` is the postal code the carriers rate by.
 """
 from __future__ import annotations
 
@@ -40,7 +44,7 @@ from typing import Any, Dict
 from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
 
-PLACE_FIELDS = ["name", "lat", "lon", "country", "address"]
+PLACE_FIELDS = ["name", "lat", "lon", "country", "postal", "address"]
 SUPPLIER_FIELDS = ["name", "url", "leadTimeDays", "note"]
 SHIPS_FIELDS = ["carrier", "service", "transitDays", "note"]
 CONTACT_FIELDS = ["name", "role", "email", "phone"]
@@ -52,7 +56,9 @@ USE_FIELDS = ["offer", "mpn", "qty", "share"]
 FEE_PER = ["order", "line", "unit"]
 STRATEGIES = ["single", "fill", "split", "dual"]
 BOM_FIELDS = ["ref", "qty"]
-LEG_FIELDS = ["carrier", "service", "transitDays", "cost", "currency", "to", "lat", "lon", "country"]
+LEG_FIELDS = ["carrier", "service", "transitDays", "cost", "currency", "quote", "kg", "mm", "to", "lat", "lon", "country", "postal"]
+#: What a leg's quote asks for: cheapest, fastest, a carrier, or a carrier and its service code.
+WANT = re.compile(r"(?:cheapest|fastest|[a-z][a-z0-9-]{1,31}(?:/[A-Za-z0-9_.-]{1,64})?)")
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
@@ -105,9 +111,9 @@ def _place(tag: str, a: Dict[str, Any], name: str = "name") -> Dict[str, Any]:
         raise ValueError(f"<{tag}> lon is degrees east, -180 to 180")
     if "country" in a and not (isinstance(a["country"], str) and re.fullmatch(r"[A-Z]{2}", a["country"])):
         raise ValueError(f'<{tag}> country is ISO 3166 alpha-2 ("CN")')
-    _text(tag, a, ["address"])
+    _text(tag, a, ["postal", "address"])
     return {"name": a[name], "lat": a["lat"], "lon": a["lon"], **({"country": a["country"]} if a.get("country") else {}),
-            **({"address": a["address"]} if a.get("address") else {})}
+            **({"postal": a["postal"]} if a.get("postal") else {}), **({"address": a["address"]} if a.get("address") else {})}
 
 
 def _supplier(t: DocTree) -> Dict[str, Any]:
@@ -166,8 +172,19 @@ def _leg(c: DocTree) -> Dict[str, Any]:
     _currency("leg", a)
     if "cost" in a and "currency" not in a:
         raise ValueError("<leg> cost states its currency")
+    if "quote" in a and not (isinstance(a["quote"], str) and WANT.fullmatch(a["quote"])):
+        raise ValueError("<leg> quote is cheapest, fastest, a carrier (usps), or a carrier and its service code (usps/PRIORITY_MAIL)")
+    if "kg" in a and not (_number(a["kg"]) and a["kg"] > 0):
+        raise ValueError("<leg> kg is the parcel's weight in kilograms, above 0")
+    if "mm" in a and not (isinstance(a["mm"], (list, tuple)) and len(a["mm"]) == 3 and all(_number(x) and x > 0 for x in a["mm"])):
+        raise ValueError("<leg> mm is the parcel's [length, width, height] in millimetres")
+    if "quote" in a and ("kg" not in a or "mm" not in a):
+        raise ValueError("<leg> quote needs its parcel: kg and mm")
     somewhere = any(k in a for k in ("to", "lat", "lon", "country"))
-    return {**_fields(a, ["carrier", "service", "transitDays", "cost", "currency"]), **({"to": _place("leg", a, "to")} if somewhere else {})}
+    out = _fields(a, ["carrier", "service", "transitDays", "cost", "currency", "quote", "kg", "mm"])
+    if "mm" in out:
+        out["mm"] = list(out["mm"])
+    return {**out, **({"to": _place("leg", a, "to")} if somewhere else {})}
 
 
 def _logistics(t: DocTree) -> Dict[str, Any]:

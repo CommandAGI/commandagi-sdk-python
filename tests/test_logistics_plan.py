@@ -45,6 +45,20 @@ class LogisticsTests(unittest.TestCase):
             declare_document(logistics(quantity=2.5))
 
 
+    def test_a_leg_that_says_quote_this_states_its_want_parcel_and_postal_codes(self):
+        d = declare_document(logistics(
+            builder(name="the builder, San Francisco", lat=37.72, lon=-122.44, country="US", postal="94112"),
+            route(leg(carrier="USPS", quote="cheapest", kg=2.5, mm=[300, 250, 220], to="a buyer, Berlin", lat=52.52, lon=13.4,
+                      country="DE", postal="10115"), supplier="suppliers/x.supplier.tsx"),
+            name="helmet"))
+        self.assertEqual(d["document"]["builder"], {"name": "the builder, San Francisco", "lat": 37.72, "lon": -122.44, "country": "US", "postal": "94112"})
+        self.assertEqual(d["document"]["routes"][0]["legs"][0], {"carrier": "USPS", "quote": "cheapest", "kg": 2.5, "mm": [300, 250, 220],
+                                                               "to": {"name": "a buyer, Berlin", "lat": 52.52, "lon": 13.4, "country": "DE", "postal": "10115"}})
+        for bad, words in [({"quote": "the cheap one"}, "quote is cheapest, fastest"), ({"quote": "ups/03"}, "quote needs its parcel"),
+                           ({"quote": "fastest", "kg": 2, "mm": [300, 250]}, "mm is the parcel")]:
+            with self.assertRaisesRegex(ValueError, words):
+                declare_document(logistics(route(leg(carrier="UPS", **bad), supplier="s.supplier.tsx")))
+
     def test_a_supplier_offers_services_with_their_days_and_fees(self):
         d = declare_document(supplier(
             service(fee(amount=20, currency="USD", per="line", note="connectors and batteries"), fee(amount=0.017, currency="USD", per="unit"),
