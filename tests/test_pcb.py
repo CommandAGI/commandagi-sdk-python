@@ -4,7 +4,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.pcb import (arc, board, bus, component, declare_board_file, diffpair, dimension, graphic, group, keepout, kicad, masks, net, netclass,
-                                   objective, pour, stack, text, thermal, trace, via)
+                                   objective, pour, stack, text, thermal, trace, via, wire)
 
 
 def declared(*children, **attrs):
@@ -13,6 +13,17 @@ def declared(*children, **attrs):
 
 
 class BoardTests(unittest.TestCase):
+    def test_a_wire_is_a_hand_soldered_wire_from_pin_to_pin(self):
+        g = declared(component(name="R1", footprint="smd-0805", pcb_x=10, pcb_y=10),
+                     component(name="R2", footprint="smd-0805", pcb_x=25, pcb_y=10),
+                     wire(name="W1", from_=".R1 > .pin1", to=".R2 > .pin2", material="WIRE-22AWG-SOLID-PVC",
+                          points=[[9, 10, 0], [17, 4, 3], [26, 10, 0]]),
+                     wire(from_=".R1 > .pin2", to=".R2 > .1", slack=0.3))
+        self.assertEqual(g["nodes"]["W1"]["type"], "eda.wire")
+        self.assertEqual(g["nodes"]["W1"]["inputs"], {"from": {"ref": "R1", "number": "1"}, "to": {"ref": "R2", "number": "2"},
+                                                      "material": "WIRE-22AWG-SOLID-PVC", "points": [[9, 10, 0], [17, 4, 3], [26, 10, 0]]})
+        self.assertEqual(g["nodes"]["wire_2"]["inputs"], {"from": {"ref": "R1", "number": "2"}, "to": {"ref": "R2", "number": "1"}, "slack": 0.3})
+
     def test_a_boards_copper_is_the_copper_it_has(self):
         box = {"points": [[0, 0], [9, 0], [9, 9]]}
         run = {"width": 0.2, "points": [[0, 0], [9, 0]]}

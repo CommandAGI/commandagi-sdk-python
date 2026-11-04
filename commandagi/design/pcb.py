@@ -57,6 +57,9 @@ The calls (children are positional; every attribute is a keyword):
                                       cross-section. Any other is refused by name.
     pour(name, layers, points, terminals, net, uuid, kicad)
                                       a copper pour: its boundary on its layers.
+    wire(name, from_, to, material, points, slack, net)
+                                      a wire soldered by hand from pin to pin (a jumper): a rod the 3D view draws,
+                                      along ``points`` ([[x, y, z], …], z up from the top face) or laid off the pads.
 
 The layout's constraints (the board's design intent: the placer, the router, the layout score and the checks read
 them; the editor and the layout operations write each one back):
@@ -109,6 +112,8 @@ BOARD_PART = "eda.footprint"
 CONDUCTOR = "eda.conductor"
 #: A board fact a ``graphic``, ``text``, ``dimension``, ``kicad`` or ``net`` declares; the editor folds it into the circuit.
 BOARD_FACT = "eda.boardfact"
+#: A hand-soldered wire between two pads (``wire``): not copper of the board, a rod the 3D view draws.
+BOARD_WIRE = "eda.wire"
 #: The editor's own land patterns, by the name a ``component(footprint=…)`` gives (the circuit's id is ``Authored:<name>``).
 BOARD_FOOTPRINTS = ("smd-0805", "axial-7.62", "header-2.54")
 #: A new board's layer table (the circuit editor's blank board).
@@ -127,12 +132,12 @@ _CHILDREN: Dict[str, Any] = {"holds": "children"}
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "board": _CHILDREN,
     "stack": {}, "masks": {}, "graphic": {}, "text": {}, "dimension": {}, "kicad": {}, "net": {},
-    "component": {}, "trace": {}, "arc": {}, "via": {}, "pour": {},
+    "component": {}, "trace": {}, "arc": {}, "via": {}, "pour": {}, "wire": {},
     "check": {}, "accept": {},
     "netclass": {}, "diffpair": {}, "group": {}, "keepout": {}, "thermal": {}, "bus": {}, "objective": {}, "fab": {},
 }
 
-__all__ = ["BOARD_PART", "CONDUCTOR", "BOARD_FACT", "BOARD_FOOTPRINTS", "BOARD_LAYERS", "SIGNATURES", "trace_point_id",
+__all__ = ["BOARD_PART", "CONDUCTOR", "BOARD_FACT", "BOARD_WIRE", "BOARD_FOOTPRINTS", "BOARD_LAYERS", "SIGNATURES", "trace_point_id",
            "declare_board_file", *define(globals(), "pcb", SIGNATURES)]
 
 
@@ -570,6 +575,7 @@ def _declare_board(s: Scope, root: Element) -> None:
     conductors: Dict[str, Dict[str, Any]] = {}
     nets: set = set()
     constraint_names: set = set()
+    wire_names: set = set()
     kicad_forms = 0
     fabs = 0
     for el in children:
@@ -608,6 +614,11 @@ def _declare_board(s: Scope, root: Element) -> None:
                 raise ValueError("a board has one <objective>" if el.tag == "objective" else f"two <{el.tag}> elements are called {nm}")
             if key is not None:
                 constraint_names.add(key)
+        elif el.tag == "wire":
+            if isinstance(nm, str) and nm in wire_names:
+                raise ValueError(f"two <wire> elements are called {nm}")
+            if isinstance(nm, str):
+                wire_names.add(nm)
         elif el.tag not in ("stack", "masks") and el.tag not in _FACTS:
             raise ValueError(f"<{el.tag}> is not read on a board (see commandagi.design.pcb)")
     id_of: Dict[int, str] = {id(c["el"]): c["id"] for c in conductors.values()}
@@ -820,6 +831,33 @@ def _declare_board(s: Scope, root: Element) -> None:
                 inputs["pads"] = pad_refs
             inputs.update(uuid_of(el), **net_of(el), **_kicad(el))
             s.add(CONDUCTOR, inputs, id=id_of[id(el)], label="Via", meta=_meta(el))
+        elif el.tag == "wire":
+            _refuse_unknown(el, ["name", "from", "to", "material", "points", "slack", "net"])
+
+            def pin(key: str) -> Dict[str, Any]:
+                t = end(el.props.get(key), el, 0)
+                if "ref" not in t:
+                    raise ValueError(f'{_where(el)}: a wire is soldered to a pin (".R1 > .pin2"), not {json.dumps(el.props.get(key))}')
+                return {"ref": t["ref"], "number": t["number"]}
+            shape = el.props.get("points")
+            if shape is not None and not (isinstance(shape, (list, tuple)) and len(shape) >= 2 and all(
+                    isinstance(p, (list, tuple)) and len(p) == 3 and all(_is_num(v) for v in p) for p in shape)):
+                raise ValueError(f"{_where(el)}: points is the wire's shape, [[x, y, z], …] in mm (two or more)")
+            slack = _num(el, "slack")
+            if slack is not None and slack < 0:
+                raise ValueError(f"{_where(el)}: slack is 0 or more")
+            inputs = {"from": pin("from"), "to": pin("to")}
+            material = _text(el, "material")
+            if material is not None:
+                inputs["material"] = material
+            if shape is not None:
+                inputs["points"] = [list(p) for p in shape]
+            if slack is not None:
+                inputs["slack"] = slack
+            inputs.update(**net_of(el))
+            # Its node is its name, else its place among the board's wires (``wire_1`` …).
+            wires = [c for c in children if c.tag == "wire"]
+            s.add(BOARD_WIRE, inputs, id=_text(el, "name") or f"wire_{next(i for i, c in enumerate(wires) if c is el) + 1}", label="Wire", meta=_meta(el))
         elif el.tag == "pour":
             _refuse_unknown(el, ["name", "layers", "points", "terminals", "net", "uuid", "kicad"])
             pts = _point_list(el, "points", 3)

@@ -679,8 +679,14 @@ class RodEnd(_RodEndRequired, _RodEndOptional):
 
 #: A ROD: a wire, a component's lead, a string, a hair, a cable, a flat flex, a spring: an elastic body much longer than it is wide, with a bend that springs back below its yield and sets beyond it (docs/formats.md § a 3D document's rods). It makes no solid body: it is drawn as its section along its points, and the `rod` family of the dynamics simulates it (live in editing with `activation: { rod: "always" }`). Its shape is its rest shape: a permanent bend made in the editor is written back as its points. What it connects (a conductor joining two ports' nets) is read from its ends and its material, not stated on it.
 _RodFeatureRequired = TypedDict("_RodFeatureRequired", {"type": Literal["rod"], "id": str, "name": str})
-_RodFeatureOptional = TypedDict("_RodFeatureOptional", {"points": List['Vec3'], "strands": List[List['Vec3']], "material": str, "section": 'RodSection', "from": 'RodEnd', "to": 'RodEnd', "length": float, "slack": float, "up": 'Vec3', "segment": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_RodFeatureOptional = TypedDict("_RodFeatureOptional", {"points": List['Vec3'], "strands": List[List['Vec3']], "material": str, "section": 'RodSection', "from": 'RodEnd', "to": 'RodEnd', "length": float, "slack": float, "up": 'Vec3', "segment": float, "file": str, "pins": List['RodPin'], "guides": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class RodFeature(_RodFeatureRequired, _RodFeatureOptional):
+    pass
+
+#: A point of a rod held still: the point `along` its strand from its first point, held at `at`.
+_RodPinRequired = TypedDict("_RodPinRequired", {"along": float, "at": 'Vec3'})
+_RodPinOptional = TypedDict("_RodPinOptional", {"strand": int}, total=False)
+class RodPin(_RodPinRequired, _RodPinOptional):
     pass
 
 #: A rectangular section: a ribbon, a strip, a flat flex.
@@ -1071,7 +1077,7 @@ class CurveProps(_CurvePropsRequired, _CurvePropsOptional):
 
 #: The keywords of rod(…): the RodFeature fields, in snake_case.
 _RodPropsRequired = TypedDict("_RodPropsRequired", {"id": str})
-_RodPropsOptional = TypedDict("_RodPropsOptional", {"points": List['Vec3'], "strands": List[List['Vec3']], "material": str, "section": 'RodSection', "from_": 'RodEnd', "to": 'RodEnd', "length": float, "slack": float, "up": 'Vec3', "segment": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_RodPropsOptional = TypedDict("_RodPropsOptional", {"points": List['Vec3'], "strands": List[List['Vec3']], "material": str, "section": 'RodSection', "from_": 'RodEnd', "to": 'RodEnd', "length": float, "slack": float, "up": 'Vec3', "segment": float, "file": str, "pins": List['RodPin'], "guides": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class RodProps(_RodPropsRequired, _RodPropsOptional):
     pass
 
