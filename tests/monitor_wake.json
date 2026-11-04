@@ -1,0 +1,23 @@
+{
+  "valid": [
+    {
+      "attrs": {"match": "sec.filing.8-k*", "prompt": "Say what the report changes."},
+      "document": {"match": "sec.filing.8-k*", "every": null, "prompt": "Say what the report changes.", "agent": null, "maxSpend": null}
+    },
+    {
+      "attrs": {"match": "sec.filing.8-k*", "prompt": "Say what the report changes.", "agent": "Filings analyst", "maxSpend": 0.5},
+      "document": {"match": "sec.filing.8-k*", "every": null, "prompt": "Say what the report changes.", "agent": "Filings analyst", "maxSpend": 0.5}
+    },
+    {
+      "attrs": {"every": "7d", "prompt": "Write the week's brief.", "maxSpend": 2},
+      "document": {"match": null, "every": "7d", "prompt": "Write the week's brief.", "agent": null, "maxSpend": 2}
+    }
+  ],
+  "invalid": [
+    {"attrs": {"prompt": "p", "agent": ""}, "error": "agent is a word"},
+    {"attrs": {"prompt": "p", "agent": 3}, "error": "agent is a word"},
+    {"attrs": {"prompt": "p", "maxSpend": 0}, "error": "maxSpend is a price in USD"},
+    {"attrs": {"prompt": "p", "maxSpend": -1}, "error": "maxSpend is a price in USD"},
+    {"attrs": {"prompt": "p", "maxSpend": "1"}, "error": "maxSpend is a price in USD"}
+  ]
+}

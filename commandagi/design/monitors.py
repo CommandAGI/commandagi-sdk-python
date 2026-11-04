@@ -26,6 +26,7 @@ and a thread of its own, an instance of a class (``<file>#<Component>``)::
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any, Dict, List
 
@@ -38,7 +39,7 @@ SUBJECT = re.compile(r"^[a-z][a-z0-9-]*:\S*$")
 SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit", "host", "mode", "retain", "since",
                  "session", "snapshot", "profile", "keep", "maxCostPerDay", "unit", "vantage", "connection"]
 FOLLOW_FIELDS = ["monitor", "when"]
-WAKE_FIELDS = ["match", "every", "prompt"]
+WAKE_FIELDS = ["match", "every", "prompt", "agent", "maxSpend"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since"]
 DISCOVER_FIELDS = ["into", "of", "when", "slug", "class", "props", "name", "max", "visibility"]
 MONITOR_JUDGE_FIELDS = ["id", "of", "rubric", "model"]
@@ -291,6 +292,10 @@ def _monitor(t: DocTree) -> Dict[str, Any]:
     for c in parts("wake"):
         _text(c, "match", "match")
         _text(c, "prompt", "match")
+        _text(c, "agent", "match")
+        spend = c["attrs"].get("maxSpend")
+        if spend is not None and (isinstance(spend, bool) or not isinstance(spend, (int, float)) or not math.isfinite(spend) or spend <= 0):
+            raise ValueError(f'{_where(c, "match")} maxSpend is a price in USD (0.5), not {spend!r}')
         every = c["attrs"].get("every")
         if every is not None:
             # A wake wakes on records (match) or on a clock (every: a weekly brief), never both.
@@ -358,6 +363,7 @@ def monitor_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
             "follows": [{"monitor": f["monitor"], "when": f.get("when")} for f in m.get("follows", [])],
             "derives": [{"id": d["id"], "op": d["op"], "inputs": d["inputs"], "params": d.get("params", {}),
                          "since": d.get("since")} for d in m.get("derives", [])],
-            "wakes": [{"match": w.get("match"), "every": w.get("every"), "prompt": w["prompt"]} for w in m.get("wakes", [])],
+            "wakes": [{"match": w.get("match"), "every": w.get("every"), "prompt": w["prompt"], "agent": w.get("agent"),
+                       "maxSpend": w.get("maxSpend")} for w in m.get("wakes", [])],
             "discovers": [disc(d) for d in m.get("discovers", [])],
             "judges": [{"id": j["id"], "of": j["of"], "rubric": j["rubric"], "model": j["model"]} for j in m.get("judges", [])]}

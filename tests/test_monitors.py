@@ -1,11 +1,18 @@
 """A monitor declared in Python gives what the TypeScript SDK's JSX gives (monitors.test.ts there): a class is a
 function, an instance one call, and the run gives the MonitorDoc; what the vocabulary has no words for is refused.
 Run: python -m unittest discover -s tests"""
+import json
+import pathlib
 import re
 import unittest
 
 from commandagi.design.documents import declare_document
 from commandagi.design.monitors import derive, discover, follows, judge, monitor, monitor_with_defaults, source, wake
+
+
+def snake(attrs):
+    """The golden writes TypeScript names; a keyword is the snake_case of one."""
+    return {re.sub(r"([A-Z])", lambda m: "_" + m.group(1).lower(), k): v for k, v in attrs.items()}
 
 
 def corporation(cik, ticker, name):
@@ -32,11 +39,21 @@ class MonitorTests(unittest.TestCase):
 
     def test_a_wake_on_a_clock(self):
         d = declare_document(monitor(wake(every="7d", prompt="Write the week's brief.")))
-        self.assertEqual(monitor_with_defaults(d["document"])["wakes"], [{"match": None, "every": "7d", "prompt": "Write the week's brief."}])
+        self.assertEqual(monitor_with_defaults(d["document"])["wakes"], [{"match": None, "every": "7d", "prompt": "Write the week's brief.", "agent": None, "maxSpend": None}])
         with self.assertRaisesRegex(ValueError, "every is a duration from 30s to 7d"):
             declare_document(monitor(wake(every="8d", prompt="p")))
         with self.assertRaisesRegex(ValueError, "not both"):
             declare_document(monitor(wake(match="x.*", every="1d", prompt="p")))
+
+    def test_a_wake_names_its_agent_and_bounds_its_spend(self):
+        # monitor_wake.json is the golden of the three SDKs.
+        golden = json.loads((pathlib.Path(__file__).parent / "monitor_wake.json").read_text(encoding="utf-8"))
+        for row in golden["valid"]:
+            d = declare_document(monitor(wake(**snake(row["attrs"]))))
+            self.assertEqual(monitor_with_defaults(d["document"])["wakes"], [row["document"]])
+        for row in golden["invalid"]:
+            with self.assertRaisesRegex(ValueError, row["error"]):
+                declare_document(monitor(wake(**snake(row["attrs"]))))
 
     def test_a_judge_names_what_it_judges_its_rubric_and_its_model(self):
         d = declare_document(monitor(judge(id="claims", of="task", rubric="./rubric.md", model="fireworks/glm-5p3")))
