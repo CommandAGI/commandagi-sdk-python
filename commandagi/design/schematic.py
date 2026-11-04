@@ -59,9 +59,9 @@ The calls (the first arguments are positional attributes; everything else is a k
                                                                              package ("<n> pins, pitch <mm> mm, body
                                                                              <l> x <w> mm"): check(kind="pinout") and
                                                                              check(kind="footprint") read them
-    … suppliers=, alternates=, datasheet=, lifecycle=, compliance=, shipping=  its logistics, as KiCad properties too
-                                                                             (``part_fields.py``; LCSC Part, Datasheet,
-                                                                             RoHS, HS Code …)
+    … suppliers=, alternates=, need=, datasheet=, lifecycle=, compliance=,  its logistics, as KiCad properties too
+      shipping=                                                              (``part_fields.py``; LCSC Part, Need,
+                                                                             Datasheet, RoHS, HS Code …)
 
 ``sch_x`` and ``sch_y`` are the sheet's own coordinates: millimetres, Y DOWN. ``sch_rotation`` is 0, 90, 180 or 270
 degrees; ``sch_mirror`` is "x" or "y"; ``sch_style`` is the De Morgan body style the placement shows (1, the

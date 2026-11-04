@@ -5,7 +5,7 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design.documents import declare_document
-from commandagi.design.logistics import bom, builder, contact, fee, leg, location, logistics, route, service, ships, source, supplier, use
+from commandagi.design.logistics import ahead, bom, builder, contact, fee, leg, location, logistics, route, service, ships, source, stock, supplier, use
 
 
 class LogisticsTests(unittest.TestCase):
@@ -80,6 +80,38 @@ class LogisticsTests(unittest.TestCase):
                                                      "uses": [{"offer": "JLCPCB parts library", "qty": 1984}, {"offer": "LCSC"}]}])
         with self.assertRaisesRegex(ValueError, "strategy is single, fill, split or dual"):
             declare_document(logistics(source(use(offer="LCSC"), part="X", strategy="cheapest")))
+
+    def test_buying_ahead_and_stock_on_hand_a_plan_buys_past_its_need_for_a_later_plan_which_counts_it_a_service_counted_in_business_days(self):
+        ten = declare_document(logistics(
+            source(use(offer="JLCPCB parts library"), use(offer="JLCPCB parts library", mpn="FT2232HL-TRAY"),
+                   ahead(qty=157, for_="Helmet 100.logistics.tsx"), part="FT2232HL-REEL", strategy="fill"),
+            source(ahead(qty=500, for_="Helmet 100.logistics.tsx", note="the reel's rest"), part="TLV333IDCKR"),
+            quantity=10, build="2027-01-15"))["document"]
+        self.assertEqual(ten["sources"], [
+            {"part": "FT2232HL-REEL", "strategy": "fill", "uses": [{"offer": "JLCPCB parts library"}, {"offer": "JLCPCB parts library", "mpn": "FT2232HL-TRAY"}],
+             "ahead": {"qty": 157, "for": "Helmet 100.logistics.tsx"}},
+            {"part": "TLV333IDCKR", "uses": [], "ahead": {"qty": 500, "for": "Helmet 100.logistics.tsx", "note": "the reel's rest"}}])
+        self.assertNotIn("stocks", ten, "a plan that holds no stock states none")
+        hundred = declare_document(logistics(stock(from_="Helmet 10.logistics.tsx"),
+                                             stock(part="KH-205580-DZ", qty=2000, arrives="2027-03-01", note="consigned at JLCPCB"), quantity=100))["document"]
+        self.assertEqual(hundred["stocks"], [{"from": "Helmet 10.logistics.tsx"},
+                                             {"part": "KH-205580-DZ", "qty": 2000, "arrives": "2027-03-01", "note": "consigned at JLCPCB"}])
+        for children, words in [
+            ((stock(from_="a.logistics.tsx", qty=3),), "<stock from> takes what that plan bought ahead"),
+            ((stock(part="X"),), "names the part and its qty, or the plan it is from"),
+            ((stock(part="X", qty=3, arrives="soon"),), "arrives is a date"),
+            ((source(ahead(qty=1.5, for_="b.logistics.tsx"), part="X"),), "<ahead> qty is a whole number"),
+            ((source(part="X"),), "names no <use> and no <ahead>"),
+            ((source(use(offer="A"), part="X"),), "strategy is single, fill, split or dual"),
+        ]:
+            with self.subTest(words=words), self.assertRaisesRegex(ValueError, words):
+                declare_document(logistics(*children))
+        jlc = declare_document(supplier(service(id="global-sourcing", review_days=1, review_days_high=3, lead_time_days=9, lead_time_days_high=20,
+                                                business_days=True), name="JLCPCB"))["document"]
+        self.assertEqual(jlc["services"], [{"id": "global-sourcing", "reviewDays": 1, "reviewDaysHigh": 3, "leadTimeDays": 9, "leadTimeDaysHigh": 20,
+                                            "businessDays": True, "fees": []}])
+        with self.assertRaisesRegex(ValueError, "businessDays is true or false"):
+            declare_document(supplier(service(id="s", business_days="yes"), name="X"))
 
 
 if __name__ == "__main__":

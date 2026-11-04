@@ -27,6 +27,20 @@ and the same elements as the TypeScript SDK's JSX (``commandagi/design`` ``logis
 A supplier's ``service(fee(...), id=...)`` is a way to buy through it (pre-order, global sourcing, consignment) with its
 review and buying days and its fees (per order, line or unit). A plan's ``build`` is the day the parts must be at the
 builder, and ``source(use(offer=...), part=..., strategy=...)`` says how one line is filled (single, fill, split, dual).
+A service whose days are ``business_days=True`` counts Monday to Friday only.
+
+A plan may buy ahead for a later plan: ``ahead(qty=..., for_=...)`` in a ``source`` buys ``qty`` more than this order
+needs, by the same offers, for the plan ``for`` names (a ref). That plan counts them as stock on hand:
+``stock(from_=...)`` names the earlier plan and takes what it bought ahead for this one (``part`` narrows it to one
+line). Stock held otherwise (left from a build, consigned) is ``stock(part=..., qty=..., arrives=...)``; ``arrives`` is
+the day it is there (with ``from``, the earlier plan's build date). A ``source`` with only an ``ahead`` keeps the default
+fill and needs no strategy::
+
+    ten = logistics(
+        source(use(offer="JLCPCB parts library"), use(offer="JLCPCB parts library", mpn="FT2232HL-TRAY"),
+               ahead(qty=157, for_="Helmet 100.logistics.tsx"), part="FT2232HL-REEL", strategy="fill"),
+        name="helmet, 10", quantity=10, build="2027-01-15")
+    hundred = logistics(stock(from_="Helmet 10.logistics.tsx"), name="helmet, 100", quantity=100, build="2027-06-01")
 
 A route's legs run in order from the supplier's ``location``; a leg that names a place (``to``, ``lat``, ``lon``) ends
 there, and a leg that names none ends at the builder. Refs are by the plan's folder. Nothing adds a default.
@@ -48,11 +62,13 @@ PLACE_FIELDS = ["name", "lat", "lon", "country", "postal", "address"]
 SUPPLIER_FIELDS = ["name", "url", "leadTimeDays", "note"]
 SHIPS_FIELDS = ["carrier", "service", "transitDays", "note"]
 CONTACT_FIELDS = ["name", "role", "email", "phone"]
-SERVICE_FIELDS = ["id", "name", "reviewDays", "reviewDaysHigh", "leadTimeDays", "leadTimeDaysHigh", "note"]
+SERVICE_FIELDS = ["id", "name", "reviewDays", "reviewDaysHigh", "leadTimeDays", "leadTimeDaysHigh", "businessDays", "note"]
 FEE_FIELDS = ["amount", "currency", "per", "each", "note"]
 LOGISTICS_FIELDS = ["name", "quantity", "build"]
 SOURCE_FIELDS = ["part", "strategy"]
 USE_FIELDS = ["offer", "mpn", "qty", "share"]
+AHEAD_FIELDS = ["qty", "for", "note"]
+STOCK_FIELDS = ["part", "qty", "from", "arrives", "note"]
 FEE_PER = ["order", "line", "unit"]
 STRATEGIES = ["single", "fill", "split", "dual"]
 BOM_FIELDS = ["ref", "qty"]
@@ -75,10 +91,12 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "leg": {},
     "source": {"holds": "children"},
     "use": {},
+    "ahead": {},
+    "stock": {},
 }
 
 __all__ = ["PLACE_FIELDS", "SUPPLIER_FIELDS", "SHIPS_FIELDS", "CONTACT_FIELDS", "SERVICE_FIELDS", "FEE_FIELDS", "LOGISTICS_FIELDS",
-           "BOM_FIELDS", "LEG_FIELDS", "SOURCE_FIELDS", "USE_FIELDS",
+           "BOM_FIELDS", "LEG_FIELDS", "SOURCE_FIELDS", "USE_FIELDS", "AHEAD_FIELDS", "STOCK_FIELDS",
            "SIGNATURES", "SUPPLIER_VOCABULARY", "LOGISTICS_VOCABULARY", *define(globals(), "logistics", SIGNATURES)]
 
 
@@ -146,6 +164,8 @@ def _service(t: DocTree) -> Dict[str, Any]:
     a = t["attrs"]
     _text("service", a, ["id", "name", "note"])
     _count("service", a, ["reviewDays", "reviewDaysHigh", "leadTimeDays", "leadTimeDaysHigh"])
+    if "businessDays" in a and not isinstance(a["businessDays"], bool):
+        raise ValueError("<service> businessDays is true or false")
     fees = []
     for c in t["children"]:
         if c["tag"] != "fee":
@@ -208,14 +228,16 @@ def _logistics(t: DocTree) -> Dict[str, Any]:
             _text("route", r["attrs"], ["supplier"])
             routes.append({"supplier": r["attrs"]["supplier"], "legs": [_leg(c) for c in r["children"] if c["tag"] == "leg"]})
     sources = [_source(c) for c in t["children"] if c["tag"] == "source"]
+    stocks = [_stock(c) for c in t["children"] if c["tag"] == "stock"]
     return {**_fields(a, LOGISTICS_FIELDS), "boms": boms, **({"builder": _place("builder", builder["attrs"])} if builder else {}), "routes": routes,
-            "sources": sources}
+            "sources": sources, **({"stocks": stocks} if stocks else {})}
 
 
 def _source(t: DocTree) -> Dict[str, Any]:
     a = t["attrs"]
     _text("source", a, ["part"])
-    if a.get("strategy") not in STRATEGIES:
+    named = any(c["tag"] == "use" for c in t["children"])
+    if (named or "strategy" in a) and a.get("strategy") not in STRATEGIES:
         raise ValueError("<source> strategy is single, fill, split or dual")
     uses = []
     for c in t["children"]:
@@ -228,7 +250,29 @@ def _source(t: DocTree) -> Dict[str, Any]:
         if "share" in u and not (_number(u["share"]) and 0 < u["share"] <= 1):
             raise ValueError("<use> share is a number above 0, at most 1")
         uses.append(_fields(u, USE_FIELDS))
-    return {**_fields(a, SOURCE_FIELDS), "uses": uses}
+    ahead = next((c["attrs"] for c in t["children"] if c["tag"] == "ahead"), None)
+    if ahead is not None:
+        q = ahead.get("qty")
+        if not (_number(q) and float(q).is_integer() and q >= 1):
+            raise ValueError("<ahead> qty is a whole number, 1 or more")
+        _text("ahead", ahead, ["for", "note"])
+    if not named and ahead is None:
+        raise ValueError(f'<source part="{a.get("part")}"> names no <use> and no <ahead>')
+    return {**_fields(a, SOURCE_FIELDS), "uses": uses, **({"ahead": _fields(ahead, AHEAD_FIELDS)} if ahead is not None else {})}
+
+
+def _stock(t: DocTree) -> Dict[str, Any]:
+    a = t["attrs"]
+    _text("stock", a, ["part", "from", "note"])
+    if "arrives" in a and not (isinstance(a["arrives"], str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", a["arrives"])):
+        raise ValueError("<stock> arrives is a date, YYYY-MM-DD")
+    if "from" in a and "qty" in a:
+        raise ValueError("<stock from> takes what that plan bought ahead for this one: it states no qty")
+    if "from" not in a and ("part" not in a or "qty" not in a):
+        raise ValueError("<stock> names the part and its qty, or the plan it is from (from)")
+    if "qty" in a and not (_number(a["qty"]) and a["qty"] > 0):
+        raise ValueError("<stock> qty is a number above 0")
+    return _fields(a, STOCK_FIELDS)
 
 
 def _never(_: Any) -> DocTree:
@@ -250,8 +294,10 @@ LOGISTICS_VOCABULARY = Vocabulary("logistics", "a logistics plan", "logistics", 
     "builder": {"parents": ["logistics"], "single": True, "required": ["name", "lat", "lon"], "attrs": PLACE_FIELDS},
     "route": {"parents": ["logistics"], "required": ["supplier"], "attrs": ["supplier"]},
     "leg": {"parents": ["route"], "required": ["carrier"], "attrs": LEG_FIELDS},
-    "source": {"parents": ["logistics"], "required": ["part", "strategy"], "attrs": SOURCE_FIELDS},
+    "source": {"parents": ["logistics"], "required": ["part"], "attrs": SOURCE_FIELDS},
     "use": {"parents": ["source"], "required": ["offer"], "attrs": USE_FIELDS},
+    "ahead": {"parents": ["source"], "single": True, "required": ["qty", "for"], "attrs": AHEAD_FIELDS},
+    "stock": {"parents": ["logistics"], "attrs": STOCK_FIELDS},
 }, _logistics, _never)
 
 for _v in (SUPPLIER_VOCABULARY, LOGISTICS_VOCABULARY):

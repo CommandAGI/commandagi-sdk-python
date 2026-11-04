@@ -137,6 +137,14 @@ class LogisticsTests(unittest.TestCase):
         ):
             with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
                 threed.declare_threed(threed.part(el, name="P"))
+        # A part's need and an offer's shared stock, through another supplier's service, are engineering fields too.
+        pin = {"process": "purchased", "need": {"spares": 334, "attrition": 0.05, "multiple": 3},
+               "suppliers": [{"name": "DigiKey", "via": "suppliers/jlcpcb.supplier.tsx", "service": "global-sourcing", "pool": "DigiKey", "preorder": -5,
+                              "incoming": [{"quantity": 3000, "date": "2026-11-05"}], "dates": {"stock": "2026-11-03"}, "priceBreaks": [{"unitPrice": 0.66}]}]}
+        threed.declare_threed(threed.part(threed.item(id="pin", name="Pin", qty=1128, engineering=pin), name="P"))
+        for need, message in (({"multiple": 0}, "multiple"), ({"panels": 2}, "panels")):
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                threed.declare_threed(threed.part(threed.item(id="pin", name="Pin", engineering={"need": need}), name="P"))
 
     def test_a_3d_documents_product_is_a_list_of_the_document_and_stock_and_shutoff_are_engineering_fields(self):
         product = {"id": "kit", "name": "Sensor kit", "compliance": {"eccn": "EAR99", "certifications": ["CE"]},
@@ -170,6 +178,47 @@ class LogisticsTests(unittest.TestCase):
             sheet(schematic.part("P1", pins=["1"], suppliers=[{"name": "X", "kind": "offer"}]))
         with self.assertRaisesRegex(ValueError, "alternates\\[0\\]: grade is not read"):
             sheet(schematic.part("P1", pins=["1"], alternates=[{"manufacturer": "Y", "mpn": "Z", "grade": "A"}]))
+
+    def test_a_shared_stock_a_preorder_count_an_offer_through_another_suppliers_service_stock_on_its_way_per_term_dates_a_single_price_and_a_parts_need(self):
+        sourcing = {
+            "suppliers": [
+                {"name": "JLCPCB parts library", "sku": "C530677", "currency": "USD", "priceBreaks": [{"quantity": 1, "unitPrice": 0.1114}], "stock": 1984,
+                 "preorder": 1816, "pool": "LCSC warehouse", "supplier": "suppliers/jlcpcb.supplier.tsx", "source": "JLC parts API", "date": "2026-11-03",
+                 "dates": {"priceBreaks": "2026-11-02"}},
+                {"name": "LCSC", "sku": "C530677", "currency": "USD", "priceBreaks": [{"quantity": 5, "unitPrice": 0.1105}], "stock": 1675,
+                 "pool": "LCSC warehouse", "source": "LCSC product API", "date": "2026-11-03"},
+                {"name": "DigiKey", "currency": "USD", "priceBreaks": [{"unitPrice": 0.66}], "stock": 0, "incoming": [{"quantity": 3000, "date": "2026-11-05"}],
+                 "supplier": "suppliers/digikey.supplier.tsx", "via": "suppliers/jlcpcb.supplier.tsx", "service": "global-sourcing",
+                 "source": "digikey.com, the quantity of the price not read", "date": "2026-11-03"},
+            ],
+            "need": {"spares": 334, "attrition": 0.05},
+        }
+        g = sheet(schematic.part("P1", pins=["1"], mpn="KH-205580-DZ", **copy.deepcopy(sourcing)))
+        self.assertEqual(props(g["nodes"]["P1"]["inputs"])[1:], [
+            ["JLCPCB parts library Part", "C530677"],
+            ["JLCPCB parts library Terms", '{"currency":"USD","priceBreaks":[[1,0.1114]],"stock":1984,"preorder":1816,"pool":"LCSC warehouse",'
+             '"supplier":"suppliers/jlcpcb.supplier.tsx","source":"JLC parts API","date":"2026-11-03","dates":{"priceBreaks":"2026-11-02"}}'],
+            ["LCSC Part", "C530677"],
+            ["LCSC Terms", '{"currency":"USD","priceBreaks":[[5,0.1105]],"stock":1675,"pool":"LCSC warehouse","source":"LCSC product API","date":"2026-11-03"}'],
+            ["DigiKey Terms", '{"currency":"USD","priceBreaks":[[null,0.66]],"stock":0,"incoming":[{"quantity":3000,"date":"2026-11-05"}],'
+             '"service":"global-sourcing","via":"suppliers/jlcpcb.supplier.tsx","supplier":"suppliers/digikey.supplier.tsx",'
+             '"source":"digikey.com, the quantity of the price not read","date":"2026-11-03"}'],
+            ["Need", '{"spares":334,"attrition":0.05}'],
+        ])
+        self.assertEqual(part_fields(g["nodes"]["P1"]["inputs"]), {"mpn": "KH-205580-DZ", **sourcing})
+        sheet(schematic.part("U4", pins=["1"], suppliers=[{"name": "X", "preorder": -3898}]))  # more promised than held
+        for kw, message in (
+            ({"suppliers": [{"name": "X", "preorder": 1.5}]}, "preorder is a whole number"),
+            ({"suppliers": [{"name": "X", "via": "suppliers/jlcpcb.supplier.tsx"}]}, "names that supplier's service"),
+            ({"suppliers": [{"name": "X", "incoming": [{"quantity": 3000, "date": "soon"}]}]}, r"incoming is a list of \{ quantity, date \}"),
+            ({"suppliers": [{"name": "X", "dates": {"colour": "2026-11-03"}}]}, r"dates is \{ <term>: YYYY-MM-DD \}"),
+            ({"suppliers": [{"name": "X", "priceBreaks": [{"unitPrice": 1}, {"quantity": 10, "unitPrice": 0.9}]}]}, "one break with no quantity is a single price"),
+            ({"need": {"spares": 1.5}}, "need.spares is a whole number"),
+            ({"need": {"attrition": 5}}, "need.attrition is a rate"),
+            ({"need": {"panel": 3}}, "need.panel is not read"),
+        ):
+            with self.subTest(kw=kw), self.assertRaisesRegex(ValueError, message):
+                sheet(schematic.part("U4", pins=["1"], **kw))
 
 
 if __name__ == "__main__":

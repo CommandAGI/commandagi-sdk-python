@@ -12,10 +12,11 @@ form the board editor writes), so the BOM, the KiCad board and a 3D body's join 
     package_dimensions=                                                     its datasheet package ("<n> pins, pitch
                                                                            <mm> mm, body <l> x <w> mm")
     suppliers=[{"name", "sku", "url", "currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays",
-                "leadTimeDaysHigh", "stock", "kind", "confidence", "samplesDays", "tooling", "service", "supplier",
-                "source", "date"}]
+                "leadTimeDaysHigh", "stock", "preorder", "pool", "incoming", "kind", "confidence", "samplesDays",
+                "tooling", "service", "via", "supplier", "source", "date", "dates"}]
     alternates=[{"manufacturer", "mpn", "note", "approved", "differences", "datasheet", "suppliers"}]
     datasheet="https://…"
+    need={"spares", "attrition", "attritionMin", "multiple"}               what one order needs past qty × N
     lifecycle={"status", "lastTimeBuy", "onHand", "reorderPoint", "source", "date"}
     compliance={"rohs", "rohsExemption", "reach", "conflictMinerals", "eccn", "certifications"}
     shipping={"hsCode", "origin", "hazmat", "packaging"}                    its logistics (docs/formats.md § logistics)
@@ -23,8 +24,8 @@ form the board editor writes), so the BOM, the KiCad board and a 3D body's join 
 The keys inside these dicts are the data's own (camelCase, as the JSON holds them); only the arguments are snake_case.
 A supplier is two properties: ``<name> Part`` (its sku; ``LCSC Part`` is what JLCPCB's assembly BOM reads) and
 ``<name> Terms`` (the rest as compact JSON, a price break as [quantity, unitPrice], or [quantity, unitPrice,
-unitPriceHigh] for an estimate range). ``Datasheet`` is KiCad's own field;
-``Alternates`` is JSON; a facet's fields are one property each (``Lifecycle``, ``RoHS``, ``HS Code`` …).
+unitPriceHigh] for an estimate range; a single price with no quantity as [null, unitPrice]). ``Datasheet`` is KiCad's
+own field; ``Alternates`` and ``Need`` are JSON; a facet's fields are one property each (``Lifecycle``, ``RoHS``, ``HS Code`` …).
 
 ``datasheet`` says where the part's datasheet is (KiCad's ``Datasheet`` field); it claims nothing. ``pinout_verified``
 and ``footprint_verified`` claim that a page of a datasheet (or a measurement) was checked against the symbol or the
@@ -76,19 +77,20 @@ _CHOICES = {
 }
 _COUNTS = {"lifecycle.onHand", "lifecycle.reorderPoint"}
 _DATES = {"lifecycle.lastTimeBuy", "lifecycle.date"}
-_OFFER_TERMS = ["currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays", "leadTimeDaysHigh", "stock", "kind", "confidence",
-                "samplesDays", "tooling", "service", "supplier", "url", "source", "date"]
+_OFFER_TERMS = ["currency", "priceBreaks", "moq", "orderMultiple", "leadTimeDays", "leadTimeDaysHigh", "stock", "preorder", "pool",
+                "incoming", "kind", "confidence", "samplesDays", "tooling", "service", "via", "supplier", "url", "source", "date", "dates"]
+_NEED_KEYS = ["spares", "attrition", "attritionMin", "multiple"]
 _OFFER_KINDS = ["stock", "quote", "listing", "broker"]
 _CONFIDENCES = ["firm", "indication"]
 _ALTERNATE_KEYS = ["manufacturer", "mpn", "note", "approved", "differences", "datasheet", "suppliers"]
 _OFFER_KEYS = ["name", "sku", *_OFFER_TERMS]
 #: The props a part's fields take, in the order their forms are written.
-FIELD_ARGUMENTS: List[str] = [*PART_FIELDS, "attrs", "suppliers", "alternates", "datasheet", "lifecycle", "compliance", "shipping"]
+FIELD_ARGUMENTS: List[str] = [*PART_FIELDS, "attrs", "suppliers", "alternates", "need", "datasheet", "lifecycle", "compliance", "shipping"]
 #: Fields a part holds otherwise: its reference, its value, its footprint.
 OWN_FIELDS = ("Reference", "Value", "Footprint")
 _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-__all__ = ["PART_FIELDS", "FACET_FIELDS", "FIELD_ARGUMENTS", "field_form", "part_field_forms", "part_fields", "check_offers", "check_alternates",
+__all__ = ["PART_FIELDS", "FACET_FIELDS", "FIELD_ARGUMENTS", "field_form", "part_field_forms", "part_fields", "check_offers", "check_alternates", "check_need",
            "check_facet", "js_json"]
 
 
@@ -159,6 +161,8 @@ def _argument_of(name: str) -> Optional[str]:
         return "datasheet"
     if name == "Alternates":
         return "alternates"
+    if name == "Need":
+        return "need"
     for arg, fields in FACET_FIELDS.items():
         if name in fields.values():
             return arg
@@ -212,21 +216,54 @@ def check_offers(where: str, v: Any) -> List[Dict[str, Any]]:
             raise ValueError(f"{at}: confidence is firm or indication")
         if s.get("tooling") is not None and not ((_number(s["tooling"]) and s["tooling"] >= 0) or s["tooling"] == "unknown"):
             raise ValueError(f'{at}: tooling is a cost, 0 or more, or "unknown"')
-        for k in ("service", "supplier"):
+        for k in ("service", "via", "supplier", "pool"):
             if s.get(k) is not None and not _text(s[k]):
                 raise ValueError(f"{at}: {k} is text")
+        if s.get("via") is not None and s.get("service") is None:
+            raise ValueError(f"{at}: an offer bought through another supplier (via) names that supplier's service")
+        if s.get("preorder") is not None and not _whole(s["preorder"], float("-inf")):
+            raise ValueError(f"{at}: preorder is a whole number (negative when more is promised than held)")
+        incoming = s.get("incoming")
+        if incoming is not None and not (isinstance(incoming, (list, tuple)) and all(
+                isinstance(lot, dict) and set(lot) <= {"quantity", "date"} and _whole(lot.get("quantity"), 1)
+                and isinstance(lot.get("date"), str) and _DAY.match(lot["date"]) for lot in incoming)):
+            raise ValueError(f"{at}: incoming is a list of {{ quantity, date }} (a whole number from 1, YYYY-MM-DD)")
+        dates = s.get("dates")
+        if dates is not None and not (isinstance(dates, dict) and all(
+                k in _OFFER_TERMS and k not in ("date", "dates") and isinstance(d, str) and _DAY.match(d) for k, d in dates.items())):
+            raise ValueError(f"{at}: dates is {{ <term>: YYYY-MM-DD }} for the terms read on another day than date (stock, priceBreaks …)")
         breaks = s.get("priceBreaks")
         if breaks is not None:
+            single = isinstance(breaks, (list, tuple)) and len(breaks) == 1 and isinstance(breaks[0], dict) and breaks[0].get("quantity") is None
             ok = isinstance(breaks, (list, tuple)) and all(
-                isinstance(b, dict) and set(b) <= {"quantity", "unitPrice", "unitPriceHigh"} and _whole(b.get("quantity"), 1)
+                isinstance(b, dict) and set(b) <= {"quantity", "unitPrice", "unitPriceHigh"} and (_whole(b.get("quantity"), 1) or single)
                 and _number(b.get("unitPrice")) and b["unitPrice"] >= 0
                 and ("unitPriceHigh" not in b or (_number(b["unitPriceHigh"]) and b["unitPriceHigh"] >= b["unitPrice"]))
                 for b in breaks)
             if not ok:
                 raise ValueError(f"{at}: priceBreaks is a list of {{ quantity, unitPrice, unitPriceHigh? }} (quantity a whole number from 1, "
-                                 "unitPrice 0 or more, unitPriceHigh not under it)")
+                                 "unitPrice 0 or more, unitPriceHigh not under it; one break with no quantity is a single price)")
         out.append({k: copy.deepcopy(x) for k, x in s.items() if x is not None})
     return out
+
+
+def check_need(where: str, v: Any) -> Dict[str, Any]:
+    """What one order of N products needs past qty × N (spares, then attrition, then a multiple), checked; a wrong field is
+    refused by name."""
+    if not isinstance(v, dict):
+        raise ValueError(f"{where}: need is {{ spares?, attrition?, attritionMin?, multiple? }}")
+    for k in v:
+        if k not in _NEED_KEYS:
+            raise ValueError(f"{where}: need.{k} is not read (it takes {', '.join(_NEED_KEYS)})")
+    if v.get("spares") is not None and not _whole(v["spares"], 0):
+        raise ValueError(f"{where}: need.spares is a whole number, a count per order")
+    if v.get("attrition") is not None and not (_number(v["attrition"]) and 0 <= v["attrition"] < 1):
+        raise ValueError(f"{where}: need.attrition is a rate, 0 to under 1 (0.03)")
+    if v.get("attritionMin") is not None and not _whole(v["attritionMin"], 0):
+        raise ValueError(f"{where}: need.attritionMin is a whole number")
+    if v.get("multiple") is not None and not _whole(v["multiple"], 1):
+        raise ValueError(f"{where}: need.multiple is a whole number, 1 or more")
+    return {k: copy.deepcopy(x) for k, x in v.items() if x is not None}
 
 
 def check_alternates(where: str, v: Any) -> List[Dict[str, Any]]:
@@ -263,7 +300,7 @@ def _offer_forms(where: str, v: Any) -> List[Dict[str, Any]]:
         terms: Dict[str, Any] = {}
         for k in _OFFER_TERMS:
             if s.get(k) is not None:
-                terms[k] = [[b["quantity"], b["unitPrice"], *([b["unitPriceHigh"]] if "unitPriceHigh" in b else [])] for b in s[k]] \
+                terms[k] = [[b.get("quantity"), b["unitPrice"], *([b["unitPriceHigh"]] if "unitPriceHigh" in b else [])] for b in s[k]] \
                     if k == "priceBreaks" else s[k]
         if s.get("sku") is not None:
             forms.append(field_form(f"{s['name']} Part", s["sku"]))
@@ -332,6 +369,9 @@ def part_field_forms(where: str, props: Mapping[str, Any]) -> List[Dict[str, Any
     alternates = props.get("alternates")
     if alternates is not None:
         forms.append(field_form("Alternates", js_json(check_alternates(where, alternates))))
+    need = props.get("need")
+    if need is not None:
+        forms.append(field_form("Need", js_json(check_need(where, need))))
     datasheet = props.get("datasheet")
     if datasheet is not None:
         if not _text(datasheet):
@@ -354,7 +394,7 @@ def part_field_forms(where: str, props: Mapping[str, Any]) -> List[Dict[str, Any
 def part_fields(inputs: Mapping[str, Any]) -> Dict[str, Any]:
     """A part's fields read back from its node's inputs (the ``property`` forms it carries): the named ones by their
     prop (``partNumber``, ``manufacturer``, ``mpn``, ``rating``), the logistics by theirs (``suppliers``,
-    ``alternates``, ``datasheet``, ``lifecycle``, ``compliance``, ``shipping``), any other in ``attrs``. A part with
+    ``alternates``, ``need``, ``datasheet``, ``lifecycle``, ``compliance``, ``shipping``), any other in ``attrs``. A part with
     none gives {}."""
     out: Dict[str, Any] = {}
     attrs: Dict[str, str] = {}
@@ -379,10 +419,12 @@ def part_fields(inputs: Mapping[str, Any]) -> Dict[str, Any]:
             s = supplier(name[:-6])
             for k in _OFFER_TERMS:
                 if terms.get(k) is not None:
-                    s[k] = [{"quantity": b[0], "unitPrice": b[1], **({"unitPriceHigh": b[2]} if len(b) > 2 else {})} for b in terms[k]] \
+                    s[k] = [{**({} if b[0] is None else {"quantity": b[0]}), "unitPrice": b[1], **({"unitPriceHigh": b[2]} if len(b) > 2 else {})} for b in terms[k]] \
                         if k == "priceBreaks" else terms[k]
         elif arg == "alternates":
             out["alternates"] = json.loads(value)
+        elif arg == "need":
+            out["need"] = json.loads(value)
         elif arg == "datasheet":
             out["datasheet"] = value
         elif arg:

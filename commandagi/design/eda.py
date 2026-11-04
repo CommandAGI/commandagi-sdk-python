@@ -137,7 +137,7 @@ def component(ref: str, footprint: Dict[str, Any], value: Optional[str] = None, 
               aliases: Optional[Dict[str, str]] = None, symbol: Optional[str] = None, part_number: Optional[str] = None,
               manufacturer: Optional[str] = None, mpn: Optional[str] = None, rating: Optional[str] = None,
               attrs: Optional[Dict[str, str]] = None, suppliers: Optional[List[Dict[str, Any]]] = None,
-              alternates: Optional[List[Dict[str, Any]]] = None, datasheet: Optional[str] = None,
+              alternates: Optional[List[Dict[str, Any]]] = None, need: Optional[Dict[str, Any]] = None, datasheet: Optional[str] = None,
               lifecycle: Optional[Dict[str, Any]] = None, compliance: Optional[Dict[str, Any]] = None,
               shipping: Optional[Dict[str, Any]] = None, pinout_verified: Optional[str] = None,
               footprint_verified: Optional[str] = None, package_dimensions: Optional[str] = None) -> PartRef:
@@ -146,7 +146,7 @@ def component(ref: str, footprint: Dict[str, Any], value: Optional[str] = None, 
     s = _scope("component()")
     fields = part_field_forms(f'component(ref="{ref}")', {
         "partNumber": part_number, "manufacturer": manufacturer, "mpn": mpn, "rating": rating, "attrs": attrs,
-        "suppliers": suppliers, "alternates": alternates, "datasheet": datasheet, "lifecycle": lifecycle,
+        "suppliers": suppliers, "alternates": alternates, "need": need, "datasheet": datasheet, "lifecycle": lifecycle,
         "compliance": compliance, "shipping": shipping, "pinoutVerified": pinout_verified,
         "footprintVerified": footprint_verified, "packageDimensions": package_dimensions})
     pins = []

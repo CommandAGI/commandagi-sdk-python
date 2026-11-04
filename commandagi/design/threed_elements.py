@@ -362,6 +362,12 @@ _ImportFeatureOptional = TypedDict("_ImportFeatureOptional", {"operation": 'Bool
 class ImportFeature(_ImportFeatureRequired, _ImportFeatureOptional):
     pass
 
+#: A lot on its way to a supplier.
+_IncomingLotRequired = TypedDict("_IncomingLotRequired", {"quantity": int, "date": str})
+_IncomingLotOptional = TypedDict("_IncomingLotOptional", {}, total=False)
+class IncomingLot(_IncomingLotRequired, _IncomingLotOptional):
+    pass
+
 #: HOW A PART IS INSPECTED OR TESTED, AND WHEN IT IS ACCEPTED.
 _InspectionRequired = TypedDict("_InspectionRequired", {})
 _InspectionOptional = TypedDict("_InspectionOptional", {"dimensions": List['CriticalDimension'], "procedure": str, "acceptance": str, "sampling": str, "electrical": Literal["none", "flying-probe", "fixture"], "minutes": float, "ratePerHour": float, "currency": str}, total=False)
@@ -506,6 +512,12 @@ _NurbsSpecOptional = TypedDict("_NurbsSpecOptional", {"weights": List[float], "k
 class NurbsSpec(_NurbsSpecRequired, _NurbsSpecOptional):
     pass
 
+#: The day each term of an offer was read, where it is not the offer's `date` (each YYYY-MM-DD).
+_OfferDatesRequired = TypedDict("_OfferDatesRequired", {})
+_OfferDatesOptional = TypedDict("_OfferDatesOptional", {"stock": str, "preorder": str, "priceBreaks": str, "leadTimeDays": str, "incoming": str}, total=False)
+class OfferDates(_OfferDatesRequired, _OfferDatesOptional):
+    pass
+
 _OffsetFacesFeatureRequired = TypedDict("_OffsetFacesFeatureRequired", {"type": Literal["offsetFaces"], "faces": List['TopoTarget'], "id": str, "name": str})
 _OffsetFacesFeatureOptional = TypedDict("_OffsetFacesFeatureOptional", {"distance": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class OffsetFacesFeature(_OffsetFacesFeatureRequired, _OffsetFacesFeatureOptional):
@@ -525,7 +537,7 @@ class ParamRect(_ParamRectRequired, _ParamRectOptional):
 
 #: A part's engineering data: its material grade and finish, how it is made or who sells it, and the logistics a declared check may require (docs/formats.md § logistics).
 _PartEngineeringRequired = TypedDict("_PartEngineeringRequired", {})
-_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "processName": str, "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle', "chemical": 'ProcessChemical', "envelope": bool, "mountingHoles": List['MountingHole']}, total=False)
+_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "processName": str, "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "need": 'PartNeed', "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle', "chemical": 'ProcessChemical', "envelope": bool, "mountingHoles": List['MountingHole']}, total=False)
 class PartEngineering(_PartEngineeringRequired, _PartEngineeringOptional):
     pass
 
@@ -533,6 +545,12 @@ class PartEngineering(_PartEngineeringRequired, _PartEngineeringOptional):
 _PartMassRequired = TypedDict("_PartMassRequired", {"grams": float, "source": str})
 _PartMassOptional = TypedDict("_PartMassOptional", {}, total=False)
 class PartMass(_PartMassRequired, _PartMassOptional):
+    pass
+
+#: WHAT ONE ORDER NEEDS OF A PART BEYOND `qty × N` (docs/formats.md § logistics, the need): true of the part whatever the order, so the design states it. need(N) = (qty × N + spares) plus attrition, rounded up to `multiple`.
+_PartNeedRequired = TypedDict("_PartNeedRequired", {})
+_PartNeedOptional = TypedDict("_PartNeedOptional", {"spares": int, "attrition": float, "attritionMin": int, "multiple": int}, total=False)
+class PartNeed(_PartNeedRequired, _PartNeedOptional):
     pass
 
 _PathPatternFeatureRequired = TypedDict("_PathPatternFeatureRequired", {"type": Literal["pathPattern"], "seedFeature": str, "path": 'SweepPath', "id": str, "name": str})
@@ -603,8 +621,8 @@ class PointCloudFeature(_PointCloudFeatureRequired, _PointCloudFeatureOptional):
     pass
 
 #: The unit price from a quantity up (`@commandagi/core` quantity-terms' PriceBreak).
-_PriceBreakRequired = TypedDict("_PriceBreakRequired", {"quantity": int, "unitPrice": float})
-_PriceBreakOptional = TypedDict("_PriceBreakOptional", {"unitPriceHigh": float}, total=False)
+_PriceBreakRequired = TypedDict("_PriceBreakRequired", {"unitPrice": float})
+_PriceBreakOptional = TypedDict("_PriceBreakOptional", {"quantity": int, "unitPriceHigh": float}, total=False)
 class PriceBreak(_PriceBreakRequired, _PriceBreakOptional):
     pass
 
@@ -841,7 +859,7 @@ class SubdivBodyFeature(_SubdivBodyFeatureRequired, _SubdivBodyFeatureOptional):
 
 #: WHO SELLS A PART, AND ON WHAT TERMS: one supplier's offer (docs/formats.md § logistics). The quantity terms (`stock`, `moq`, `orderMultiple`, `leadTimeDays`, `priceBreaks`) are the ones a component catalog's offer states. A price or a stock says where and when it was read (`source`, `date`).
 _SupplierOfferRequired = TypedDict("_SupplierOfferRequired", {"name": str})
-_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "leadTimeDays": float, "leadTimeDaysHigh": float, "stock": int, "kind": Literal["stock", "quote", "listing", "broker"], "confidence": Literal["firm", "indication"], "samplesDays": float, "tooling": Union[float, Literal["unknown"]], "service": str, "source": str, "date": str, "supplier": str}, total=False)
+_SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "leadTimeDays": float, "leadTimeDaysHigh": float, "stock": int, "preorder": int, "pool": str, "incoming": List['IncomingLot'], "kind": Literal["stock", "quote", "listing", "broker"], "confidence": Literal["firm", "indication"], "samplesDays": float, "tooling": Union[float, Literal["unknown"]], "service": str, "via": str, "source": str, "date": str, "dates": 'OfferDates', "supplier": str}, total=False)
 class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
     pass
 
