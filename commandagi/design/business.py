@@ -30,6 +30,7 @@ from typing import Any, Dict, List, Optional
 from .business_equity import EQUITY_TAGS, rounds_of
 from .business_finance import COMPANY_FINANCE_MANY, COMPANY_FINANCE_ONE, FINANCE_TAGS, finance_of
 from .company_formation import FILING_PAPER_PROPS, FORMATION_LISTS, FORMATION_TAGS, formation_of
+from .company_governance import COMPANY_GOVERNANCE_MANY, COMPANY_GOVERNANCE_ONE, GOVERNANCE_TAGS, PAPER_VOTE_PROPS, governance_of, votes_of
 from .element import Element, child_elements, declares, define
 from .people_ops import PEOPLE_OPS_TAGS, team_of
 
@@ -38,8 +39,8 @@ _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
-                        **COMPANY_FINANCE_ONE, "team": "Team"},
-                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, "brands": "Brand"}},
+                        **COMPANY_FINANCE_ONE, "team": "Team", **COMPANY_GOVERNANCE_ONE},
+                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, "brands": "Brand", **COMPANY_GOVERNANCE_MANY}},
     # A priced round, pro forma, and its investments (./business_equity.py).
     **EQUITY_TAGS,
     "Entity": {"props": {"jurisdiction": _TEXT, "form": _TEXT, "taxClassification": _TEXT, "name": _TEXT, "formed": _TEXT,
@@ -54,13 +55,15 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Subsidiary": {"props": {"file": _TEXT, "ownership": _AMOUNT, "since": _TEXT, "method": _TEXT}, "required": ["file", "ownership"]},
     # A typed document: a file of the company it describes (docs/company-substrate.md § documents).
     "Paper": {"props": {"kind": _TEXT, "title": _TEXT, "file": _TEXT, "status": _TEXT, "parties": _TEXTS, "jurisdiction": _TEXT,
-                        "effective": _TEXT, "expires": _TEXT, "renewal": _TEXT, "noticeDays": _AMOUNT, **FILING_PAPER_PROPS},
-              "required": ["kind", "file"], "many": {"signatures": "Signature", "versions": "Version"}},
+                        "effective": _TEXT, "expires": _TEXT, "renewal": _TEXT, "noticeDays": _AMOUNT, **FILING_PAPER_PROPS, **PAPER_VOTE_PROPS},
+              "required": ["kind", "file"], "many": {"signatures": "Signature", "versions": "Version", "votes": "Vote"}},
     "Signature": {"props": {"party": _TEXT, "signer": _TEXT, "capacity": _TEXT, "date": _TEXT, "method": _TEXT, "evidence": _TEXT}, "required": ["party"]},
     "Version": {"props": {"file": _TEXT, "date": _TEXT, "note": _TEXT}, "required": ["file"]},
     **FORMATION_TAGS,
     # A brand of the company: its own ``.brand.py``, by ref (docs/company-substrate.md § the brand surface).
     "Brand": {"props": {"file": _TEXT}, "required": ["file"]},
+    # Seats, the compliance register, IP, insurance and votes (company_governance.py).
+    **GOVERNANCE_TAGS,
     "Rfc": {"props": {"id": _TEXT, "procedure": _TEXT, "title": _TEXT, "body": _TEXT, "target": _TEXT, "engineJson": _TEXT}, "many": {"options": "Option"}},
     "Option": {"props": {"title": _TEXT, "summary": _TEXT}, "many": {"changes": "Change"}},
     "Change": {"props": {"op": _TEXT, "parameter": _TEXT, "value": _TEXT, "dutyId": _TEXT, "title": _TEXT, "text": _TEXT, "protects": _TEXTS,
@@ -200,6 +203,7 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
             paper["signatures"] = [dict(n["props"]) for n in x["many"]["signatures"]]
         if x["many"]["versions"]:
             paper["versions"] = [dict(n["props"]) for n in x["many"]["versions"]]
+        paper.update(votes_of(x))
         papers.append(paper)
     finance = finance_of(node)
     rounds = rounds_of(node)
@@ -211,7 +215,7 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
             **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {}),
             **({"finance": finance} if finance else {}), **formation_of(node), **({"rounds": rounds} if rounds else {}),
             **({"team": team_of(one["team"])} if one["team"] else {}),
-            **({"brands": brands} if brands else {})}
+            **({"brands": brands} if brands else {}), **governance_of(node)}
 
 
 def _with_id(node: Dict[str, Any], draft: Dict[str, Any]) -> Dict[str, Any]:

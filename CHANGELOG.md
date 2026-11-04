@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A company's governance, compliance, IP and insurance (`company_governance.py`): `Seat`, `Compliance`, `Obligation`,
+  `Evidence`, `IpAsset`, `Assignment` and `Policy` in a `Company`, and `Vote` in a `Paper` (which gains `body`,
+  `threshold` and `quorum`), imported from `commandagi.design.business`. The same in the TypeScript, Python and Rust
+  SDKs (one golden fixture, `tests/company_governance.json`).
 - `Company` takes `Subsidiary(file=, ownership=, since=, method=)` (each its own company file, by ref) and
   `Paper(Signature(...), Version(...), kind=, file=, status=, parties=, effective=, expires=, renewal=, notice_days=)`.
   The document gains `subsidiaries` and `papers`, absent when the file names none. The same in the TypeScript and Rust
