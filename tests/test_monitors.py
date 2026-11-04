@@ -30,6 +30,14 @@ class MonitorTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "sameAs is a list of subjects"):
             declare_document(monitor(same_as=["NVDA"]))
 
+    def test_a_wake_on_a_clock(self):
+        d = declare_document(monitor(wake(every="7d", prompt="Write the week's brief.")))
+        self.assertEqual(monitor_with_defaults(d["document"])["wakes"], [{"match": None, "every": "7d", "prompt": "Write the week's brief."}])
+        with self.assertRaisesRegex(ValueError, "every is a duration from 30s to 7d"):
+            declare_document(monitor(wake(every="8d", prompt="p")))
+        with self.assertRaisesRegex(ValueError, "not both"):
+            declare_document(monitor(wake(match="x.*", every="1d", prompt="p")))
+
     def test_refusals(self):
         def one(*children):
             return declare_document(monitor(*children))

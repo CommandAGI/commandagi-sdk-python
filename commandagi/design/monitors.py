@@ -38,7 +38,7 @@ SUBJECT = re.compile(r"^[a-z][a-z0-9-]*:\S*$")
 SOURCE_FIELDS = ["id", "adapter", "params", "every", "via", "exit", "host", "mode", "retain", "since",
                  "session", "snapshot", "profile", "keep", "maxCostPerDay", "unit", "vantage", "connection"]
 FOLLOW_FIELDS = ["monitor", "when"]
-WAKE_FIELDS = ["match", "prompt"]
+WAKE_FIELDS = ["match", "every", "prompt"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since"]
 DISCOVER_FIELDS = ["into", "of", "when", "slug", "class", "props", "name", "max", "visibility"]
 #: The most new folders a discover writes a tick.
@@ -287,6 +287,14 @@ def _monitor(t: DocTree) -> Dict[str, Any]:
     for c in parts("wake"):
         _text(c, "match", "match")
         _text(c, "prompt", "match")
+        every = c["attrs"].get("every")
+        if every is not None:
+            # A wake wakes on records (match) or on a clock (every: a weekly brief), never both.
+            if c["attrs"].get("match") is not None:
+                raise ValueError(f'<wake match="{c["attrs"]["match"]}"> wakes on records (match) or on a clock (every), not both')
+            s = duration_seconds(every)
+            if s is None or s < duration_seconds(EVERY_BOUNDS["min"]) or s > duration_seconds(EVERY_BOUNDS["max"]):
+                raise ValueError(f'<wake> every is a duration from {EVERY_BOUNDS["min"]} to {EVERY_BOUNDS["max"]}, not {every!r}')
         wakes.append(_said(c["attrs"], WAKE_FIELDS))
     derives = [_derive(c) for c in parts("derive")]
     return {**_said(t["attrs"], MONITOR_FIELDS), "sources": [_source(c) for c in parts("source")], "follows": follows,
@@ -331,5 +339,5 @@ def monitor_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
             "follows": [{"monitor": f["monitor"], "when": f.get("when")} for f in m.get("follows", [])],
             "derives": [{"id": d["id"], "op": d["op"], "inputs": d["inputs"], "params": d.get("params", {}),
                          "since": d.get("since")} for d in m.get("derives", [])],
-            "wakes": [{"match": w.get("match"), "prompt": w["prompt"]} for w in m.get("wakes", [])],
+            "wakes": [{"match": w.get("match"), "every": w.get("every"), "prompt": w["prompt"]} for w in m.get("wakes", [])],
             "discovers": [disc(d) for d in m.get("discovers", [])]}
