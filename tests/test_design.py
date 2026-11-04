@@ -133,6 +133,21 @@ class EdaTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "R1: a courtyard is two corners"):
             circuit("X", lambda: component(ref="R1", footprint={**fpc, "courtyard": [{"x": 0, "y": 0}]}))
 
+    def test_pads_of_one_number_are_one_pin_with_further_pads(self):
+        pad = lambda n, x: {"number": n, "pad": {"type": "smd", "shape": "rect", "at": {"x": x, "y": 0}, "size": {"w": 0.3, "h": 0.3}, "layers": ["F.Cu"]}}
+        fp = {"name": "X:L", "pads": [pad("1", 0), pad("2", 1), pad("2", 1.3), pad("", 3)]}
+        made = {}
+
+        def body():
+            made["u"] = component(ref="U1", footprint=fp, pin_names={"2": "GND"})
+            net("GND", made["u"].pin("GND"))
+
+        g = circuit("Further pads", body).ir
+        pins = g["nodes"]["part_U1"]["inputs"]["pins"]
+        self.assertEqual([(p["id"], p["number"], p.get("padOf")) for p in pins], [("p1", "1", None), ("p2", "2", None), ("p2_3", "2", "p2"), ("pnode", "", None)])
+        self.assertEqual(pins[2]["name"], "GND")
+        self.assertEqual([p["id"] for p in made["u"].pins], ["p1", "p2", "pnode"])
+
 
 class CadQueryTests(unittest.TestCase):
     def test_box_with_a_grid_of_through_holes_on_its_top_face(self):

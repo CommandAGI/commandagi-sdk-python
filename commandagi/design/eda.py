@@ -149,12 +149,21 @@ def component(ref: str, footprint: Dict[str, Any], value: Optional[str] = None, 
         "suppliers": suppliers, "alternates": alternates, "need": need, "datasheet": datasheet, "lifecycle": lifecycle,
         "compliance": compliance, "shipping": shipping, "pinoutVerified": pinout_verified,
         "footprintVerified": footprint_verified, "packageDimensions": package_dimensions})
+    # KiCad's rule: pads of one number are one pin. The first pad of a number is the pin; each further pad (a QFN's
+    # second land, a receptacle's other shell legs) is a socket of its own, padOf the pin, on the pin's net.
     pins = []
-    for p in footprint["pads"]:
+    first: Dict[str, str] = {}
+    for i, p in enumerate(footprint["pads"]):
         name = (pin_names or {}).get(p["number"], p.get("name"))
-        pin: Dict[str, Any] = {"id": f"p{slug(p['number'])}", "number": p["number"]}
+        pid = f"p{slug(p['number'])}"
+        of = first.get(p["number"]) if p["number"] != "" else None
+        pin: Dict[str, Any] = {"id": f"{pid}_{i + 1}" if of else pid, "number": p["number"]}
         if name:
             pin["name"] = name
+        if of:
+            pin["padOf"] = of
+        elif p["number"] != "":
+            first[p["number"]] = pid
         pin["pad"] = p["pad"]
         pins.append(pin)
     inputs: Dict[str, Any] = {"ref": ref}
@@ -180,7 +189,7 @@ def component(ref: str, footprint: Dict[str, Any], value: Optional[str] = None, 
         inputs["foreign"] = fields
     at = here()
     node = s.add(part_type_for(pins), inputs, id=f"part_{ref}", label=ref, meta=None if at is None else {"source": at})
-    handle = PartRef(s, node.id, ref, [{k: v for k, v in p.items() if k != "pad"} for p in pins], {k.lower(): v for k, v in (aliases or {}).items()})
+    handle = PartRef(s, node.id, ref, [{k: v for k, v in p.items() if k != "pad"} for p in pins if "padOf" not in p],{k.lower(): v for k, v in (aliases or {}).items()})
     s.state["parts"][ref] = handle
     return handle
 
