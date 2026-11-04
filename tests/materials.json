@@ -1,0 +1,199 @@
+{
+  "presets": {
+    "aluminum": {
+      "color": "#c8ccd0",
+      "metalness": 0.9,
+      "roughness": 0.35,
+      "envIntensity": 1
+    },
+    "anodized-aluminum": {
+      "color": "#3a3d42",
+      "metalness": 1,
+      "roughness": 0.42,
+      "envIntensity": 1,
+      "texture": {
+        "kind": "bead-blast",
+        "scale": 0.05,
+        "depth": 0.004
+      }
+    },
+    "steel": {
+      "color": "#9fa6ad",
+      "metalness": 0.95,
+      "roughness": 0.28,
+      "envIntensity": 1
+    },
+    "stainless-steel": {
+      "color": "#c6c3bf",
+      "metalness": 1,
+      "roughness": 0.24,
+      "envIntensity": 1,
+      "anisotropy": 0.6,
+      "texture": {
+        "kind": "brushed",
+        "scale": 0.02,
+        "depth": 0.002
+      }
+    },
+    "plastic": {
+      "color": "#3a7bd5",
+      "metalness": 0,
+      "roughness": 0.5,
+      "envIntensity": 0.6
+    },
+    "abs": {
+      "color": "#e9e6df",
+      "metalness": 0,
+      "roughness": 0.48,
+      "envIntensity": 1,
+      "ior": 1.54,
+      "texture": {
+        "kind": "grain",
+        "scale": 0.25,
+        "depth": 0.012
+      }
+    },
+    "pbt": {
+      "color": "#ece9e2",
+      "metalness": 0,
+      "roughness": 0.66,
+      "envIntensity": 1,
+      "ior": 1.57,
+      "texture": {
+        "kind": "grain",
+        "scale": 0.12,
+        "depth": 0.01
+      }
+    },
+    "pc": {
+      "color": "#f3f3f1",
+      "metalness": 0,
+      "roughness": 0.18,
+      "envIntensity": 1,
+      "ior": 1.586
+    },
+    "petg": {
+      "color": "#ece7dc",
+      "metalness": 0,
+      "roughness": 0.34,
+      "envIntensity": 1,
+      "ior": 1.57,
+      "texture": {
+        "kind": "layer-lines",
+        "scale": 0.2,
+        "depth": 0.025,
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    "pla": {
+      "color": "#ece7dc",
+      "metalness": 0,
+      "roughness": 0.42,
+      "envIntensity": 1,
+      "ior": 1.46,
+      "texture": {
+        "kind": "layer-lines",
+        "scale": 0.2,
+        "depth": 0.025,
+        "direction": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    "brass": {
+      "color": "#d4af5a",
+      "metalness": 0.9,
+      "roughness": 0.3,
+      "envIntensity": 1
+    },
+    "copper": {
+      "color": "#c87f4f",
+      "metalness": 0.92,
+      "roughness": 0.32,
+      "envIntensity": 1
+    },
+    "chrome": {
+      "color": "#e8edf2",
+      "metalness": 1,
+      "roughness": 0.05,
+      "envIntensity": 1.2
+    },
+    "rubber": {
+      "color": "#1c1c20",
+      "metalness": 0,
+      "roughness": 0.95,
+      "envIntensity": 0.2
+    },
+    "glass": {
+      "color": "#ffffff",
+      "metalness": 0,
+      "roughness": 0.02,
+      "envIntensity": 1,
+      "ior": 1.52,
+      "transmission": 1,
+      "thickness": 2
+    },
+    "pcb": {
+      "color": "#1d4d2a",
+      "metalness": 0,
+      "roughness": 0.4,
+      "envIntensity": 1,
+      "ior": 1.5,
+      "clearcoat": 0.7,
+      "clearcoatRoughness": 0.15
+    }
+  },
+  "bodies": {
+    "case": {
+      "name": "Case",
+      "material": {
+        "preset": "anodized-aluminum",
+        "color": "#2b2e33"
+      }
+    },
+    "keycap": {
+      "name": "Keycap",
+      "material": {
+        "preset": "pbt",
+        "texture": {
+          "kind": "grain",
+          "scale": 0.1,
+          "depth": 0.008
+        }
+      }
+    },
+    "window": {
+      "name": "Window",
+      "material": {
+        "preset": "glass",
+        "thickness": 1.1
+      }
+    },
+    "board": {
+      "name": "Board",
+      "material": {
+        "preset": "pcb",
+        "color": "#14161a"
+      }
+    },
+    "led": {
+      "name": "LED",
+      "material": {
+        "preset": "pc",
+        "color": "#fff4ea",
+        "emissive": "#ff2a14",
+        "emissiveIntensity": 4
+      }
+    }
+  },
+  "refused": {
+    "roughness": 1.5,
+    "says": "roughness"
+  }
+}

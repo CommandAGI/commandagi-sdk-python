@@ -8,6 +8,11 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `body(material=…)` is a physically based material: a `preset` (now with `anodized-aluminum`, `stainless-steel`,
+  `abs`, `pbt`, `pc`, `petg`, `pla`, `glass`, `pcb`) and the fields it changes (`ior`, `transmission`, `thickness`,
+  `clearcoat`, `clearcoatRoughness`, `anisotropy`, `emissive`, `emissiveIntensity`, `texture`), checked against the
+  schema's `BodyMaterial`. The same in the TypeScript, Python and Rust SDKs (one golden fixture, `tests/materials.json`).
+  A material given as a string is refused: it is an object.
 - `<wake agent maxSpend>`: a wake names an agent of the account (the thread seats it and the wake goes to it) and bounds what
   one wake may spend on model calls, in US dollars. The same in the TypeScript, Python and Rust SDKs (one golden fixture).
 - ``contact(id=, a=, b=, collide=, friction=, restitution=, report=)``: a contact pair of a 3D document

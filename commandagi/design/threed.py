@@ -398,6 +398,8 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
                 body_fields = _fields(el, ("id",))
                 if "engineering" in body_fields:
                     body_fields["engineering"] = _check_value(el, "PartEngineering", body_fields["engineering"], "engineering")
+                if "material" in body_fields:
+                    body_fields["material"] = _check_value(el, "BodyMaterial", body_fields["material"], "material")
                 bodies[i] = body_fields
                 if el.source is not None:
                     body_sources[i] = el.source

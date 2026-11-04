@@ -19,7 +19,7 @@ def plate():
             id="sketch1", name="Sketch1", plane={"type": "datum", "plane": "plane_xy"}),
         extrude(id="extrude1", name="Extrude1", profile={"sketch": "sketch1"}, distance=6, operation="new"),
         fillet(id="fillet1", name="Fillet1", radius=1, edges=[{"kind": "edge", "signature": {"point": [20, 0, 6]}}], consumes=["extrude1"], suppressed=True),
-        body(id="extrude1", material="aluminium-6061"),
+        body(id="extrude1", material={"preset": "aluminum"}),
         slot(name="environment", value={"gravity": [0, 0, -9.81]}),
         name="Plate",
     )
@@ -39,7 +39,7 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(sk["segments"]["l1"], {"id": "l1", "type": "line", "a": "p1", "b": "p2"})
         self.assertEqual(sk["constraints"]["c1"], {"id": "c1", "kind": "horizontal", "entities": ["l1"]})
         self.assertEqual(n["plane_xy"]["inputs"], {"origin": [0, 0, 0], "normal": [0, 0, 1], "xAxis": [1, 0, 0], "builtin": "XY"})
-        self.assertEqual(n["bodyMeta"], {"id": "bodyMeta", "type": "3d.bodyMeta", "inputs": {"extrude1": {"material": "aluminium-6061"}}})
+        self.assertEqual(n["bodyMeta"], {"id": "bodyMeta", "type": "3d.bodyMeta", "inputs": {"extrude1": {"material": {"preset": "aluminum"}}}})
         self.assertEqual(n["environment"]["inputs"], {"gravity": [0, 0, -9.81]})
 
     def test_a_script_declares_it_too(self):
@@ -56,7 +56,7 @@ class ThreeDTests(unittest.TestCase):
                "        id='s1', plane={'type': 'datum', 'plane': 'plane_xy'},\n"
                "    ),\n"
                "    extrude(id='e1', profile={'sketch': 's1'}, distance=6, operation='new'),\n"
-               "    body(id='e1', material='steel'),\n"
+               "    body(id='e1', material={'preset': 'steel'}),\n"
                "    name='P',\n"
                ")\n")
         g = run_module(src, "P.3d.py")["graph"]
@@ -311,6 +311,25 @@ class ThreeDTests(unittest.TestCase):
             run_module(src.replace("friction=0.9", "friction=%s" % golden["refused"]["friction"]), "Pad on a table.3d.py")
         with self.assertRaisesRegex(ValueError, "report"):
             run_module(src.replace("report=['normal', 'slip']", "report=['torque']"), "Pad on a table.3d.py")
+
+    def test_body_material_is_a_physically_based_material_and_reads_as_the_golden(self):
+        # materials.json is the golden of the three SDKs (materials.golden.json in the TypeScript SDK): the physically
+        # based materials a body() declares, read as the bodies' meta, and a value out of range refused by name.
+        import json
+        import pathlib
+        golden = json.loads((pathlib.Path(__file__).parent / "materials.json").read_text(encoding="utf-8"))
+        lines = []
+        for i, (bid, b) in enumerate(golden["bodies"].items()):
+            lines.append(f"    box(id={bid!r}, name={b['name']!r}, center=[{i * 20}, 0, 5], size=[10, 10, 10], operation='new'),\n")
+            lines.append(f"    body(id={bid!r}, name={b['name']!r}, material={b['material']!r}),\n")
+        src = "from commandagi.design.threed import *\nresult = part(\n" + "".join(lines) + "    name='Materials',\n)\n"
+        n = run_module(src, "Materials.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["bodyMeta"]["inputs"], golden["bodies"])
+        case = golden["bodies"]["case"]["material"]
+        with self.assertRaisesRegex(ValueError, golden["refused"]["says"]):
+            run_module(src.replace(repr(case), repr({**case, "roughness": golden["refused"]["roughness"]})), "Materials.3d.py")
+        with self.assertRaisesRegex(ValueError, "kind"):
+            run_module(src.replace(repr(case), repr({**case, "texture": {"kind": "knurl", "scale": 1, "depth": 0.1}})), "Materials.3d.py")
 
     def test_a_rod_is_a_feature_held_at_ports_and_port_is_the_documents_ports_list(self):
         # The TypeScript and Rust SDKs read the same fields (threed.test.ts, threed.rs).

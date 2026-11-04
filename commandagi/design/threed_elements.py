@@ -48,6 +48,12 @@ __AxisRef4Optional = TypedDict("__AxisRef4Optional", {}, total=False)
 class _AxisRef4(__AxisRef4Required, __AxisRef4Optional):
     pass
 
+#: A `<body material>` as a document writes it: a preset and the fields it changes, or only a colour. What it leaves out is its preset's (`resolveMaterial`).
+_BodyMaterialRequired = TypedDict("_BodyMaterialRequired", {})
+_BodyMaterialOptional = TypedDict("_BodyMaterialOptional", {"preset": 'MaterialPreset', "color": str, "metalness": float, "roughness": float, "envIntensity": float, "opacity": float, "ior": float, "transmission": float, "thickness": float, "clearcoat": float, "clearcoatRoughness": float, "anisotropy": float, "emissive": str, "emissiveIntensity": float, "texture": 'SurfaceTexture'}, total=False)
+class BodyMaterial(_BodyMaterialRequired, _BodyMaterialOptional):
+    pass
+
 _BoxFeatureRequired = TypedDict("_BoxFeatureRequired", {"type": Literal["box"], "id": str, "name": str})
 _BoxFeatureOptional = TypedDict("_BoxFeatureOptional", {"center": 'Vec3', "size": 'Vec3', "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class BoxFeature(_BoxFeatureRequired, _BoxFeatureOptional):
@@ -444,7 +450,7 @@ class Mate(_MateRequired, _MateOptional):
     pass
 
 _MaterialDefRequired = TypedDict("_MaterialDefRequired", {"preset": 'MaterialPreset', "color": str, "metalness": float, "roughness": float, "envIntensity": float})
-_MaterialDefOptional = TypedDict("_MaterialDefOptional", {"opacity": float}, total=False)
+_MaterialDefOptional = TypedDict("_MaterialDefOptional", {"opacity": float, "ior": float, "transmission": float, "thickness": float, "clearcoat": float, "clearcoatRoughness": float, "anisotropy": float, "emissive": str, "emissiveIntensity": float, "texture": 'SurfaceTexture'}, total=False)
 class MaterialDef(_MaterialDefRequired, _MaterialDefOptional):
     pass
 
@@ -908,6 +914,12 @@ class SubdivBodyFeature(_SubdivBodyFeatureRequired, _SubdivBodyFeatureOptional):
 _SupplierOfferRequired = TypedDict("_SupplierOfferRequired", {"name": str})
 _SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "pack": float, "leadTimeDays": float, "leadTimeDaysHigh": float, "stock": int, "preorder": int, "pool": str, "incoming": List['IncomingLot'], "kind": Literal["stock", "quote", "listing", "broker"], "confidence": Literal["firm", "indication"], "samplesDays": float, "tooling": Union[float, Literal["unknown"]], "service": str, "via": str, "source": str, "date": str, "dates": 'OfferDates', "supplier": str}, total=False)
 class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
+    pass
+
+#: A surface's small relief, drawn as a bump and never built as geometry: moulded grain (a VDI 3400 texture), bead blasting, a brushed finish, a printer's layer lines.
+_SurfaceTextureRequired = TypedDict("_SurfaceTextureRequired", {"kind": Literal["grain", "bead-blast", "brushed", "layer-lines"], "scale": float, "depth": float})
+_SurfaceTextureOptional = TypedDict("_SurfaceTextureOptional", {"direction": Tuple[float, float, float]}, total=False)
+class SurfaceTexture(_SurfaceTextureRequired, _SurfaceTextureOptional):
     pass
 
 _SweepFeatureRequired = TypedDict("_SweepFeatureRequired", {"type": Literal["sweep"], "profile": 'ProfileRef', "path": 'SweepPath', "id": str, "name": str})
@@ -1442,7 +1454,7 @@ ManufacturingProcess = Literal["other", "cnc-milling", "cnc-turning", "laser-cut
 #: Mate kinds the assembly solver understands — a real 6-DOF set (translational + rotational).
 MateKind = Literal["coincident", "offset", "parallel", "perpendicular", "distance", "angle", "concentric"]
 
-MaterialPreset = Literal["aluminum", "steel", "plastic", "brass", "copper", "chrome", "rubber", "custom"]
+MaterialPreset = Literal["aluminum", "anodized-aluminum", "steel", "stainless-steel", "plastic", "abs", "pbt", "pc", "petg", "pla", "brass", "copper", "chrome", "rubber", "glass", "pcb", "custom"]
 
 MeshModifierSpec = Union['_MeshModifierSpec12', '_MeshModifierSpec13', '_MeshModifierSpec14', '_MeshModifierSpec15', '_MeshModifierSpec16']
 
