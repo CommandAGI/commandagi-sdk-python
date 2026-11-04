@@ -39,7 +39,7 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
                         **COMPANY_FINANCE_ONE, "team": "Team"},
-                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS}},
+                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, "brands": "Brand"}},
     # A priced round, pro forma, and its investments (./business_equity.py).
     **EQUITY_TAGS,
     "Entity": {"props": {"jurisdiction": _TEXT, "form": _TEXT, "taxClassification": _TEXT, "name": _TEXT, "formed": _TEXT,
@@ -59,6 +59,8 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Signature": {"props": {"party": _TEXT, "signer": _TEXT, "capacity": _TEXT, "date": _TEXT, "method": _TEXT, "evidence": _TEXT}, "required": ["party"]},
     "Version": {"props": {"file": _TEXT, "date": _TEXT, "note": _TEXT}, "required": ["file"]},
     **FORMATION_TAGS,
+    # A brand of the company: its own ``.brand.py``, by ref (docs/company-substrate.md § the brand surface).
+    "Brand": {"props": {"file": _TEXT}, "required": ["file"]},
     "Rfc": {"props": {"id": _TEXT, "procedure": _TEXT, "title": _TEXT, "body": _TEXT, "target": _TEXT, "engineJson": _TEXT}, "many": {"options": "Option"}},
     "Option": {"props": {"title": _TEXT, "summary": _TEXT}, "many": {"changes": "Change"}},
     "Change": {"props": {"op": _TEXT, "parameter": _TEXT, "value": _TEXT, "dutyId": _TEXT, "title": _TEXT, "text": _TEXT, "protects": _TEXTS,
@@ -201,13 +203,15 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
         papers.append(paper)
     finance = finance_of(node)
     rounds = rounds_of(node)
+    brands = [dict(x["props"]) for x in node["many"]["brands"]]
     # Each area's field is absent when the file names none of it (docs/company-substrate.md § how an area joins).
     return {"format": "commandagi-company", "name": p["name"], "about": p.get("about", ""),
             **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
             "dashboard": p.get("dashboard"), "entity": entity, "standard": standard,
             **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {}),
             **({"finance": finance} if finance else {}), **formation_of(node), **({"rounds": rounds} if rounds else {}),
-            **({"team": team_of(one["team"])} if one["team"] else {})}
+            **({"team": team_of(one["team"])} if one["team"] else {}),
+            **({"brands": brands} if brands else {})}
 
 
 def _with_id(node: Dict[str, Any], draft: Dict[str, Any]) -> Dict[str, Any]:
