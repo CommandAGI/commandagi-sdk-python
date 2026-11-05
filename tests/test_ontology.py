@@ -8,8 +8,8 @@ import unittest
 from commandagi.design import run_module
 from commandagi.design.element import declarer_of
 from commandagi.design import firmware as fw
-from commandagi.design.ontology import (body, camera, channel, dashboard, dateRange, device, geoproject, group, node, opgraph, pane,
-                                        region, scene, split, unit, wire, world)
+from commandagi.design.ontology import (body, bound, camera, channel, dashboard, dateRange, device, geoproject, group, node, opgraph, pane,
+                                        interlock, region, scene, split, unit, wire, world)
 
 
 def declared(root):
@@ -56,6 +56,23 @@ class OntologyTests(unittest.TestCase):
         self.assertEqual(shelved["units"][0]["group"], "shelf-1")
         with self.assertRaisesRegex(ValueError, "device is not read"):
             declared(world(group(uid="g", name="g", device="d"), name="W", kind="physical"))
+
+    def test_bounds_and_interlocks_are_elements(self):
+        requires = [{"channel": "switches", "field": "home", "eq": True}]
+        d = declared(device(channel(id="gate", dir="duplex", medium="records", format="json-records"),
+                            channel(id="switches", dir="out", medium="records", format="json-records"),
+                            bound(channel="gate", field="lift", min=0, max=420, max_rate=200),
+                            interlock(name="gate-closes-only-with-shuttle-home", channel="gate", when={"field": "lift", "lt": 420}, requires=requires, why="the gate would close on the tray"),
+                            name="Hatch"))["document"]["document"]
+        self.assertEqual(d["channels"][0]["bounds"], [{"field": "lift", "min": 0, "max": 420, "maxRate": 200}])
+        self.assertNotIn("bounds", d["channels"][1])
+        self.assertEqual(d["interlocks"], [{"name": "gate-closes-only-with-shuttle-home", "channel": "gate", "when": {"field": "lift", "lt": 420}, "requires": requires, "why": "the gate would close on the tray"}])
+        with self.assertRaisesRegex(ValueError, 'channel "x" is not a <channel> of this device'):
+            declared(device(bound(channel="x", field="f", max=1), name="A"))
+        w = declared(world(unit(uid="tray", name="tray", device="d"),
+                           interlock(name="shuttle-needs-hatch-open", unit="tray", channel="shuttle", requires=[{"unit": "hatch", "channel": "gate", "field": "open", "eq": True}], why="the tray would strike the gate"),
+                           name="Unit", kind="physical"))["document"]["document"]
+        self.assertEqual(w["interlocks"][0]["unit"], "tray")
 
     def test_a_definition_names_its_firmware_and_a_firmware_declares_its_channels(self):
         d = declared(device(channel(id="cam", dir="out", medium="video", format="video"), name="Cam", firmware="../../firmware/cam", revision="rev-a"))["document"]

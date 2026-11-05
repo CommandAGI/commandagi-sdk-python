@@ -14,7 +14,10 @@ A record is an element and its fields are the element's attributes; a list of re
 
     world(name, kind, description?, from_?, model?,   world.py             space, unit(uid …), view, scene (body children)
           links?)
-    device(name …, firmware?, revision?)              definition.py        channel(id, dir, medium, format, transport …)
+    device(name …, firmware?, revision?)              definition.py        channel(id, dir, medium, format, transport …),
+                                                                           bound(channel, field, min?, max?, max_rate?,
+                                                                           max_speed?), interlock(name, channel, requires,
+                                                                           why, verbs?, when?)
     dashboard(name …)                                 <name>.dashboard.py  param(id, type …), one layout: split(axis,
                                                                            ratio) of two split|pane(id, kind …), or one
                                                                            pane (repeat="live-stream": one pane per live
@@ -35,6 +38,15 @@ A run gives back what the TypeScript SDK gives: for a world, a definition, a das
 in the run's one shape (``{"format", "document", "sources"}``, each element's call keyed by its tree path) beside an
 empty graph; for a node graph, the editor's own op graph, each node with ``meta.source`` and each wire's call in its
 target's ``meta.sources["wire:<port>"]``. A code form declares; it never enforces.
+
+Bounds and interlocks are what the host's admission gate holds every command to, driver or not (docs/devices.md § the
+admission gate). A ``bound`` names its channel and a field the channel's commands set; it folds into that channel's
+``bounds``. An ``interlock`` refuses a command on its ``channel`` unless each of ``requires`` holds on another channel's
+last known state, and an unknown state refuses. A world's ``interlock`` names the unit it guards (``unit``)::
+
+    bound(channel="joints", field="fr3_joint1", min=-2.9007, max=2.9007, max_rate=2.62)
+    interlock(name="shuttle-needs-hatch-open", unit="tray", channel="shuttle",
+              requires=[{"unit": "hatch", "channel": "gate-switches", "field": "open", "eq": True}], why="…")
 """
 from __future__ import annotations
 
@@ -50,6 +62,7 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "world": _HOLDS, "space": {"snake": ["origin_mm", "size_mm"]}, "group": {"snake": ["size_mm"]}, "unit": {"snake": ["size_mm"]}, "view": {}, "scene": _HOLDS, "body": {},
     "device": {**_HOLDS, "snake": ["model_number", "product_url", "price_usd", "record_hz", "spec_check", "dimensions_mm"]}, "channel": {},
+    "bound": {}, "interlock": {},
     "dashboard": _HOLDS, "param": {}, "split": _HOLDS, "pane": {}, "region": {},
     "geoproject": _HOLDS, "dateRange": {}, "camera": {}, "reference": {},
     "opgraph": _HOLDS, "node": {}, "wire": {},
@@ -68,6 +81,10 @@ GROUP_FIELDS = ["uid", "name", "description", "group", "size_mm", "position", "r
 #: link grammar with the unit named in each joint and emit; ``node`` is the id of the model's feature that makes the part.
 #: ``policies``: the world's follow policies (docs/follow.md): one unit's robot follows another's joints, by angle.
 WORLD_FIELDS = ["name", "kind", "description", "from", "model", "links", "policies"]
+#: A ``bound``'s attributes: the channel it bounds, the field, and its limits.
+BOUND_FIELDS = ["channel", "field", "min", "max", "maxRate", "maxSpeed", "why"]
+#: An ``interlock``'s attributes; ``unit`` only in a world.
+INTERLOCK_FIELDS = ["name", "unit", "channel", "verbs", "when", "requires", "why"]
 GEO_FIELDS = ["id", "name", "createdAt", "updatedAt", "description", "defaultWorkspace", "metadata"]
 #: A node's attributes that are not its ports.
 _NODE_ATTRS = ["id", "type", "label", "x", "y", "disabled", "output", "meta", "inputs"]
@@ -113,6 +130,9 @@ def _world(t: DocTree) -> Dict[str, Any]:
     if scene_ is not None:
         bodies = [_attrs(b) for b in _kids(scene_, "body")]
         out["scene"] = {**_attrs(scene_), **({"bodies": bodies} if bodies else {})}
+    interlocks = [_attrs(i) for i in _kids(t, "interlock")]
+    if interlocks:
+        out["interlocks"] = interlocks
     return out
 
 
@@ -124,6 +144,7 @@ _WORLD = Vocabulary("world", "a world", "world", {
     "view": {"parents": ["world"], "single": True},
     "scene": {"parents": ["world"], "single": True},
     "body": {"parents": ["scene"], "key": "id", "required": ["id"]},
+    "interlock": {"parents": ["world"], "key": "name", "required": ["name", "unit", "channel", "requires", "why"], "attrs": INTERLOCK_FIELDS},
 }, _world, lambda doc: _unsupported("world"))
 
 
@@ -133,13 +154,26 @@ _WORLD = Vocabulary("world", "a world", "world", {
 def _device(t: DocTree) -> Dict[str, Any]:
     if "channels" in t["attrs"]:
         raise ValueError("<device>: write each channel as a <channel> element, not a channels attribute")
+    if "interlocks" in t["attrs"]:
+        raise ValueError("<device>: write each interlock as an <interlock> element, not an interlocks attribute")
     channels = [_attrs(c) for c in _kids(t, "channel")]
-    return {**_attrs(t), **({"channels": channels} if channels else {})}
+    for c in channels:
+        if "bounds" in c:
+            raise ValueError(f'<channel id="{c.get("id")}">: write each bound as a <bound channel="{c.get("id")}"> element, not a bounds attribute')
+    for b in _kids(t, "bound"):
+        c = next((x for x in channels if x.get("id") == b["attrs"].get("channel")), None)
+        if c is None:
+            raise ValueError(f'<bound field="{b["attrs"].get("field")}">: channel "{b["attrs"].get("channel")}" is not a <channel> of this device')
+        c.setdefault("bounds", []).append(_omit(b["attrs"], ["channel"]))
+    interlocks = [_attrs(i) for i in _kids(t, "interlock")]
+    return {**_attrs(t), **({"channels": channels} if channels else {}), **({"interlocks": interlocks} if interlocks else {})}
 
 
 _DEVICE = Vocabulary("device", "a device definition", "device", {
     "device": {"parents": [], "required": ["name"]},
     "channel": {"parents": ["device"], "key": "id", "required": ["id"]},
+    "bound": {"parents": ["device"], "required": ["channel", "field"], "attrs": BOUND_FIELDS},
+    "interlock": {"parents": ["device"], "key": "name", "required": ["name", "channel", "requires", "why"], "attrs": [k for k in INTERLOCK_FIELDS if k != "unit"]},
 }, _device, lambda doc: _unsupported("device"))
 
 

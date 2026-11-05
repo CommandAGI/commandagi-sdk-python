@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A definition's declared bounds and interlocks (`ontology.py`): `bound(channel, field, min?, max?, max_rate?,
+  max_speed?, why?)` folds into its channel's `bounds`, and `interlock(name, channel, requires, why, verbs?, when?)`
+  into the definition's `interlocks`; a world's `interlock(unit=…)` guards one of its units by another's state. The
+  host's admission gate holds them for every channel, driver or not. A `bounds` or `interlocks` attribute is refused.
 - A company's governance, compliance, IP and insurance (`company_governance.py`): `Seat`, `Compliance`, `Obligation`,
   `Evidence`, `IpAsset`, `Assignment` and `Policy` in a `Company`, and `Vote` in a `Paper` (which gains `body`,
   `threshold` and `quorum`), imported from `commandagi.design.business`. The same in the TypeScript, Python and Rust
