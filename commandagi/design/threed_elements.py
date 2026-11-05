@@ -639,7 +639,7 @@ class PointCloudFeature(_PointCloudFeatureRequired, _PointCloudFeatureOptional):
 
 #: A PORT: where a rod's end can be held on a body: a pad, a solder joint, a terminal, a socket, a breadboard's row of sockets (`count` of them, named `<id>1` … `<id><count>` along `dir`). `<port>` in code. A socket holds an end coaxial on its axis, no deeper than `depth`, until it is pulled out with more than `retention`.
 _PortRequired = TypedDict("_PortRequired", {"id": str, "at": 'Vec3', "hold": 'RodHold'})
-_PortOptional = TypedDict("_PortOptional", {"body": str, "axis": 'Vec3', "depth": float, "retention": float, "count": int, "pitch": float, "dir": 'Vec3', "groups": int, "first": int}, total=False)
+_PortOptional = TypedDict("_PortOptional", {"body": str, "axis": 'Vec3', "depth": float, "retention": float, "retentionSource": str, "count": int, "pitch": float, "dir": 'Vec3', "groups": int, "first": int}, total=False)
 class Port(_PortRequired, _PortOptional):
     pass
 
