@@ -13,7 +13,7 @@ same elements as the TypeScript SDK's JSX (``commandagi/design`` ``study.ts``), 
     )
 
 One root, ``study(kind=…, part=…, units=…)``, for every kind. A kind adds its own tags (``register_study_kind``); this
-module declares ``structural``, ``flow`` and ``step-response``. ``criterion`` and ``revise`` are every kind's. A record is an element and its fields are
+module declares ``structural``, ``flow``, ``step-response`` and ``arm-design``. ``criterion`` and ``revise`` are every kind's. A record is an element and its fields are
 its attributes (snake_case keywords of the native names: ``load_case`` is ``loadCase``). A load's tag is its ``type``.
 Nothing adds a default.
 """
@@ -154,7 +154,22 @@ register_study_kind("step-response", {
     "tune": {"rule": {"parents": ["study"], "key": "joint", "required": ["joint"], "attrs": ["joint", "kp", "kv"]}, "field": "tune", "list": True},
     "response": {"rule": {"parents": ["study"], "single": True, "required": ["duration"], "attrs": ["duration", "dt", "band"]}, "field": "response"},
 })
-__all__ += ["STEP_RESPONSE_UNITS"]
+# An arm-design study (kind="arm-design", units="mm-kg-s"): a sweep over an arm definition's link lengths and offsets,
+# each variant scored on a target workspace. ``part`` is a ``definition.tsx`` in the study's folder (its best variant is
+# written there). Each ``vary`` sets one component (``axis``) of the vector its ``field`` names to each of its ``values``
+# (mm): ``origin_mm`` of the chain link that ends at ``joint`` (no ``field``), ``offset_mm`` of that link, or the
+# kinematics' ``tip_mm`` (the tool point; no ``joint``). ``workspace`` is the grid the arm must reach (``min``, ``max``,
+# ``step``, mm; ``down``: the tool pointing down), ``payload`` the load at the tool point (``mass``, kg; ``gravity``,
+# m/s²). A criterion reads ``coverage``, ``manipulability.min``, ``torque.ratio`` or ``torque.dynamic``; each
+# ``objective`` (``quantity``, ``goal`` max or min) ranks the variants that pass the same criteria, in the order written.
+ARM_DESIGN_UNITS = "mm-kg-s"
+register_study_kind("arm-design", {
+    "vary": {"rule": {"parents": ["study"], "key": "id", "required": ["id", "axis", "values"], "attrs": ["id", "field", "joint", "axis", "values"]}, "field": "vary", "list": True},
+    "workspace": {"rule": {"parents": ["study"], "single": True, "required": ["min", "max", "step"], "attrs": ["min", "max", "step", "down"]}, "field": "workspace"},
+    "payload": {"rule": {"parents": ["study"], "single": True, "required": ["mass", "gravity"], "attrs": ["mass", "gravity"]}, "field": "payload"},
+    "objective": {"rule": {"parents": ["study"], "key": "quantity", "required": ["quantity", "goal"], "attrs": ["quantity", "goal"]}, "field": "objectives", "list": True},
+})
+__all__ += ["STEP_RESPONSE_UNITS", "ARM_DESIGN_UNITS"]
 __all__ += [n for n in SIGNATURES if n not in __all__]
 
 register_vocabulary(study_vocabulary, "study")

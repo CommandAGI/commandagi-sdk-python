@@ -87,6 +87,37 @@ class StudyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r'<step id="a"> needs to'):
             declare_document(s.study(s.step(id="a", joint="j", from_=0), kind="step-response", part="definition.tsx"))
 
+    def test_an_arm_design_study_names_its_varied_links_offset_and_tip_workspace_payload_and_objectives(self):
+        d = declare_document(s.study(
+            s.vary(id="upper", joint="elbow_flex", axis="x", values=[-112.57, -125]),
+            s.vary(id="forearm", joint="wrist_flex", axis="x", values=[-134.9, -150]),
+            s.vary(id="wrist", field="offset_mm", joint="wrist_roll", axis="y", values=[0, 10]),
+            s.vary(id="tool", field="tip_mm", axis="z", values=[-98.1274, -120]),
+            s.workspace(min=[-100, -100, 20], max=[100, 50, 100], step=25, down=True),
+            s.payload(mass=0.5, gravity=[0, 0, -9.81]),
+            s.criterion(id="covers", quantity="coverage", limit=0.9),
+            s.objective(quantity="coverage", goal="max"),
+            s.objective(quantity="manipulability.min", goal="max"),
+            kind="arm-design", part="devices/so101-reach/definition.tsx", units=s.ARM_DESIGN_UNITS,
+        ))
+        # The TypeScript SDK's study.test.ts declares this document for the same elements, key for key.
+        doc = {
+            "kind": "arm-design", "part": "devices/so101-reach/definition.tsx", "units": "mm-kg-s",
+            "vary": [{"id": "upper", "joint": "elbow_flex", "axis": "x", "values": [-112.57, -125]},
+                     {"id": "forearm", "joint": "wrist_flex", "axis": "x", "values": [-134.9, -150]},
+                     {"id": "wrist", "field": "offset_mm", "joint": "wrist_roll", "axis": "y", "values": [0, 10]},
+                     {"id": "tool", "field": "tip_mm", "axis": "z", "values": [-98.1274, -120]}],
+            "workspace": {"min": [-100, -100, 20], "max": [100, 50, 100], "step": 25, "down": True},
+            "payload": {"mass": 0.5, "gravity": [0, 0, -9.81]},
+            "criteria": [{"id": "covers", "quantity": "coverage", "limit": 0.9}],
+            "objectives": [{"quantity": "coverage", "goal": "max"}, {"quantity": "manipulability.min", "goal": "max"}],
+        }
+        self.assertEqual(d["document"], doc)
+        v = s.study_vocabulary
+        self.assertEqual(v.from_tree(v.to_tree(doc)), doc)
+        with self.assertRaisesRegex(ValueError, r"<step> belongs to a step-response study, not to a arm-design one"):
+            declare_document(s.study(s.step(id="a", joint="j", from_=0, to=1), kind="arm-design", part="definition.tsx"))
+
 
 if __name__ == "__main__":
     unittest.main()
