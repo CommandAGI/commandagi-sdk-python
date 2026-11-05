@@ -87,7 +87,7 @@ class StudyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r'<step id="a"> needs to'):
             declare_document(s.study(s.step(id="a", joint="j", from_=0), kind="step-response", part="definition.tsx"))
 
-    def test_an_arm_design_study_names_its_varied_links_offset_and_tip_workspace_payload_and_objectives(self):
+    def test_an_arm_design_study_names_its_varied_links_offset_and_tip_workspace_payload_obstacles_and_objectives(self):
         d = declare_document(s.study(
             s.vary(id="upper", joint="elbow_flex", axis="x", values=[-112.57, -125]),
             s.vary(id="forearm", joint="wrist_flex", axis="x", values=[-134.9, -150]),
@@ -95,6 +95,8 @@ class StudyTests(unittest.TestCase):
             s.vary(id="tool", field="tip_mm", axis="z", values=[-98.1274, -120]),
             s.workspace(min=[-100, -100, 20], max=[100, 50, 100], step=25, down=True),
             s.payload(mass=0.5, gravity=[0, 0, -9.81]),
+            s.obstacle(id="fixture", min=[-160, -40, 0], max=[-120, 40, 60]),
+            s.obstacle(id="bin", min=[60, -60, 0], max=[140, 20, 90], wall=4),
             s.criterion(id="covers", quantity="coverage", limit=0.9),
             s.objective(quantity="coverage", goal="max"),
             s.objective(quantity="manipulability.min", goal="max"),
@@ -109,6 +111,8 @@ class StudyTests(unittest.TestCase):
                      {"id": "tool", "field": "tip_mm", "axis": "z", "values": [-98.1274, -120]}],
             "workspace": {"min": [-100, -100, 20], "max": [100, 50, 100], "step": 25, "down": True},
             "payload": {"mass": 0.5, "gravity": [0, 0, -9.81]},
+            "obstacles": [{"id": "fixture", "min": [-160, -40, 0], "max": [-120, 40, 60]},
+                          {"id": "bin", "min": [60, -60, 0], "max": [140, 20, 90], "wall": 4}],
             "criteria": [{"id": "covers", "quantity": "coverage", "limit": 0.9}],
             "objectives": [{"quantity": "coverage", "goal": "max"}, {"quantity": "manipulability.min", "goal": "max"}],
         }
