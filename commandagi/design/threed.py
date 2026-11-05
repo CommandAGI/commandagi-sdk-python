@@ -486,13 +486,13 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             if el.tag != "sketch":
                 _no_children(el)
                 if el.tag == "code":
-                    # A code feature's `inputs` are ports of its node, beside `source` and `consumes` (the document graph's rule).
+                    # A code feature's `inputs` are ports of its node, beside `source`, `host` and `consumes` (the document graph's rule).
                     code_inputs = rest.pop("inputs", None)
                     if code_inputs is not None and not isinstance(code_inputs, dict):
                         raise ValueError(f"{_where(el)}: inputs is an object")
                     for k in rest:
-                        if k not in ("source", "consumes"):
-                            raise ValueError(f"{_where(el)}: a code feature has source, inputs and consumes, not {k}")
+                        if k not in ("source", "host", "consumes"):
+                            raise ValueError(f"{_where(el)}: a code feature has source, inputs, host and consumes, not {k}")
                     inputs = {**rest, **(code_inputs or {})}
             node: Dict[str, Any] = {"id": i, "type": ftype, "label": label if isinstance(label, str) else i}
             if suppressed is not None:

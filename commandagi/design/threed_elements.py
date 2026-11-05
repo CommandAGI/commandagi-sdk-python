@@ -95,7 +95,7 @@ class CircularPatternFeature(_CircularPatternFeatureRequired, _CircularPatternFe
 
 #: A PART AUTHORED AS CODE (docs/wave-h.md §3): a `.ts` / `.tsx` / `.js` / `.jsx` / `.py` file, beside the document, that declares features with the CommandAGI SDK (or JSCAD, replicad or CadQuery through its importers). Opening the part runs the file in the sandbox with `inputs` and puts what it declares in this feature's place: the file's result takes this feature's id, so a feature that `consumes` it follows the code part. It is the one feature of its file that is saved.
 _CodeFeatureRequired = TypedDict("_CodeFeatureRequired", {"type": Literal["code"], "source": str, "id": str, "name": str})
-_CodeFeatureOptional = TypedDict("_CodeFeatureOptional", {"inputs": Dict[str, Any], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_CodeFeatureOptional = TypedDict("_CodeFeatureOptional", {"inputs": Dict[str, Any], "host": 'HostCode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class CodeFeature(_CodeFeatureRequired, _CodeFeatureOptional):
     pass
 
@@ -372,6 +372,18 @@ class GraphFeature(_GraphFeatureRequired, _GraphFeatureOptional):
 _HoleFeatureRequired = TypedDict("_HoleFeatureRequired", {"type": Literal["hole"], "face": 'TopoTarget', "id": str, "name": str})
 _HoleFeatureOptional = TypedDict("_HoleFeatureOptional", {"positions": List['Vec3'], "sketch": str, "diameter": float, "depth": float, "through": bool, "style": 'HoleStyle', "headDiameter": float, "headDepth": float, "size": str, "tolerance": 'DimensionTolerance', "spare": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class HoleFeature(_HoleFeatureRequired, _HoleFeatureOptional):
+    pass
+
+#: What a host code part writes and reads (`<code host={…}>`; docs/formats.md § a host code part).
+_HostCodeRequired = TypedDict("_HostCodeRequired", {"outputs": List[str]})
+_HostCodeOptional = TypedDict("_HostCodeOptional", {"reads": List[str], "secrets": List[str], "timeout": float, "bind": List['HostCodeBinding']}, total=False)
+class HostCode(_HostCodeRequired, _HostCodeOptional):
+    pass
+
+#: One value of a host code part's JSON output that drives a field of a feature.
+_HostCodeBindingRequired = TypedDict("_HostCodeBindingRequired", {"output": str, "key": str, "target": str, "field": str})
+_HostCodeBindingOptional = TypedDict("_HostCodeBindingOptional", {}, total=False)
+class HostCodeBinding(_HostCodeBindingRequired, _HostCodeBindingOptional):
     pass
 
 _ImportFeatureRequired = TypedDict("_ImportFeatureRequired", {"type": Literal["import"], "format": Literal["step", "iges", "brep"], "data": str, "id": str, "name": str})
@@ -1059,7 +1071,7 @@ class WrapTextFeature(_WrapTextFeatureRequired, _WrapTextFeatureOptional):
 
 #: The keywords of code(…): the CodeFeature fields, in snake_case.
 _CodePropsRequired = TypedDict("_CodePropsRequired", {"source": str, "id": str})
-_CodePropsOptional = TypedDict("_CodePropsOptional", {"inputs": Dict[str, Any], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_CodePropsOptional = TypedDict("_CodePropsOptional", {"inputs": Dict[str, Any], "host": 'HostCode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class CodeProps(_CodePropsRequired, _CodePropsOptional):
     pass
 
