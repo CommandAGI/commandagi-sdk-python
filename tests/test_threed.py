@@ -276,6 +276,17 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(str(caught.exception),
                          '<meshBody id="world/t">: worldCollider/nx: must be at least 2 (got 1); worldRestitution: must be at most 1 (got 2)')
 
+    def test_unit_places_a_device_definition_in_the_design(self):
+        src = ("from commandagi.design.threed import *\n"
+               "result = part(\n"
+               "    unit(id='arm', name='arm', device='../devices/so101-follower-arm/definition.tsx', position=[0, -49, 760], rotation=0),\n"
+               "    name='Cell',\n"
+               ")\n")
+        n = run_module(src, "C.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["placements"]["inputs"]["value"], [{"id": "arm", "name": "arm", "device": "../devices/so101-follower-arm/definition.tsx", "position": [0, -49, 760], "rotation": 0}])
+        with self.assertRaisesRegex(ValueError, "serial"):
+            run_module(src.replace("rotation=0)", "rotation=0, serial='SN-1')"), "C.3d.py")
+
     def test_tactile_places_a_grid_of_taxels_on_a_face_of_a_body(self):
         src = ("from commandagi.design.threed import *\n"
                "result = part(\n"

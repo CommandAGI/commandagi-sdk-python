@@ -716,6 +716,12 @@ _PlacedMoveOptional = TypedDict("_PlacedMoveOptional", {}, total=False)
 class PlacedMove(_PlacedMoveRequired, _PlacedMoveOptional):
     pass
 
+#: A device definition placed in a design as a unit: the fields a world's unit has (`packages/domain/world/worlds.js`) less those that name one real machine (serial, revision, release, calibration: a world's). `readDesign` (`packages/domain/world/designs.js`) checks it with the world's own unit rules.
+_PlacedUnitRequired = TypedDict("_PlacedUnitRequired", {"id": str, "name": str, "device": str, "position": Tuple[float, float, float], "rotation": float})
+_PlacedUnitOptional = TypedDict("_PlacedUnitOptional", {"tilt_deg": float, "size_mm": Tuple[float, float, float], "channels": List[Dict[str, Any]]}, total=False)
+class PlacedUnit(_PlacedUnitRequired, _PlacedUnitOptional):
+    pass
+
 #: A rigid placement of a part in assembly space: a position, an orientation quaternion, and a uniform scale. Mirrors import but is self-contained (no pivot — the part is placed about its own origin) so the pure model has no kernel dependency.
 _PlacementRequired = TypedDict("_PlacementRequired", {})
 _PlacementOptional = TypedDict("_PlacementOptional", {"position": 'Vec3', "quaternion": Tuple[float, float, float, float], "scale": float, "scaleXYZ": 'Vec3'}, total=False)
