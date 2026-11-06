@@ -4,7 +4,8 @@ A company names each brand file with ``Brand(file=…)``.
 Run: python -m unittest discover -s tests"""
 import unittest
 
-from commandagi.design.brands import Alias, BrandSurface, Domain, Handle, Logo, Mark, Site
+from commandagi.design.brands import Alias, BrandSurface, Domain, Handle, Logo, Mailbox, Mark, Site
+from commandagi.design.facts import about, unknown
 from commandagi.design.business import Brand, Company, document_of
 from commandagi.design.documents import declare_document
 
@@ -14,8 +15,10 @@ class BrandTests(unittest.TestCase):
         d = declare_document(BrandSurface(
             Alias(name="Northwind Survey", kind="legal"),
             Logo(file="../design/logo.svg", kind="mark", background="light"),
-            Domain(name="northwind.example", registrar="Porkbun LLC", expires="2027-05-18", auto_renew=True, site="../sites/northwind/", mail=True),
+            Domain(name="northwind.example", registrar="Porkbun LLC", expires="2027-05-18", auto_renew=True, site="../sites/northwind/", transfer_lock=about("2026-12-30")),
             Site(folder="../sites/northwind/"),
+            Site(host="cloudflare-pages", project="northwind-www", url="https://www.northwind.example"),
+            Mailbox(address="support@northwind.example", kind="support"),
             Handle(platform="x", handle="northwindsurvey", connection="x"),
             Mark(title="NORTHWIND", jurisdiction="US", number="99123456"),
             name="Northwind", tagline="Drone surveys.", voice=["plain", "warm"], design_system="../design/brand-book.json"))
@@ -24,8 +27,9 @@ class BrandTests(unittest.TestCase):
             "aliases": [{"name": "Northwind Survey", "kind": "legal"}],
             "logos": [{"file": "../design/logo.svg", "kind": "mark", "background": "light"}],
             "domains": [{"name": "northwind.example", "registrar": "Porkbun LLC", "expires": "2027-05-18", "autoRenew": True,
-                         "site": "../sites/northwind/", "mail": True}],
-            "sites": [{"folder": "../sites/northwind/"}],
+                         "site": "../sites/northwind/", "transferLock": {"about": "2026-12-30"}}],
+            "sites": [{"folder": "../sites/northwind/"}, {"url": "https://www.northwind.example", "host": "cloudflare-pages", "project": "northwind-www"}],
+            "mailboxes": [{"address": "support@northwind.example", "kind": "support"}],
             "handles": [{"platform": "x", "handle": "northwindsurvey", "connection": "x"}],
             "marks": [{"title": "NORTHWIND", "jurisdiction": "US", "number": "99123456"}]}})
 
@@ -34,8 +38,16 @@ class BrandTests(unittest.TestCase):
             declare_document(BrandSurface())
         with self.assertRaisesRegex(ValueError, "dns is not read"):
             declare_document(BrandSurface(Domain(name="n.example", dns="1.2.3.4"), name="N"))
-        with self.assertRaisesRegex(ValueError, "<Domain> mail is true or false"):
-            declare_document(BrandSurface(Domain(name="n.example", mail="yes"), name="N"))
+        with self.assertRaisesRegex(ValueError, "<Domain> autoRenew is true or false"):
+            declare_document(BrandSurface(Domain(name="n.example", auto_renew="yes"), name="N"))
+        with self.assertRaisesRegex(ValueError, "mail is not read"):
+            declare_document(BrandSurface(Domain(name="n.example", mail=True), name="N"))
+        with self.assertRaisesRegex(ValueError, "<Site> names its folder, or the url or project"):
+            declare_document(BrandSurface(Site(), name="N"))
+        with self.assertRaisesRegex(ValueError, "an unknown fact is"):
+            declare_document(BrandSurface(Domain(name="n.example", registrar=unknown("")), name="N"))
+        d = declare_document(BrandSurface(Domain(name="my-exocortex.com", registrar=unknown("not read")), Alias(name="EXOCORTEX", kind="statement-descriptor"), name="exocortex"))
+        self.assertEqual(d["document"]["domains"], [{"name": "my-exocortex.com", "registrar": {"unknown": "not read"}}])
         with self.assertRaisesRegex(ValueError, "voice is a list of words"):
             declare_document(BrandSurface(name="N", voice="warm"))
         with self.assertRaisesRegex(ValueError, 'two <Domain> in <BrandSurface> have name "n.example"'):

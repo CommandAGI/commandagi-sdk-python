@@ -29,12 +29,14 @@ from typing import Any, Dict, List
 
 from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
+from .facts import fact_marker
 
 BRAND_FIELDS = ["name", "tagline", "about", "voice", "designSystem"]
 ALIAS_FIELDS = ["name", "kind", "locale"]
 LOGO_FIELDS = ["file", "kind", "background"]
-DOMAIN_FIELDS = ["name", "registrar", "expires", "autoRenew", "site", "mail"]
-SITE_FIELDS = ["folder"]
+DOMAIN_FIELDS = ["name", "registrar", "expires", "autoRenew", "site", "transferLock"]
+SITE_FIELDS = ["folder", "url", "host", "project"]
+MAILBOX_FIELDS = ["address", "kind"]
 HANDLE_FIELDS = ["platform", "handle", "url", "connection"]
 MARK_FIELDS = ["title", "jurisdiction", "number"]
 
@@ -44,15 +46,16 @@ BRAND_LISTS = [
     ("logos", "Logo", LOGO_FIELDS),
     ("domains", "Domain", DOMAIN_FIELDS),
     ("sites", "Site", SITE_FIELDS),
+    ("mailboxes", "Mailbox", MAILBOX_FIELDS),
     ("handles", "Handle", HANDLE_FIELDS),
     ("marks", "Mark", MARK_FIELDS),
 ]
-_FLAGS = {"autoRenew", "mail"}
+_FLAGS = {"autoRenew"}
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {"BrandSurface": {"holds": "children"}, **{tag: {} for _, tag, _ in BRAND_LISTS}}
 
-__all__ = ["BRAND_FIELDS", "ALIAS_FIELDS", "LOGO_FIELDS", "DOMAIN_FIELDS", "SITE_FIELDS", "HANDLE_FIELDS", "MARK_FIELDS", "BRAND_LISTS",
+__all__ = ["BRAND_FIELDS", "ALIAS_FIELDS", "LOGO_FIELDS", "DOMAIN_FIELDS", "SITE_FIELDS", "MAILBOX_FIELDS", "HANDLE_FIELDS", "MARK_FIELDS", "BRAND_LISTS",
            "SIGNATURES", "BRAND_VOCABULARY", *define(globals(), "brands", SIGNATURES)]
 
 
@@ -61,17 +64,27 @@ def _fields(o: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
     return {k: o[k] for k in keys if k in o and o[k] != ""}
 
 
+def _one(tag: str, k: str, v: Any) -> Any:
+    """One attribute: text, a flag (``autoRenew``), the voice's words, or an unknown or approximate fact of one."""
+    if fact_marker(v, f"<{tag}> {k}", lambda x: _one(tag, k, x)) is not None:
+        return v
+    if k in _FLAGS:
+        if not isinstance(v, bool):
+            raise ValueError(f"<{tag}> {k} is true or false")
+    elif k == "voice":
+        if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+            raise ValueError(f"<{tag}> voice is a list of words")
+    elif not isinstance(v, str):
+        raise ValueError(f"<{tag}> {k} is text")
+    return v
+
+
 def _check(t: DocTree) -> None:
     for node in [t, *t["children"]]:
         for k, v in node["attrs"].items():
-            if k in _FLAGS:
-                if not isinstance(v, bool):
-                    raise ValueError(f"<{node['tag']}> {k} is true or false")
-            elif k == "voice":
-                if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
-                    raise ValueError(f"<{node['tag']}> voice is a list of words")
-            elif not isinstance(v, str):
-                raise ValueError(f"<{node['tag']}> {k} is text")
+            _one(node["tag"], k, v)
+        if node["tag"] == "Site" and not any(k in node["attrs"] for k in ("folder", "url", "project")):
+            raise ValueError("<Site> names its folder, or the url or project of a site hosted elsewhere")
 
 
 def _brand(t: DocTree) -> Dict[str, Any]:
@@ -92,7 +105,8 @@ _TAGS: Dict[str, Dict[str, Any]] = {
     "Alias": {"parents": [_ROOT], "required": ["name"], "attrs": ALIAS_FIELDS},
     "Logo": {"parents": [_ROOT], "key": "file", "required": ["file"], "attrs": LOGO_FIELDS},
     "Domain": {"parents": [_ROOT], "key": "name", "required": ["name"], "attrs": DOMAIN_FIELDS},
-    "Site": {"parents": [_ROOT], "key": "folder", "required": ["folder"], "attrs": SITE_FIELDS},
+    "Site": {"parents": [_ROOT], "attrs": SITE_FIELDS},
+    "Mailbox": {"parents": [_ROOT], "key": "address", "required": ["address"], "attrs": MAILBOX_FIELDS},
     "Handle": {"parents": [_ROOT], "required": ["platform", "handle"], "attrs": HANDLE_FIELDS},
     "Mark": {"parents": [_ROOT], "required": ["title"], "attrs": MARK_FIELDS},
 }

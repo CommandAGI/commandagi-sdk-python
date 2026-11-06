@@ -8,6 +8,12 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A fact a company or a brand does not know is `unknown("<why>")` (`{"unknown": …}`), and one it knows only roughly
+  `about(<value>)` (`commandagi.design.facts`). Any attribute takes either, a required one too.
+- `Product(id, name, about, maker, seller, status, file)` and `Relationships(file)` in a `Company`;
+  `Compliance(horizon=…)`; `IpAsset(claimants=[…])`.
+- A brand's `Site(url=…, host=…, project=…)` for a site hosted elsewhere; `Domain(transfer_lock=…)`;
+  `Mailbox(address=…, kind=…)`.
 - A board's `fab(...)` states the house's other least dimensions, as KiCad's board setup states them:
   `min_via_diameter`, `min_hole_clearance` (copper to a hole), `min_hole_to_hole` and `min_edge_clearance` (mm), and
   `via_in_pad` (True or False: the house fills and caps a via in a pad, so a net's via may stand in its own pads).
@@ -170,6 +176,10 @@ Fixed
   whose `a` or `b` the placement leaves out (`omit`) goes with it; a `moves` entry that moves only its `a` along the
   joint (a latch closed, a lid opened) shifts its `limits` by that value, so the sweep still stops where the file
   says. Needs a host of this version (`commandagi check` links the placed files).
+
+Removed
+
+- `Domain(mail=…)`: a domain receives mail when the brand names a `Mailbox` at it.
 
 ## 0.6.8 (2026-10-23)
 

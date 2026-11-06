@@ -2,68 +2,596 @@
   "valid": [
     {
       "tree": {
-        "tag": "Company", "attrs": { "name": "Northwind" },
+        "tag": "Company",
+        "attrs": {
+          "name": "Northwind"
+        },
         "children": [
-          { "tag": "Seat", "attrs": { "body": "board", "title": "director", "holder": "Northwind/people/Lin Chen.vcf", "start": "2024-01-31", "end": "2027-01-31" } },
-          { "tag": "Seat", "attrs": { "body": "officers", "title": "CEO", "holder": "agent:cloud://home/user-northwind/agents/operator" } },
-          { "tag": "Compliance", "attrs": { "industries": ["naics:541370"] } },
-          { "tag": "Obligation", "attrs": { "id": "soc2-report", "name": "SOC 2 report to customers", "due": "2026-09-30", "every": "year" } },
-          { "tag": "Evidence", "attrs": { "obligation": "US-DE:de-llc-lp-annual-tax", "due": "2026-06-01", "done": "2026-05-20", "file": "Northwind/filings/2026 DE tax.pdf" } },
-          { "tag": "IpAsset", "attrs": { "kind": "trademark", "stage": "registered", "title": "NORTHWIND", "jurisdiction": "US", "number": "7123456", "registered": "2025-02-11", "classes": ["9", "42"] } },
-          { "tag": "Assignment", "attrs": { "person": "Northwind/people/Lin Chen.vcf", "signed": "2024-02-01", "file": "Northwind/ip/Lin Chen.pdf" } },
-          { "tag": "Policy", "attrs": { "kind": "aviation", "carrier": "Skyward Mutual", "start": "2025-07-01", "end": "2026-07-01", "limit": 1000000, "currency": "USD" } },
           {
-            "tag": "Paper", "attrs": { "kind": "board-consent", "file": "Northwind/Documents/Plan consent.pdf", "effective": "2026-03-01", "body": "board", "threshold": "unanimous" },
+            "tag": "Seat",
+            "attrs": {
+              "body": "board",
+              "title": "director",
+              "holder": "Northwind/people/Lin Chen.vcf",
+              "start": "2024-01-31",
+              "end": "2027-01-31"
+            }
+          },
+          {
+            "tag": "Seat",
+            "attrs": {
+              "body": "officers",
+              "title": "CEO",
+              "holder": "agent:cloud://home/user-northwind/agents/operator"
+            }
+          },
+          {
+            "tag": "Compliance",
+            "attrs": {
+              "industries": [
+                "naics:541370"
+              ]
+            }
+          },
+          {
+            "tag": "Obligation",
+            "attrs": {
+              "id": "soc2-report",
+              "name": "SOC 2 report to customers",
+              "due": "2026-09-30",
+              "every": "year"
+            }
+          },
+          {
+            "tag": "Evidence",
+            "attrs": {
+              "obligation": "US-DE:de-llc-lp-annual-tax",
+              "due": "2026-06-01",
+              "done": "2026-05-20",
+              "file": "Northwind/filings/2026 DE tax.pdf"
+            }
+          },
+          {
+            "tag": "IpAsset",
+            "attrs": {
+              "kind": "trademark",
+              "stage": "registered",
+              "title": "NORTHWIND",
+              "jurisdiction": "US",
+              "number": "7123456",
+              "registered": "2025-02-11",
+              "classes": [
+                "9",
+                "42"
+              ]
+            }
+          },
+          {
+            "tag": "Assignment",
+            "attrs": {
+              "person": "Northwind/people/Lin Chen.vcf",
+              "signed": "2024-02-01",
+              "file": "Northwind/ip/Lin Chen.pdf"
+            }
+          },
+          {
+            "tag": "Policy",
+            "attrs": {
+              "kind": "aviation",
+              "carrier": "Skyward Mutual",
+              "start": "2025-07-01",
+              "end": "2026-07-01",
+              "limit": 1000000,
+              "currency": "USD"
+            }
+          },
+          {
+            "tag": "Paper",
+            "attrs": {
+              "kind": "board-consent",
+              "file": "Northwind/Documents/Plan consent.pdf",
+              "effective": "2026-03-01",
+              "body": "board",
+              "threshold": "unanimous"
+            },
             "children": [
-              { "tag": "Vote", "attrs": { "holder": "Northwind/people/Lin Chen.vcf", "choice": "for", "signed": "2026-03-01", "evidence": "Northwind/Documents/signatures/lin.pdf" } },
-              { "tag": "Vote", "attrs": { "holder": "Northwind/people/Ada Okafor.vcf", "choice": "abstain" } }
+              {
+                "tag": "Vote",
+                "attrs": {
+                  "holder": "Northwind/people/Lin Chen.vcf",
+                  "choice": "for",
+                  "signed": "2026-03-01",
+                  "evidence": "Northwind/Documents/signatures/lin.pdf"
+                }
+              },
+              {
+                "tag": "Vote",
+                "attrs": {
+                  "holder": "Northwind/people/Ada Okafor.vcf",
+                  "choice": "abstain"
+                }
+              }
             ]
           }
         ]
       },
       "document": {
-        "format": "commandagi-company", "name": "Northwind", "about": "", "files": [], "dashboard": null, "entity": null,
-        "standard": { "enabled": false },
-        "papers": [{
-          "kind": "board-consent", "file": "Northwind/Documents/Plan consent.pdf", "effective": "2026-03-01", "body": "board", "threshold": "unanimous",
-          "votes": [
-            { "holder": "Northwind/people/Lin Chen.vcf", "choice": "for", "signed": "2026-03-01", "evidence": "Northwind/Documents/signatures/lin.pdf" },
-            { "holder": "Northwind/people/Ada Okafor.vcf", "choice": "abstain" }
-          ]
-        }],
+        "format": "commandagi-company",
+        "name": "Northwind",
+        "about": "",
+        "files": [],
+        "dashboard": null,
+        "entity": null,
+        "standard": {
+          "enabled": false
+        },
+        "papers": [
+          {
+            "kind": "board-consent",
+            "file": "Northwind/Documents/Plan consent.pdf",
+            "effective": "2026-03-01",
+            "body": "board",
+            "threshold": "unanimous",
+            "votes": [
+              {
+                "holder": "Northwind/people/Lin Chen.vcf",
+                "choice": "for",
+                "signed": "2026-03-01",
+                "evidence": "Northwind/Documents/signatures/lin.pdf"
+              },
+              {
+                "holder": "Northwind/people/Ada Okafor.vcf",
+                "choice": "abstain"
+              }
+            ]
+          }
+        ],
         "governance": {
           "seats": [
-            { "body": "board", "title": "director", "holder": "Northwind/people/Lin Chen.vcf", "start": "2024-01-31", "end": "2027-01-31" },
-            { "body": "officers", "title": "CEO", "holder": "agent:cloud://home/user-northwind/agents/operator" }
+            {
+              "body": "board",
+              "title": "director",
+              "holder": "Northwind/people/Lin Chen.vcf",
+              "start": "2024-01-31",
+              "end": "2027-01-31"
+            },
+            {
+              "body": "officers",
+              "title": "CEO",
+              "holder": "agent:cloud://home/user-northwind/agents/operator"
+            }
           ]
         },
         "compliance": {
-          "industries": ["naics:541370"],
-          "obligations": [{ "id": "soc2-report", "name": "SOC 2 report to customers", "due": "2026-09-30", "every": "year" }],
-          "evidence": [{ "obligation": "US-DE:de-llc-lp-annual-tax", "due": "2026-06-01", "done": "2026-05-20", "file": "Northwind/filings/2026 DE tax.pdf" }]
+          "industries": [
+            "naics:541370"
+          ],
+          "obligations": [
+            {
+              "id": "soc2-report",
+              "name": "SOC 2 report to customers",
+              "due": "2026-09-30",
+              "every": "year"
+            }
+          ],
+          "evidence": [
+            {
+              "obligation": "US-DE:de-llc-lp-annual-tax",
+              "due": "2026-06-01",
+              "done": "2026-05-20",
+              "file": "Northwind/filings/2026 DE tax.pdf"
+            }
+          ]
         },
         "ip": {
-          "assets": [{ "kind": "trademark", "stage": "registered", "title": "NORTHWIND", "jurisdiction": "US", "number": "7123456", "registered": "2025-02-11", "classes": ["9", "42"] }],
-          "assignments": [{ "person": "Northwind/people/Lin Chen.vcf", "signed": "2024-02-01", "file": "Northwind/ip/Lin Chen.pdf" }]
+          "assets": [
+            {
+              "kind": "trademark",
+              "stage": "registered",
+              "title": "NORTHWIND",
+              "jurisdiction": "US",
+              "number": "7123456",
+              "registered": "2025-02-11",
+              "classes": [
+                "9",
+                "42"
+              ]
+            }
+          ],
+          "assignments": [
+            {
+              "person": "Northwind/people/Lin Chen.vcf",
+              "signed": "2024-02-01",
+              "file": "Northwind/ip/Lin Chen.pdf"
+            }
+          ]
         },
-        "insurance": { "policies": [{ "kind": "aviation", "carrier": "Skyward Mutual", "start": "2025-07-01", "end": "2026-07-01", "limit": 1000000, "currency": "USD" }] }
+        "insurance": {
+          "policies": [
+            {
+              "kind": "aviation",
+              "carrier": "Skyward Mutual",
+              "start": "2025-07-01",
+              "end": "2026-07-01",
+              "limit": 1000000,
+              "currency": "USD"
+            }
+          ]
+        }
       }
     },
     {
-      "tree": { "tag": "Company", "attrs": { "name": "Shop" }, "children": [{ "tag": "Policy", "attrs": { "kind": "general-liability", "carrier": "Acme", "start": "2026-01-01", "end": "2027-01-01" } }] },
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "Shop"
+        },
+        "children": [
+          {
+            "tag": "Policy",
+            "attrs": {
+              "kind": "general-liability",
+              "carrier": "Acme",
+              "start": "2026-01-01",
+              "end": "2027-01-01"
+            }
+          }
+        ]
+      },
       "document": {
-        "format": "commandagi-company", "name": "Shop", "about": "", "files": [], "dashboard": null, "entity": null, "standard": { "enabled": false },
-        "insurance": { "policies": [{ "kind": "general-liability", "carrier": "Acme", "start": "2026-01-01", "end": "2027-01-01" }] }
+        "format": "commandagi-company",
+        "name": "Shop",
+        "about": "",
+        "files": [],
+        "dashboard": null,
+        "entity": null,
+        "standard": {
+          "enabled": false
+        },
+        "insurance": {
+          "policies": [
+            {
+              "kind": "general-liability",
+              "carrier": "Acme",
+              "start": "2026-01-01",
+              "end": "2027-01-01"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "Exocortex",
+          "files": [
+            "./"
+          ]
+        },
+        "children": [
+          {
+            "tag": "Entity",
+            "attrs": {
+              "name": "Exocortex Labs",
+              "jurisdiction": {
+                "unknown": "whether Exocortex Labs is a legal entity at all is open"
+              },
+              "formed": {
+                "unknown": "no formation document"
+              }
+            }
+          },
+          {
+            "tag": "Compliance",
+            "attrs": {
+              "horizon": "14 months"
+            }
+          },
+          {
+            "tag": "Obligation",
+            "attrs": {
+              "id": "ship-or-notify",
+              "name": "Ship the first 100, or send the delay notice",
+              "due": {
+                "about": "2027-12-31"
+              }
+            }
+          },
+          {
+            "tag": "IpAsset",
+            "attrs": {
+              "kind": "copyright",
+              "stage": "unregistered",
+              "title": "the firmware",
+              "owner": {
+                "unknown": "NOTICE and the manual disagree"
+              },
+              "claimants": [
+                "CommandAGI Inc.",
+                "Exocortex Labs"
+              ]
+            }
+          },
+          {
+            "tag": "Product",
+            "attrs": {
+              "id": "exocortex-helmet",
+              "name": "exocortex EEG helmet",
+              "maker": "Exocortex Labs",
+              "seller": "CommandAGI Inc.",
+              "status": "pre-order"
+            }
+          },
+          {
+            "tag": "Relationships",
+            "attrs": {
+              "file": "relationships/relationships.csv"
+            }
+          }
+        ]
+      },
+      "document": {
+        "format": "commandagi-company",
+        "name": "Exocortex",
+        "about": "",
+        "files": [
+          "./"
+        ],
+        "dashboard": null,
+        "entity": {
+          "jurisdiction": {
+            "unknown": "whether Exocortex Labs is a legal entity at all is open"
+          },
+          "form": null,
+          "name": "Exocortex Labs",
+          "formed": {
+            "unknown": "no formation document"
+          },
+          "fiscalYearEnd": null,
+          "ids": {},
+          "operatesIn": []
+        },
+        "standard": {
+          "enabled": false
+        },
+        "products": [
+          {
+            "id": "exocortex-helmet",
+            "name": "exocortex EEG helmet",
+            "maker": "Exocortex Labs",
+            "seller": "CommandAGI Inc.",
+            "status": "pre-order"
+          }
+        ],
+        "relationships": "relationships/relationships.csv",
+        "compliance": {
+          "industries": [],
+          "horizon": "14 months",
+          "obligations": [
+            {
+              "id": "ship-or-notify",
+              "name": "Ship the first 100, or send the delay notice",
+              "due": {
+                "about": "2027-12-31"
+              }
+            }
+          ],
+          "evidence": []
+        },
+        "ip": {
+          "assets": [
+            {
+              "kind": "copyright",
+              "stage": "unregistered",
+              "title": "the firmware",
+              "owner": {
+                "unknown": "NOTICE and the manual disagree"
+              },
+              "claimants": [
+                "CommandAGI Inc.",
+                "Exocortex Labs"
+              ]
+            }
+          ],
+          "assignments": []
+        }
       }
     }
   ],
   "invalid": [
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Seat", "attrs": { "body": "board", "title": "director" } }] }, "error": "needs holder" },
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Policy", "attrs": { "kind": "cyber", "carrier": "A", "start": "2026-01-01" } }] }, "error": "needs end" },
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Compliance", "attrs": { "industries": "naics:11" } }] }, "error": "is a list of text" },
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Compliance", "attrs": {} }, { "tag": "Compliance", "attrs": {} }] }, "error": "has two" },
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Evidence", "attrs": { "obligation": "US:x" } }] }, "error": "needs due" },
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Paper", "attrs": { "kind": "minutes", "file": "m.pdf" }, "children": [{ "tag": "Vote", "attrs": { "holder": "a.vcf" } }] }] }, "error": "needs choice" },
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Vote", "attrs": { "holder": "a.vcf", "choice": "for" } }] }, "error": "does not take" }
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Seat",
+            "attrs": {
+              "body": "board",
+              "title": "director"
+            }
+          }
+        ]
+      },
+      "error": "needs holder"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Policy",
+            "attrs": {
+              "kind": "cyber",
+              "carrier": "A",
+              "start": "2026-01-01"
+            }
+          }
+        ]
+      },
+      "error": "needs end"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Compliance",
+            "attrs": {
+              "industries": "naics:11"
+            }
+          }
+        ]
+      },
+      "error": "is a list of text"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Compliance",
+            "attrs": {}
+          },
+          {
+            "tag": "Compliance",
+            "attrs": {}
+          }
+        ]
+      },
+      "error": "has two"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Evidence",
+            "attrs": {
+              "obligation": "US:x"
+            }
+          }
+        ]
+      },
+      "error": "needs due"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Paper",
+            "attrs": {
+              "kind": "minutes",
+              "file": "m.pdf"
+            },
+            "children": [
+              {
+                "tag": "Vote",
+                "attrs": {
+                  "holder": "a.vcf"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "error": "needs choice"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Vote",
+            "attrs": {
+              "holder": "a.vcf",
+              "choice": "for"
+            }
+          }
+        ]
+      },
+      "error": "does not take"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "IpAsset",
+            "attrs": {
+              "kind": "copyright",
+              "title": "T",
+              "owner": {
+                "unknown": ""
+              }
+            }
+          }
+        ]
+      },
+      "error": "an unknown fact is"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "IpAsset",
+            "attrs": {
+              "kind": "copyright",
+              "title": "T",
+              "claimants": {
+                "about": "CommandAGI Inc."
+              }
+            }
+          }
+        ]
+      },
+      "error": "is a list of text"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Product",
+            "attrs": {
+              "maker": "M"
+            }
+          }
+        ]
+      },
+      "error": "needs name"
+    }
   ]
 }
