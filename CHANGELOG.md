@@ -19,7 +19,15 @@ Added
   `discover(...)` and `judge(...)`. A tail, a derive's port and a discover's `of` name a file (a script, a run's
   `records.jsonl`) or a series (`fred:DGS10`), never a folder (`tail_ref_problem`). A wake's `when` is a record
   predicate. `script_with_defaults` fills `stream: "records"`. One golden fixture of a wake for the three SDKs,
-  `tests/script_wake.json`. Scripts replace monitors; `monitors.py` goes when the platform reads scripts only.
+  `tests/script_wake.json`. Scripts replace monitors.
+- A script's `param(id, type, label, default, required, choices, accept)` (`SCRIPT_PARAM_FIELDS`,
+  `SCRIPT_PARAM_TYPES`: file, device, world, unit, channel, run, stream, number, string, choice) makes it a template;
+  its document's `params` is always a list, and `script_with_defaults` fills `label`, `default`, `choices` and
+  `accept` as None and `required` as True. A choice names its choices; a param declared twice is refused. A
+  placeholder `${name}` as a whole value passes a tail's, a derive's port's and a discover's file checks
+  (`tail_ref_problem`, a discover's `class_`): its copy fills it. The same as the TypeScript SDK's `scripts.ts`.
+- A session names the scripts that read through it: `session(uses(script="<ref to a script file>"))` (document
+  `uses: [{"script": …}]`, `session_with_defaults` `uses: [<ref>, …]`), in place of `uses(monitor="<folder>")`.
 - A company's deals (`company_deals.py`): `Deal(id=, title=, counterparty=, stage=, value=, currency=, expected=,
   closed=, owner=, since=, source=, note=)` in a `Company`, its sales pipeline, imported from
   `commandagi.design.business`. The company document gains `deals` only when the file writes one. The same in the
@@ -190,6 +198,8 @@ Fixed
 Removed
 
 - `Domain(mail=…)`: a domain receives mail when the brand names a `Mailbox` at it.
+- The monitors vocabulary (`commandagi.design.monitors`, `monitors.py`: `monitor`, `follows`, `monitor_with_defaults`):
+  scripts (`commandagi.design.scripts`) replace it. A session's `uses(monitor=…)` is `uses(script=…)`.
 
 ## 0.6.8 (2026-10-23)
 

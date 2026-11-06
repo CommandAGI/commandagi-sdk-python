@@ -19,7 +19,9 @@ a folder, and takes the records its ``when`` (a record predicate) holds for. A w
 records (``when``) or on a clock (``every="7d"``), never both. ``stream`` names the stream of the run a part appends to
 (absent: ``records``). Nothing adds a default: what the file does not say, the document does not have;
 ``script_with_defaults`` gives the document as the platform reads it. A script's ``sameAs``, ``sources``, ``tails``,
-``derives``, ``wakes``, ``discovers`` and ``judges`` are always lists.
+``derives``, ``wakes``, ``discovers``, ``judges`` and ``params`` are always lists. A script with ``param`` parts is a
+template: each ``${id}`` placeholder is filled when it is copied, and a placeholder as a whole value passes the checks
+of the file it will name.
 """
 from __future__ import annotations
 
@@ -48,6 +50,10 @@ JUDGE_FIELDS = ["id", "of", "rubric", "model"]
 #: What a judge judges: each turn of the thread's agents, or each turn on a mounted task.
 JUDGE_OF = ["turn", "task"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since", "stream"]
+#: A template's parameter (docs/scripts.md § the catalogue): its ``${id}`` placeholders are filled when it is copied.
+SCRIPT_PARAM_FIELDS = ["id", "type", "label", "default", "required", "choices", "accept"]
+#: What a parameter is: the same types a dashboard template's parameters have.
+SCRIPT_PARAM_TYPES = ["file", "device", "world", "unit", "channel", "run", "stream", "number", "string", "choice"]
 #: The paths a source's reads take (docs/sources.md § fetch paths).
 VIAS = ["worker", "host", "vpn", "browser", "vm", "android-vm", "phone"]
 #: The paths that launch a machine from a snapshot (a logged-in state), and so cost money per read.
@@ -76,10 +82,11 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "wake": {},
     "discover": {},
     "judge": {},
+    "param": {},
 }
 
 __all__ = ["SCRIPT_FIELDS", "SUBJECT", "SOURCE_FIELDS", "TAIL_FIELDS", "DERIVE_FIELDS", "WAKE_FIELDS", "DISCOVER_FIELDS",
-           "JUDGE_FIELDS", "JUDGE_OF", "DISCOVER_MAX", "VISIBILITIES", "VIAS", "VM_VIAS", "MODES", "RETAIN", "SINCE",
+           "JUDGE_FIELDS", "JUDGE_OF", "SCRIPT_PARAM_FIELDS", "SCRIPT_PARAM_TYPES", "DISCOVER_MAX", "VISIBILITIES", "VIAS", "VM_VIAS", "MODES", "RETAIN", "SINCE",
            "EVERY_BOUNDS", "SCRIPT_FILE", "STREAM_NAME", "UNIT_REF", "SIGNATURES", "duration_seconds", "tail_ref_problem",
            "script_with_defaults", "SCRIPT_VOCABULARY", "SCRIPTS",
            *define(globals(), "scripts", SIGNATURES)]
@@ -206,13 +213,17 @@ _OWN = re.compile(r"^\./?$")
 #: A statistics series by its id (``fred:DGS10``): a scheme and no ``/``.
 _SERIES = re.compile(r"^[a-z][a-z0-9-]*:[^\s/:][^\s/]*$")
 #: A tailed file: a script file or a run's records file, by a ref or an address.
+#: A template's parameter as a whole value: ``${of}``.
+_PLACEHOLDER = re.compile(r"^\$\{[A-Za-z_][A-Za-z0-9_]*\}$")
+_PARAM_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,39}$")
 _TAILED_FILE = re.compile(r"(?:^|/)[^/]+\.script\.(?:[jt]sx|py|rs)$|(?:^|/)records\.jsonl$", re.I)
 
 
 def tail_ref_problem(ref: str) -> Optional[str]:
     """Why a ref cannot be what a tail (a derive's port, a discover's ``of``) reads, or None: it names a file, never a
     folder. The TypeScript SDK's ``tailRefProblem``."""
-    if _SERIES.match(ref) or _TAILED_FILE.search(ref):
+    # A template's placeholder is a file once its copy fills it (docs/scripts.md § the catalogue).
+    if _SERIES.match(ref) or _TAILED_FILE.search(ref) or _PLACEHOLDER.match(ref):
         return None
     if _OWN.match(ref):
         return "names this script's folder; a tail names another file"
@@ -263,7 +274,7 @@ def _discover(t: DocTree) -> Dict[str, Any]:
         and all(k in ("paths", "pattern") for k in slug))
     if not slug_ok:
         raise ValueError(f"{at} slug is a data path (data.cve) or {{ paths: [...], pattern }}, not {_j(slug)}")
-    if not isinstance(a.get("class"), str) or not _CLASS_REF.match(a["class"]):
+    if not isinstance(a.get("class"), str) or not (_CLASS_REF.match(a["class"]) or _PLACEHOLDER.match(a["class"])):
         raise ValueError(f'{at} class is the class file and its exported name ("../exploit.tsx#Exploit"), not {_j(a.get("class"))}')
     if a.get("name") is not None and not _DATA_PATH.match(a["name"]):
         raise ValueError(f"{at} name is a data path (fromName), not {_j(a['name'])}")
@@ -358,6 +369,27 @@ def _judge(t: DocTree) -> Dict[str, Any]:
     return _said(t["attrs"], JUDGE_FIELDS)
 
 
+def _param(t: DocTree) -> Dict[str, Any]:
+    """A template's parameter, as a dashboard template's ``<param>`` is."""
+    a = t["attrs"]
+    if not isinstance(a.get("id"), str) or not _PARAM_ID.match(a["id"]):
+        raise ValueError(f"{_where(t)} id is letters, digits and _, not {_j(a.get('id'))}")
+    _one_of(t, "type", SCRIPT_PARAM_TYPES)
+    _text(t, "label")
+    d = a.get("default")
+    if d is not None and not isinstance(d, str) and not (isinstance(d, (int, float)) and not isinstance(d, bool) and math.isfinite(d)):
+        raise ValueError(f"{_where(t)} default is a text or a number, not {_j(d)}")
+    if a.get("required") is not None and not isinstance(a["required"], bool):
+        raise ValueError(f"{_where(t)} required is true or false")
+    for k in ("choices", "accept"):
+        v = a.get(k)
+        if v is not None and not (isinstance(v, list) and v and all(isinstance(x, str) and x for x in v)):
+            raise ValueError(f"{_where(t)} {k} is a list of texts")
+    if a.get("type") == "choice" and a.get("choices") is None:
+        raise ValueError(f"{_where(t)} a choice names its choices")
+    return _said(a, SCRIPT_PARAM_FIELDS)
+
+
 def _stream(t: DocTree) -> None:
     """A part's ``stream``, when it says one: a word."""
     v = t["attrs"].get("stream")
@@ -379,8 +411,15 @@ def _script(t: DocTree) -> Dict[str, Any]:
     derives = [_derive(c) for c in parts("derive")]
     wakes = [_wake(c) for c in parts("wake")]
     judges = [_judge(c) for c in parts("judge")]
+    params = [_param(c) for c in parts("param")]
+    ids = set()
+    for p in params:
+        if p["id"] in ids:
+            raise ValueError(f'<param id="{p["id"]}"> is declared twice')
+        ids.add(p["id"])
     return {**_said(t["attrs"], SCRIPT_FIELDS), "sources": [_source(c) for c in parts("source")], "tails": tails,
-            "derives": derives, "wakes": wakes, "discovers": [_discover(c) for c in parts("discover")], "judges": judges}
+            "derives": derives, "wakes": wakes, "discovers": [_discover(c) for c in parts("discover")], "judges": judges,
+            "params": params}
 
 
 def _attrs_of(o: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
@@ -398,6 +437,7 @@ def _to_tree(m: Dict[str, Any]) -> DocTree:
         *parts("wake", m.get("wakes") or [], WAKE_FIELDS),
         *parts("discover", m.get("discovers") or [], DISCOVER_FIELDS),
         *parts("judge", m.get("judges") or [], JUDGE_FIELDS),
+        *parts("param", m.get("params") or [], SCRIPT_PARAM_FIELDS),
     ]}
 
 
@@ -410,7 +450,8 @@ SCRIPT_VOCABULARY = Vocabulary("script", "a script", "script", {
     "wake": {"parents": ["script"], "required": ["prompt"], "attrs": WAKE_FIELDS},
     "discover": {"parents": ["script"], "required": ["slug", "class"], "attrs": DISCOVER_FIELDS},
     "judge": {"parents": ["script"], "key": "id", "required": ["id", "of", "rubric", "model"], "attrs": JUDGE_FIELDS},
-}, _script, _to_tree, lambda _format: {"sources": [], "tails": [], "derives": [], "wakes": [], "discovers": [], "judges": []})
+    "param": {"parents": ["script"], "key": "id", "required": ["id", "type"], "attrs": SCRIPT_PARAM_FIELDS},
+}, _script, _to_tree, lambda _format: {"sources": [], "tails": [], "derives": [], "wakes": [], "discovers": [], "judges": [], "params": []})
 
 register_vocabulary(SCRIPT_VOCABULARY, "scripts")
 
@@ -444,4 +485,7 @@ def script_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
             "wakes": [{"when": w.get("when"), "every": w.get("every"), "prompt": w["prompt"], "agent": w.get("agent"),
                        "maxSpend": w.get("maxSpend")} for w in m.get("wakes", [])],
             "discovers": [disc(d) for d in m.get("discovers", [])],
-            "judges": [{"id": j["id"], "of": j["of"], "rubric": j["rubric"], "model": j["model"]} for j in m.get("judges", [])]}
+            "judges": [{"id": j["id"], "of": j["of"], "rubric": j["rubric"], "model": j["model"]} for j in m.get("judges", [])],
+            "params": [{"id": p["id"], "type": p["type"], "label": p.get("label"), "default": p.get("default"),
+                        "required": p.get("required", True), "choices": p.get("choices"), "accept": p.get("accept")}
+                       for p in m.get("params", [])]}

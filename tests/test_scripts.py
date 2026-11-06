@@ -8,8 +8,8 @@ import re
 import unittest
 
 from commandagi.design.documents import declare_document
-from commandagi.design.monitors import follows
-from commandagi.design.scripts import (SCRIPT_FILE, SCRIPTS, derive, discover, judge, script, script_with_defaults,
+from commandagi.design.element import Element
+from commandagi.design.scripts import (SCRIPT_FILE, SCRIPTS, derive, discover, judge, param, script, script_with_defaults,
                                        source, tail, tail_ref_problem, wake)
 
 V = SCRIPTS["script"]
@@ -42,7 +42,7 @@ class ScriptTests(unittest.TestCase):
             "tails": [{"of": "../../central-banks/fed/fed.script.tsx", "when": {"class": "fomc.*"}}],
             "derives": [],
             "wakes": [{"when": {"class": "sec.filing.8-k*"}, "prompt": "Say what the report changes."}],
-            "discovers": [], "judges": []})
+            "discovers": [], "judges": [], "params": []})
         self.assertEqual(V.from_tree(V.to_tree(m)), m, "both ways")
         full = script_with_defaults(m)
         self.assertEqual(full["sources"][0], {
@@ -54,7 +54,7 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(full["wakes"], [{"when": {"class": "sec.filing.8-k*"}, "every": None, "prompt": "Say what the report changes.", "agent": None, "maxSpend": None}])
 
     def test_an_empty_script_its_file_name_and_a_part_that_names_another_stream(self):
-        empty = {"sources": [], "tails": [], "derives": [], "wakes": [], "discovers": [], "judges": []}
+        empty = {"sources": [], "tails": [], "derives": [], "wakes": [], "discovers": [], "judges": [], "params": []}
         self.assertEqual(doc(), empty)
         self.assertEqual(V.empty("script"), empty)
         for name in ["nvidia.script.tsx", "a.script.jsx", "b.script.py", "c.script.rs"]:
@@ -81,7 +81,7 @@ class ScriptTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, re.escape("match is not read (of, when, stream)")):
             doc(tail(of="../x/x.script.tsx", match="a.*"))
         with self.assertRaisesRegex(ValueError, "follows"):
-            doc(follows(monitor="../x"))
+            doc(Element("follows", {"monitor": "../x"}, [], None, "scripts"))
         with self.assertRaisesRegex(ValueError, re.escape("when: data.n: above is not an operator")):
             doc(tail(of="../x/x.script.tsx", when={"data.n": {"above": 1}}))
 
@@ -144,6 +144,41 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(script_with_defaults(m)["judges"], [{"id": "claims", "of": "task", "rubric": "./rubric.md", "model": "fireworks/glm-5p3"}])
         with self.assertRaisesRegex(ValueError, 'of is "turn", "task"'):
             doc(judge(id="j", of="thread", rubric="r.md", model="m"))
+
+    def test_a_template_declares_its_params_both_ways(self):
+        m = doc(param(id="cik", type="string", label="the company's CIK"),
+                param(id="ticker", type="string", required=False, default="NVDA"),
+                source(id="filings", adapter="sec-filings", params={"cik": "${cik}"}, every="30m"),
+                title="${name} (${ticker})")
+        self.assertEqual(V.from_tree(V.to_tree(m)), m, "both ways")
+        self.assertEqual(script_with_defaults(m)["params"], [
+            {"id": "cik", "type": "string", "label": "the company's CIK", "default": None, "required": True, "choices": None, "accept": None},
+            {"id": "ticker", "type": "string", "label": None, "default": "NVDA", "required": False, "choices": None, "accept": None},
+        ])
+
+        def one(**attrs):
+            return doc(param(**{"id": "p", "type": "string", **attrs}))
+        with self.assertRaisesRegex(ValueError, 'type is "file"'):
+            one(type="date")
+        with self.assertRaisesRegex(ValueError, "id is letters, digits and _"):
+            one(id="a-b")
+        with self.assertRaisesRegex(ValueError, "a choice names its choices"):
+            one(type="choice")
+        self.assertEqual(one(type="choice", choices=["a", "b"])["params"][0]["choices"], ["a", "b"])
+        with self.assertRaisesRegex(ValueError, 'two <param> in <script> have id "p"|declared twice'):
+            doc(param(id="p", type="string"), param(id="p", type="number"))
+
+    def test_a_placeholder_as_a_whole_value_passes_the_file_checks(self):
+        # A template's ${name} is a file once its copy fills it.
+        self.assertIsNone(tail_ref_problem("${of}"))
+        m = doc(param(id="of", type="file"), param(id="cls", type="string"), tail(of="${of}"),
+                derive(id="d", op="last", inputs={"a": "${of}"}),
+                discover(of="${of}", slug="data.cve", class_="${cls}"))
+        self.assertEqual(m["discovers"][0]["class"], "${cls}")
+        with self.assertRaisesRegex(ValueError, "names a file"):
+            doc(tail(of="../${of}"))
+        with self.assertRaisesRegex(ValueError, "class is the class file"):
+            doc(discover(slug="cve", class_="${a-b}"))
 
     def test_a_wake_on_its_own_records_or_on_a_clock(self):
         # script_wake.json is the golden of the three SDKs (the TypeScript SDK's script-wake.golden.json).

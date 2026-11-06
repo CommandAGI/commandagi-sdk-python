@@ -11,7 +11,7 @@ exit, ``infra/sessions/<name>/session.py`` one logged-in state, ``infra/vantages
 
     from commandagi.design.infra import session, uses
 
-    result = session(uses(monitor="../../../social/x/nvidia"),
+    result = session(uses(script="../../../social/x/nvidia/nvidia.script.tsx"),
                      name="x-web", site="https://x.com", kind="browser-profile", profile="x-web", refreshed="2026-10-12")
 
 ::
@@ -26,7 +26,7 @@ Nothing adds a default: what the file does not say, the document does not have. 
 credential. A vantage is a device, a place and a session, never a fake person, so the vocabulary has no words for one:
 a field it does not list is refused by name.
 
-The CommandAGI platform runs only a TSX file: its monitors read ``vantage.tsx`` and ``session.tsx``, and ``make
+The CommandAGI platform runs only a TSX file: its scripts read ``vantage.tsx`` and ``session.tsx``, and ``make
 infra-plan`` reads ``exit.tsx``. A ``.py`` file runs in the local sandbox.
 """
 from __future__ import annotations
@@ -236,13 +236,13 @@ def _session(t: DocTree) -> Dict[str, Any]:
         raise ValueError(f"{_where(t)} profile is lower-case letters, digits and -, at most 48")
     if "refreshed" in a and not _DAY.fullmatch(a["refreshed"]):
         raise ValueError(f'{_where(t)} refreshed is a day ("2026-10-12"), not {_json(a["refreshed"])}')
-    uses_: List[Dict[str, Any]] = [{"monitor": c["attrs"]["monitor"]} for c in t["children"]]
+    uses_: List[Dict[str, Any]] = [{"script": c["attrs"]["script"]} for c in t["children"]]
     return {**_said(a, SESSION_FIELDS), "uses": uses_}
 
 
 def _session_tree(d: Dict[str, Any]) -> DocTree:
     return {"tag": "session", "attrs": _written(d, SESSION_FIELDS), "children": [
-        {"tag": "uses", "attrs": {"monitor": u["monitor"]}, "children": []} for u in d.get("uses") or []]}
+        {"tag": "uses", "attrs": {"script": u["script"]}, "children": []} for u in d.get("uses") or []]}
 
 
 EXIT_VOCABULARY = Vocabulary("exit", "a VPN exit", "exit", {
@@ -253,7 +253,7 @@ VANTAGE_VOCABULARY = Vocabulary("vantage", "a vantage", "vantage", {
 }, _vantage, _vantage_tree)
 SESSION_VOCABULARY = Vocabulary("session", "a logged-in state", "session", {
     "session": {"parents": [], "required": ["name", "site", "kind"], "attrs": SESSION_FIELDS},
-    "uses": {"parents": ["session"], "key": "monitor", "required": ["monitor"], "attrs": ["monitor"]},
+    "uses": {"parents": ["session"], "key": "script", "required": ["script"], "attrs": ["script"]},
 }, _session, _session_tree)
 
 register_vocabulary(EXIT_VOCABULARY, "infra")
@@ -284,4 +284,4 @@ def vantage_with_defaults(d: Dict[str, Any]) -> Dict[str, Any]:
 
 def session_with_defaults(d: Dict[str, Any]) -> Dict[str, Any]:
     """A session as a source reads it: what the file does not say, filled."""
-    return {**{k: d.get(k) for k in SESSION_FIELDS}, "uses": [u["monitor"] for u in d.get("uses") or []]}
+    return {**{k: d.get(k) for k in SESSION_FIELDS}, "uses": [u["script"] for u in d.get("uses") or []]}

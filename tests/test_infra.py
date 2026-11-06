@@ -80,13 +80,13 @@ class VantageTests(unittest.TestCase):
 
 
 class SessionTests(unittest.TestCase):
-    def test_a_session_names_its_monitors_and_holds_no_credential(self):
-        d = declare_document(session(uses(monitor="../../../social/x/nvidia"), name="x-web", site="https://x.com", kind="browser-profile", profile="x-web", refreshed="2026-10-12"))
-        self.assertEqual(d["document"], {"name": "x-web", "site": "https://x.com", "kind": "browser-profile", "profile": "x-web", "refreshed": "2026-10-12", "uses": [{"monitor": "../../../social/x/nvidia"}]})
+    def test_a_session_names_its_scripts_and_holds_no_credential(self):
+        d = declare_document(session(uses(script="../../../social/x/nvidia/nvidia.script.tsx"), name="x-web", site="https://x.com", kind="browser-profile", profile="x-web", refreshed="2026-10-12"))
+        self.assertEqual(d["document"], {"name": "x-web", "site": "https://x.com", "kind": "browser-profile", "profile": "x-web", "refreshed": "2026-10-12", "uses": [{"script": "../../../social/x/nvidia/nvidia.script.tsx"}]})
         self.assertEqual(INFRA["session"].from_tree(INFRA["session"].to_tree(d["document"])), d["document"])
         self.assertEqual(session_with_defaults(d["document"]), {
             "name": "x-web", "site": "https://x.com", "kind": "browser-profile", "host": None, "profile": "x-web", "snapshot": None,
-            "refreshed": "2026-10-12", "note": None, "uses": ["../../../social/x/nvidia"]})
+            "refreshed": "2026-10-12", "note": None, "uses": ["../../../social/x/nvidia/nvidia.script.tsx"]})
 
     def test_a_bad_session_is_refused(self):
         web = dict(name="x-web", site="https://x.com", kind="browser-profile", profile="x-web")
@@ -102,8 +102,8 @@ class SessionTests(unittest.TestCase):
             declare_document(session(name="vm", site="https://x.com", kind="vm-snapshot"))
         with self.assertRaisesRegex(ValueError, "a vm-snapshot has a snapshot, not a profile"):
             declare_document(session(name="vm", site="https://x.com", kind="vm-snapshot", snapshot="s", profile="p"))
-        with self.assertRaisesRegex(ValueError, 'two <uses> in <session> have monitor "a"'):
-            declare_document(session(uses(monitor="a"), uses(monitor="a"), **web))
+        with self.assertRaisesRegex(ValueError, 'two <uses> in <session> have script "a"'):
+            declare_document(session(uses(script="a"), uses(script="a"), **web))
 
 
 if __name__ == "__main__":
