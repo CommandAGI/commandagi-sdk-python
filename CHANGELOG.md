@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- A board's `fab(...)` states the house's other least dimensions, as KiCad's board setup states them:
+  `min_via_diameter`, `min_hole_clearance` (copper to a hole), `min_hole_to_hole` and `min_edge_clearance` (mm), and
+  `via_in_pad` (True or False: the house fills and caps a via in a pad, so a net's via may stand in its own pads).
+  The same in the TypeScript and Rust SDKs.
 - A definition's declared bounds and interlocks (`ontology.py`): `bound(channel, field, min?, max?, max_rate?,
   max_speed?, why?)` folds into its channel's `bounds`, and `interlock(name, channel, requires, why, verbs?, when?)`
   into the definition's `interlocks`; a world's `interlock(unit=…)` guards one of its units by another's state. The

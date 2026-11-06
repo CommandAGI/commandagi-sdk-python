@@ -83,10 +83,15 @@ them; the editor and the layout operations write each one back):
     objective(weights)                the weight of each term of the layout score.
 
 How the board is made (docs/formats.md § logistics):
-    fab(suppliers, finish, mask, silk, min_track, min_space, min_drill, min_annular_ring, max_layers, thicknesses,
-        assembly, inspection, compliance, shipping)
+    fab(suppliers, finish, mask, silk, min_track, min_space, min_drill, min_annular_ring, min_via_diameter,
+        min_hole_clearance, min_hole_to_hole, min_edge_clearance, via_in_pad, max_layers, thicknesses, assembly,
+        inspection, compliance, shipping)
                                       the fab house (the first of ``suppliers``, with its terms), its capabilities for
-                                      the service ordered (mm), the finish, the solder mask and silk colours, the
+                                      the service ordered (mm: the least track, space, drill, via ring and via, copper
+                                      to a hole, hole to hole, copper to the edge; the router and the DRC hold the
+                                      board to them, and the KiCad export writes them as its board setup), whether it
+                                      fills and caps a via in a pad (``via_in_pad``, default False: a via of a net may
+                                      then stand in that net's pads), the finish, the solder mask and silk colours, the
                                       assembly ({"house", "sides"}), the board's test ({"electrical", "procedure",
                                       "acceptance", …}), its compliance and shipping. One per board. The board's
                                       layers, thickness and copper stay its own.
@@ -399,7 +404,8 @@ def _constraint_fact(el: Element) -> Dict[str, Any]:
     return out
 
 
-_FAB_CAPABILITIES = ["minTrack", "minSpace", "minDrill", "minAnnularRing"]
+# The house's least dimensions (mm), as KiCad's board setup states them (``design_settings.rules``).
+_FAB_CAPABILITIES = ["minTrack", "minSpace", "minDrill", "minAnnularRing", "minViaDiameter", "minHoleClearance", "minHoleToHole", "minEdgeClearance"]
 _SIDES = ["top", "bottom"]
 _ELECTRICAL = ["flying-probe", "fixture", "none"]
 _INSPECTION_KEYS = ["dimensions", "procedure", "acceptance", "sampling", "electrical", "minutes", "ratePerHour", "currency"]
@@ -410,7 +416,7 @@ def _fab_fact(el: Element) -> Dict[str, Any]:
     capabilities for the service ordered, the finish, mask and silk, the assembly, the board's test and its compliance
     and shipping (docs/formats.md § logistics). The board's layers, thickness and copper are its own and are not
     restated here."""
-    _refuse_unknown(el, ["suppliers", "finish", "mask", "silk", *_FAB_CAPABILITIES, "maxLayers", "thicknesses", "assembly", "inspection", "compliance", "shipping"])
+    _refuse_unknown(el, ["suppliers", "finish", "mask", "silk", *_FAB_CAPABILITIES, "viaInPad", "maxLayers", "thicknesses", "assembly", "inspection", "compliance", "shipping"])
     w = _where(el)
     out: Dict[str, Any] = {}
     if el.props.get("suppliers") is not None:
@@ -425,6 +431,11 @@ def _fab_fact(el: Element) -> Dict[str, Any]:
         v = _positive(el, k)
         if v is not None:
             out[k] = v
+    via_in_pad = el.props.get("viaInPad")
+    if via_in_pad is not None:
+        if not isinstance(via_in_pad, bool):
+            raise ValueError(f"{w}: viaInPad is true or false")
+        out["viaInPad"] = via_in_pad
     max_layers = _num(el, "maxLayers")
     if max_layers is not None:
         if not (float(max_layers).is_integer() and max_layers >= 1):

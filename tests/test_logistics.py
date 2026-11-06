@@ -99,12 +99,14 @@ class LogisticsTests(unittest.TestCase):
         fab = {"suppliers": [{"name": "JLCPCB", "currency": "USD", "priceBreaks": [{"quantity": 5, "unitPrice": 2}], "leadTimeDays": 7,
                               "source": "jlcpcb.com quote", "date": "2026-10-15"}],
                "finish": "ENIG", "mask": "green", "silk": "white", "minTrack": 0.09, "minSpace": 0.09, "minDrill": 0.15, "minAnnularRing": 0.13,
+               "minViaDiameter": 0.3, "minHoleClearance": 0.14, "minHoleToHole": 0.2, "minEdgeClearance": 0.3, "viaInPad": True,
                "maxLayers": 6, "thicknesses": [1.6], "assembly": {"house": "JLCPCB", "sides": ["top"]},
                "inspection": {"electrical": "flying-probe", "acceptance": "boots"},
                "compliance": {"rohs": "compliant", "reach": "compliant", "eccn": "EAR99"},
                "shipping": {"hsCode": "8534.00", "origin": "CN", "hazmat": "none"}}
         g = board(pcb.fab(suppliers=fab["suppliers"], finish="ENIG", mask="green", silk="white", min_track=0.09, min_space=0.09, min_drill=0.15,
-                          min_annular_ring=0.13, max_layers=6, thicknesses=[1.6], assembly=fab["assembly"], inspection=fab["inspection"],
+                          min_annular_ring=0.13, min_via_diameter=0.3, min_hole_clearance=0.14, min_hole_to_hole=0.2,
+                          min_edge_clearance=0.3, via_in_pad=True, max_layers=6, thicknesses=[1.6], assembly=fab["assembly"], inspection=fab["inspection"],
                           compliance=fab["compliance"], shipping=fab["shipping"]))
         facts = [n for n in g["nodes"].values() if n["type"] == "eda.boardfact" and n["inputs"].get("fact") == "fab"]
         self.assertEqual(len(facts), 1)
@@ -112,6 +114,7 @@ class LogisticsTests(unittest.TestCase):
         for children, message in (
             ((pcb.fab(), pcb.fab()), r"a board has one <fab>"),
             ((pcb.fab(layers=4),), r"prop layers is not read on a board"),
+            ((pcb.fab(via_in_pad="yes"),), r"viaInPad is true or false"),
             ((pcb.fab(assembly={"house": "JLCPCB", "sides": ["left"]}),), r'assembly.sides is a list of "top", "bottom"'),
             ((pcb.fab(inspection={"electrical": "x-ray"}),), r"inspection.electrical is one of flying-probe, fixture, none"),
         ):
