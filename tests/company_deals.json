@@ -1,0 +1,32 @@
+{
+  "valid": [
+    {
+      "tree": {
+        "tag": "Company", "attrs": { "name": "Northwind" },
+        "children": [
+          { "tag": "Deal", "attrs": { "id": "acme-pilot", "title": "Pilot of ten units", "counterparty": "relationships/cards/acme.vcf", "stage": "proposal", "value": "120000", "currency": "USD", "expected": "2027-03-31", "owner": "ceo", "since": "2026-11-01", "source": "the call of 2026-10-30", "note": "ten units, a year of support" } },
+          { "tag": "Deal", "attrs": { "id": "county-survey", "title": "County survey", "counterparty": "county", "stage": "lead" } },
+          { "tag": "Deal", "attrs": { "id": "farm-2025", "title": "Farm survey 2025", "counterparty": "relationships/cards/farm.vcf", "stage": "won", "value": 8500, "currency": "USD", "closed": "2025-09-12" } }
+        ]
+      },
+      "document": {
+        "format": "commandagi-company", "name": "Northwind", "about": "", "files": [], "dashboard": null, "entity": null, "standard": { "enabled": false },
+        "deals": [
+          { "id": "acme-pilot", "title": "Pilot of ten units", "counterparty": "relationships/cards/acme.vcf", "stage": "proposal", "value": "120000", "currency": "USD", "expected": "2027-03-31", "owner": "ceo", "since": "2026-11-01", "source": "the call of 2026-10-30", "note": "ten units, a year of support" },
+          { "id": "county-survey", "title": "County survey", "counterparty": "county", "stage": "lead" },
+          { "id": "farm-2025", "title": "Farm survey 2025", "counterparty": "relationships/cards/farm.vcf", "stage": "won", "value": 8500, "currency": "USD", "closed": "2025-09-12" }
+        ]
+      }
+    },
+    {
+      "tree": { "tag": "Company", "attrs": { "name": "Shop" } },
+      "document": { "format": "commandagi-company", "name": "Shop", "about": "", "files": [], "dashboard": null, "entity": null, "standard": { "enabled": false } }
+    }
+  ],
+  "invalid": [
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A" } }] }, "error": "needs stage" },
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "stage": "lead" } }] }, "error": "needs title" },
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A", "stage": "lead", "probability": "0.5" } }] }, "error": "has no attribute probability" },
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A", "stage": "lead", "value": true } }] }, "error": "value is text or a number" }
+  ]
+}

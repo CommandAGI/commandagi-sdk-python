@@ -20,6 +20,10 @@ Added
   `records.jsonl`) or a series (`fred:DGS10`), never a folder (`tail_ref_problem`). A wake's `when` is a record
   predicate. `script_with_defaults` fills `stream: "records"`. One golden fixture of a wake for the three SDKs,
   `tests/script_wake.json`. Scripts replace monitors; `monitors.py` goes when the platform reads scripts only.
+- A company's deals (`company_deals.py`): `Deal(id=, title=, counterparty=, stage=, value=, currency=, expected=,
+  closed=, owner=, since=, source=, note=)` in a `Company`, its sales pipeline, imported from
+  `commandagi.design.business`. The company document gains `deals` only when the file writes one. The same in the
+  TypeScript and Rust SDKs (one golden fixture, `tests/company_deals.json`).
 - A board's `fab(...)` states the house's other least dimensions, as KiCad's board setup states them:
   `min_via_diameter`, `min_hole_clearance` (copper to a hole), `min_hole_to_hole` and `min_edge_clearance` (mm), and
   `via_in_pad` (True or False: the house fills and caps a via in a pad, so a net's via may stand in its own pads).

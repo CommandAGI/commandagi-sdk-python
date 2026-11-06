@@ -31,6 +31,7 @@ from .business_equity import EQUITY_TAGS, rounds_of
 from .business_finance import COMPANY_FINANCE_MANY, COMPANY_FINANCE_ONE, FINANCE_TAGS, finance_of
 from .company_formation import FILING_PAPER_PROPS, FORMATION_LISTS, FORMATION_TAGS, formation_of
 from .company_governance import COMPANY_GOVERNANCE_MANY, COMPANY_GOVERNANCE_ONE, GOVERNANCE_TAGS, PAPER_VOTE_PROPS, governance_of, votes_of
+from .company_deals import COMPANY_DEALS_MANY, DEALS_TAGS, deals_of
 from .element import Element, child_elements, declares, define
 from .facts import fact_marker
 from .people_ops import PEOPLE_OPS_TAGS, team_of
@@ -41,7 +42,7 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
                         **COMPANY_FINANCE_ONE, "team": "Team", **COMPANY_GOVERNANCE_ONE, "relationships": "Relationships"},
-                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, "brands": "Brand", **COMPANY_GOVERNANCE_MANY, "products": "Product"}},
+                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, "brands": "Brand", **COMPANY_GOVERNANCE_MANY, "products": "Product", **COMPANY_DEALS_MANY}},
     # A priced round, pro forma, and its investments (./business_equity.py).
     **EQUITY_TAGS,
     "Entity": {"props": {"jurisdiction": _TEXT, "form": _TEXT, "taxClassification": _TEXT, "name": _TEXT, "formed": _TEXT,
@@ -69,6 +70,8 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Relationships": {"props": {"file": _TEXT}, "required": ["file"]},
     # Seats, the compliance register, IP, insurance and votes (company_governance.py).
     **GOVERNANCE_TAGS,
+    # The sales pipeline: one Deal a deal (company_deals.py).
+    **DEALS_TAGS,
     "Rfc": {"props": {"id": _TEXT, "procedure": _TEXT, "title": _TEXT, "body": _TEXT, "target": _TEXT, "engineJson": _TEXT}, "many": {"options": "Option"}},
     "Option": {"props": {"title": _TEXT, "summary": _TEXT}, "many": {"changes": "Change"}},
     "Change": {"props": {"op": _TEXT, "parameter": _TEXT, "value": _TEXT, "dutyId": _TEXT, "title": _TEXT, "text": _TEXT, "protects": _TEXTS,
@@ -227,7 +230,7 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
             **({"finance": finance} if finance else {}), **formation_of(node), **({"rounds": rounds} if rounds else {}),
             **({"team": team_of(one["team"])} if one["team"] else {}),
             **({"brands": brands} if brands else {}), **({"products": products} if products else {}),
-            **({"relationships": one["relationships"]["props"]["file"]} if one["relationships"] else {}), **governance_of(node)}
+            **({"relationships": one["relationships"]["props"]["file"]} if one["relationships"] else {}), **governance_of(node), **deals_of(node)}
 
 
 def _with_id(node: Dict[str, Any], draft: Dict[str, Any]) -> Dict[str, Any]:
