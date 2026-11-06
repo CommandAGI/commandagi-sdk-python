@@ -8,8 +8,9 @@ import unittest
 from commandagi.design import run_module
 from commandagi.design.element import declarer_of
 from commandagi.design import firmware as fw
-from commandagi.design.ontology import (body, bound, camera, channel, dashboard, dateRange, device, geomodel, geoparams, geoproject, group, node,
-                                        opgraph, pane, parameter, interlock, reference, region, scenario, scene, shock, split, unit, wire, world)
+from commandagi.design.ontology import (body, bound, camera, channel, dashboard, dateRange, device, geoformula, geograph, geolayer, geomodel, geoparams,
+                                        geoproject, georeport, geoview, group, node, opgraph, pane, parameter, interlock, reference, region, scenario,
+                                        scene, shock, split, unit, wire, world)
 
 
 def declared(root):
@@ -135,6 +136,28 @@ class OntologyTests(unittest.TestCase):
         self.assertEqual(p["data"], {"forModel": "commodity-shock", "values": {"priceElasticity": 0.25}})
         with self.assertRaisesRegex(ValueError, "colour is not read"):
             declared(shock(id="x", name="x", colour="red"))
+
+    def test_a_geo_projects_layer_formula_view_report_and_graph(self):
+        scale = {"kind": "linear", "ramp": [{"t": 0, "color": "#e9e9ec"}, {"t": 1, "color": "#141418"}]}
+        lay = declared(geolayer(reference(role="source", path="datasets/energy/throughput.dataset"), id="l", name="chokepoints", renderer="point",
+                                category="Energy", source_dataset="datasets/energy/throughput.dataset", scale=scale, opacity=1, units="mb/d"))["document"]
+        self.assertEqual(lay["format"], "geolayer")
+        self.assertEqual(lay["document"], {"type": "geoeconomics/layer", "schemaVersion": "1.0", "id": "l", "name": "chokepoints",
+                                           "references": [{"role": "source", "path": "datasets/energy/throughput.dataset"}],
+                                           "data": {"renderer": "point", "category": "Energy", "sourceDataset": "datasets/energy/throughput.dataset",
+                                                    "scale": scale, "opacity": 1, "units": "mb/d"}})
+        f = declared(geoformula(id="f", name="output-per-gdp", inputs={"gdp": "datasets/gdp.dataset"}, expression="1 / gdp", output_unit="share",
+                                missing_value="skip"))["document"]["document"]
+        self.assertEqual(f["data"], {"inputs": {"gdp": "datasets/gdp.dataset"}, "expression": "1 / gdp", "outputUnit": "share", "missingValue": "skip"})
+        cam = {"centerLng": 45, "centerLat": 25, "scale": 340}
+        v = declared(geoview(id="v", name="global-energy", camera=cam, enabled_layers=["layers/energy/oil.geolayer.py"]))["document"]["document"]
+        self.assertEqual(v["data"], {"camera": cam, "enabledLayers": ["layers/energy/oil.geolayer.py"]})
+        blocks = [{"kind": "markdown", "text": "# Impact"}]
+        self.assertEqual(declared(georeport(id="r", name="impact", blocks=blocks))["document"]["document"]["data"], {"blocks": blocks})
+        g = declared(geograph(id="g", name="links", nodes=[{"id": "a", "label": "A"}], edges=[{"from": "a", "to": "a"}]))["document"]["document"]
+        self.assertEqual(g["data"], {"nodes": [{"id": "a", "label": "A"}], "edges": [{"from": "a", "to": "a"}]})
+        with self.assertRaisesRegex(ValueError, "glow is not read"):
+            declared(geolayer(id="x", name="x", glow=True))
 
     def test_a_node_graph_is_the_editors_op_graph(self):
         g = declared(opgraph(

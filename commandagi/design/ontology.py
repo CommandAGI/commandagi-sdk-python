@@ -28,6 +28,11 @@ A record is an element and its fields are the element's attributes; a list of re
     geomodel(id, name, runtime, version …)            <name>.geomodel.py   parameter(name, default, min, max, label?),
                                                                            reference
     geoparams(id, name, for_model, values)            <name>.geoparams.py  reference
+    geolayer(id, name, renderer, category, scale …)   <name>.geolayer.py   reference
+    geoformula(id, name, inputs, expression …)        <name>.geoformula.py reference
+    geoview(id, name, camera, timeline …)             <name>.geoview.py    reference
+    georeport(id, name, blocks)                       <name>.georeport.py  reference
+    geograph(id, name, nodes, edges)                  <name>.geograph.py   reference
     opgraph(name)                                     <name>.opgraph.py    node(id, type, x, y, …ports), wire(from_, to)
 
 Every attribute is a keyword (``commandagi.design.element``: snake_case of the field's name). A field whose own name
@@ -71,6 +76,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "dashboard": _HOLDS, "param": {}, "split": _HOLDS, "pane": {}, "region": {},
     "geoproject": _HOLDS, "dateRange": {}, "camera": {}, "reference": {},
     "shock": _HOLDS, "scenario": _HOLDS, "geomodel": _HOLDS, "parameter": {}, "geoparams": _HOLDS,
+    "geolayer": _HOLDS, "geoformula": _HOLDS, "geoview": _HOLDS, "georeport": _HOLDS, "geograph": _HOLDS,
     "opgraph": _HOLDS, "node": {}, "wire": {},
 }
 
@@ -287,6 +293,11 @@ _SCENARIO = _geo_file("scenario", "a scenario", "scenario", "geoeconomics/scenar
 _GEOMODEL = _geo_file("geomodel", "a geo model", "geomodel", "geoeconomics/model", ["runtime", "version", "compatibleEvents", "assumptions", "limitations", "citations", "validation"],
                       {"tag": "parameter", "field": "parameterSchema", "key": "name", "attrs": ["name", "label", "default", "min", "max"], "required": ["name", "default", "min", "max"]})
 _GEOPARAMS = _geo_file("geoparams", "a geo parameter set", "geoparams", "geoeconomics/params", ["forModel", "values"])
+_GEOLAYER = _geo_file("geolayer", "a geo layer", "geolayer", "geoeconomics/layer", ["renderer", "category", "sourceDataset", "sourceFormula", "scale", "opacity", "visible", "units", "filter", "normalizeBy", "zoomRange"])
+_GEOFORMULA = _geo_file("geoformula", "a geo formula", "geoformula", "geoeconomics/formula", ["inputs", "expression", "outputUnit", "missingValue"])
+_GEOVIEW = _geo_file("geoview", "a geo view", "geoview", "geoeconomics/view", ["camera", "enabledLayers", "layerOverrides", "selection", "timeline", "comparison"])
+_GEOREPORT = _geo_file("georeport", "a geo report", "georeport", "geoeconomics/report", ["blocks"])
+_GEOGRAPH = _geo_file("geograph", "a geo graph", "geograph", "geoeconomics/graph", ["nodes", "edges"])
 
 
 # ── <name>.opgraph.py: the node graph ──────────────────────────────────────────────────────────────────────────────
@@ -383,7 +394,8 @@ def _unsupported(format: str) -> DocTree:
 
 
 #: The vocabularies of the ontology's files, by format.
-ONTOLOGY = {"world": _WORLD, "device": _DEVICE, "dashboard": _DASHBOARD, "geo": _GEO, "shock": _SHOCK, "scenario": _SCENARIO, "geomodel": _GEOMODEL, "geoparams": _GEOPARAMS, "opgraph": _OPGRAPH}
+ONTOLOGY = {"world": _WORLD, "device": _DEVICE, "dashboard": _DASHBOARD, "geo": _GEO, "shock": _SHOCK, "scenario": _SCENARIO, "geomodel": _GEOMODEL, "geoparams": _GEOPARAMS,
+            "geolayer": _GEOLAYER, "geoformula": _GEOFORMULA, "geoview": _GEOVIEW, "georeport": _GEOREPORT, "geograph": _GEOGRAPH, "opgraph": _OPGRAPH}
 
 for _v in ONTOLOGY.values():
     register_vocabulary(_v, "ontology")

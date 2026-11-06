@@ -104,7 +104,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.office` | a workbook, a page, a deck |
 | `commandagi.design.twod` | a drawing, a painting, a photo, a nest |
 | `commandagi.design.media` | a video (clips, `composition(src="Intro.vid.py")`: another video drawn live from its own code, `artboard(src="Poster.draw.py")`: a drawing's page drawn live), a song |
-| `commandagi.design.ontology` | a world, a device definition, a dashboard, a geo project (and its shocks, scenarios, models and parameter sets), a node graph |
+| `commandagi.design.ontology` | a world, a device definition, a dashboard, a geo project (and its shocks, scenarios, models, parameter sets, layers, formulas, views, reports and graphs), a node graph |
 | `commandagi.design.business` | a company, an RFC, a case |
 | `commandagi.design.tasks` | a task, a project |
 | `commandagi.design.mounts` | a thread's mounted tasks (`mounts.py`, in the thread's run folder) |
