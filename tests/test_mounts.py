@@ -28,7 +28,7 @@ class MountTests(unittest.TestCase):
         bad = {
             "mounts one task, or a list": mount(label="a", task="x.task.tsx", folder="Tasks"),
             "mounts nothing": mount(label="a"),
-            "labels is a list of texts\Z": mount(label="a", labels=None),
+            r"labels is a list of texts\Z": mount(label="a", labels=None),
             "assignee is user:<id> or agent:<id>": mount(label="a", assignee="ada"),
             "status is a list of proposed, todo, doing": mount(label="a", status=["later"]),
             "labels is a list of texts": mount(label="a", labels=[""]),

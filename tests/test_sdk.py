@@ -161,16 +161,21 @@ class Timeouts(unittest.TestCase):
                 self.rfile.read(int(self.headers["content-length"]))
                 time.sleep(0.6)
                 body = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"content": [{"type": "text", "text": '{"ok": true}'}]}}).encode()
-                self.send_response(200)
-                self.send_header("content-type", "application/json")
-                self.send_header("content-length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
+                try:
+                    self.send_response(200)
+                    self.send_header("content-type", "application/json")
+                    self.send_header("content-length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass  # the client gave up at its timeout, which is what the test asks for
 
             def log_message(self, *a):
                 pass
 
         self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Slow)
+        # server_close() joins the request threads only when they are not daemons: a slow handler outlives the client's timeout.
+        self.server.daemon_threads = False
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
 
