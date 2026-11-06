@@ -80,6 +80,12 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
                                               definition's tactile channel records
     port(id=, body=, at=, axis=, hold=, depth=, retention=, count=, pitch=, dir=, groups=, first=)
                                               where a rod's end can be held: a pad, a joint, a socket, a row of them
+    linearDimension(id=, a=, b=, …) | radialDimension | sizeDimension | angularDimension | note(id=, text=, anchor=)
+    | datumFeature(id=, letter=, anchor=) | datumTarget | featureControlFrame(id=, characteristic=, tolerance=,
+      datums=, anchor=, …) | surfaceFinish        an annotation (``annotations``): the function is its type, each
+                                              keyword the field of the same name (``3d-core/annotations.ts``); an
+                                              anchor is {"type": "point" | "topo" | "group" | "of" | "geometry", …}.
+                                              The calls, whatever their types, are the list in the order written
     slot(name=, value=)                       any other field of the document, whole
 
 The reader declares the document's graph exactly: a feature is a node of its type with its fields as ports, a plane a
@@ -116,7 +122,8 @@ THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
 _NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "contact", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "port", "item", "assemble", "library", "product", "point", "constraint", "projection", "line", "circle",
-                 "arc", "spline", "ellipse", "ellipseArc", "input"}
+                 "arc", "spline", "ellipse", "ellipseArc", "input", "linearDimension", "radialDimension", "sizeDimension", "angularDimension", "note",
+                 "datumFeature", "datumTarget", "featureControlFrame", "surfaceFinish"}
 #: A sketch's segment kinds, by tag.
 SKETCH_SEGMENTS: List[str] = ["line", "circle", "arc", "spline", "ellipse", "ellipseArc"]
 _SEGMENTS = set(SKETCH_SEGMENTS)
@@ -131,9 +138,15 @@ _VIEW_ATTRS = ["semanticVisibility"]
 _PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step", "tolerance"]
 #: Document fields a slot may not hold: they have elements of their own, or are the graph itself.
 _NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility",
-              "drawings", "checks", "accepted", "permitted", "fasteners", "tactile", "ports", "items", "assemblySteps", "library", "products"}
+              "drawings", "checks", "accepted", "permitted", "fasteners", "tactile", "ports", "items", "assemblySteps", "library", "products",
+              "annotations"}
+#: The annotations of a 3D document, by tag: each tag is its annotation's ``type`` (``3d-core/annotations.ts``).
+THREED_ANNOTATIONS: List[str] = ["linearDimension", "radialDimension", "sizeDimension", "angularDimension", "note", "datumFeature", "datumTarget",
+                                 "featureControlFrame", "surfaceFinish"]
 #: Elements that are the items of a list the document holds: the tag, the document field (its node), the port of that
-#: node that holds the list, and the definition each item is checked against (``SCHEMA["$defs"]``).
+#: node that holds the list, and the definition each item is checked against (``SCHEMA["$defs"]``). Several tags may
+#: make one list: ``kind`` then names its items, each tag is its item's ``type`` (``note(…)`` is ``{"type": "note", …}``),
+#: and the items are in the order their elements are written, whatever their tags.
 THREED_LISTS: Dict[str, Dict[str, str]] = {
     "joint": {"node": "dynamics", "port": "joints", "def": "DynamicsJoint"},
     "contact": {"node": "dynamics", "port": "contacts", "def": "DynamicsContact"},
@@ -149,7 +162,13 @@ THREED_LISTS: Dict[str, Dict[str, str]] = {
     "assemble": {"node": "assemblySteps", "port": "value", "def": "AssemblyStep"},
     "library": {"node": "library", "port": "value", "def": "LibraryData"},
     "product": {"node": "products", "port": "value", "def": "ProductFacts"},
+    **{tag: {"node": "annotations", "port": "value", "def": tag[0].upper() + tag[1:], "kind": "annotation"} for tag in THREED_ANNOTATIONS},
 }
+
+
+def _list_tags(field: str) -> List[str]:
+    """The tags of the elements that are a document field's list (``annotations``: every annotation's), as calls."""
+    return [f"{tag}(…)" for tag, held in THREED_LISTS.items() if held["node"] == field and held["port"] == "value"]
 #: Slots whose value is an object: each field is a port of the slot's node; any other slot holds its value whole.
 _OBJECT_SLOTS = {"environment", "assembly", "sceneConstraints", "dynamics", "animation", "optimization", "standardParts"}
 
@@ -158,11 +177,12 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "part": _HOLDS, "assembly": _HOLDS, "parameter": {}, "plane": {}, "body": {}, "slot": {}, "feature": {},
     "joint": {}, "contact": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "tactile": {}, "port": {}, "item": {}, "assemble": {}, "library": {}, "product": {},
+    **{t: {} for t in THREED_ANNOTATIONS},
     **{t: (_HOLDS if t == "sketch" else {}) for t in THREED_FEATURES},
     "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {},
 }
 
-__all__ = ["THREED_FEATURES", "THREED_LISTS", "SKETCH_SEGMENTS", "BUILTIN_PLANES", "SIGNATURES", "declare_threed", "is_threed",
+__all__ = ["THREED_FEATURES", "THREED_LISTS", "THREED_ANNOTATIONS", "SKETCH_SEGMENTS", "BUILTIN_PLANES", "SIGNATURES", "declare_threed", "is_threed",
            *define(globals(), "threed", SIGNATURES)]
 
 
@@ -406,24 +426,30 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             elif el.tag in THREED_LISTS:
                 _no_children(el)
                 i = _id_of(el)
-                held = lists.setdefault(el.tag, {"items": [], "sources": {}})
+                spec = THREED_LISTS[el.tag]
+                kind = spec.get("kind")
+                held = lists.setdefault(f"{spec['node']}.{spec['port']}", {"tag": el.tag, "items": [], "sources": {}})
                 if any(x.get("id") == i for x in held["items"]):
-                    raise ValueError(f"two {el.tag} elements are called {i}")
-                item = _check_value(el, THREED_LISTS[el.tag]["def"], _fields(el))
+                    raise ValueError(f"two {kind}s are called {i}" if kind else f"two {el.tag} elements are called {i}")
+                if kind and "type" in el.props:
+                    raise ValueError(f"{_where(el)}: the tag is the {kind}'s type")
+                item = _check_value(el, spec["def"], {"type": el.tag, **_fields(el)} if kind else _fields(el))
                 if el.tag == "sheet":
                     problems = _sheet_view_problems(item["views"])
                     if problems:
                         raise ValueError(f"{_where(el)}: {'; '.join(problems)}")
                 held["items"].append(item)
                 if el.source is not None:
-                    held["sources"][f"{el.tag}:{i}"] = el.source
+                    held["sources"][f"{kind or el.tag}:{i}"] = el.source
             elif el.tag == "slot":
                 _no_children(el)
                 field = el.props.get("name")
                 if not isinstance(field, str) or not re.match(r"^[A-Za-z_]\w*$", field):
                     raise ValueError(f"{_where(el)} needs the name of a document field")
                 if field in _NOT_SLOTS:
-                    raise ValueError(f"{_where(el)}: {field} is not a slot (it has its own element or attribute)")
+                    tags = _list_tags(field)
+                    said = f"(its items are written as their own elements: {', '.join(tags)})" if tags else "(it has its own element or attribute)"
+                    raise ValueError(f"{_where(el)}: {field} is not a slot {said}")
                 for k in el.props:
                     if k not in ("key", "name", "value"):
                         raise ValueError(f'{_where(el)}: prop {k} is not read on a slot (its value is "value")')
@@ -516,10 +542,10 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             continue
         inputs = _copy.deepcopy({k: v for k, v in p.items() if k != "name"})
         nodes[i] = {"id": i, "type": "plane", "label": p["name"], "inputs": inputs}
-    for tag, held in lists.items():
-        field, port = THREED_LISTS[tag]["node"], THREED_LISTS[tag]["port"]
+    for held in lists.values():
+        field, port = THREED_LISTS[held["tag"]]["node"], THREED_LISTS[held["tag"]]["port"]
         if field not in nodes:
-            claim(field, f"the document's {field} ({tag})")
+            claim(field, f"the document's {field} ({held['tag']})")
             nodes[field] = {"id": field, "type": f"3d.{field}", "inputs": {}}
         node = nodes[field]
         node["inputs"] = {**node["inputs"], port: held["items"]}

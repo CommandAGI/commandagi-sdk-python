@@ -4,7 +4,8 @@ Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.threed import (THREED_FEATURES, assembly, body, box, chamfer, circle, constraint, curve, cylinder, declare_threed,
+from commandagi.design.threed import (THREED_FEATURES, angularDimension, assembly, datumFeature, datumTarget, featureControlFrame, linearDimension, note,
+                                      radialDimension, sizeDimension, surfaceFinish, body, box, chamfer, circle, constraint, curve, cylinder, declare_threed,
                                       externalPart, extrude, feature, fillet, hole, import_, joint, line, mate, meshBody, parameter, part,
                                       pathPattern, plane, point, pointCloud, sheet, sketch, slot, sphere, sweep)
 
@@ -467,6 +468,45 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(c["inputs"]["tangentScale"], [2, 1, 0.5])
         with self.assertRaisesRegex(ValueError, "tangentScale/1: must be greater than 0"):
             declare_threed(part(curve(**each, tangent_scale=[2, 0, 0.5]), name="P"))
+
+    def test_each_annotation_is_a_call_whose_function_is_its_type_and_the_calls_are_the_annotations_in_order(self):
+        # sdk/typescript threed.test.ts reads the same annotations and refuses them with the same sentences.
+        top = {"type": "topo", "ref": {"kind": "face", "signature": {"point": [0, 0, 10]}}}
+        bore = {"type": "group", "items": [{"type": "topo", "ref": {"kind": "face", "signature": {"point": [5, 0, 5]}}},
+                                           {"type": "topo", "ref": {"kind": "face", "signature": {"point": [-5, 0, 5]}}}]}
+        axis = {"type": "geometry", "shape": {"kind": "line", "from": [0, 0, 0], "to": [0, 0, 10]}}
+        calls = [
+            (linearDimension(id="d1", a={"type": "point", "at": [0, 0, 0]}, b={"type": "point", "at": [40, 0, 0]}, axis="x",
+                             tolerance={"upper": 0.1, "lower": -0.1}, limits=True), "linearDimension"),
+            (radialDimension(id="d2", measure="diameter", of=bore, center={"type": "point", "at": [0, 0, 5]}, value=5, datum="B"), "radialDimension"),
+            (sizeDimension(id="d3", measure="thickness", of=top, value=10, notes=["statistical"]), "sizeDimension"),
+            (angularDimension(id="d4", a=top, b=bore, value=1.5707963267948966), "angularDimension"),
+            (note(id="n1", text="BREAK SHARP EDGES", anchor={"type": "part"}, leader_to=[10, 10, 20], property="semantic text"), "note"),
+            (datumFeature(id="A", letter="A", anchor=top), "datumFeature"),
+            (datumTarget(id="A1", letter="A", target="1", placed={"shape": "circle", "origin": [0, 0, 10], "axis": [0, 0, 1], "refDirection": [1, 0, 0],
+                                                                   "sizes": {"target diameter": 4}}), "datumTarget"),
+            (featureControlFrame(id="f1", characteristic="position", tolerance=0.1, diameter_zone=True, modifier="M",
+                                 datums=[{"letter": "A"}, {"letter": "B", "modifiers": ["translation"]}], anchor={"type": "of", "id": "d2"},
+                                 projected={"length": 8}, segment_of={"to": "f0", "relation": "composite"}), "featureControlFrame"),
+            (surfaceFinish(id="s1", roughness=1.6, requirement="required", process="milled", anchor=axis), "surfaceFinish"),
+        ]
+        g = declare_threed(part(box(id="b", center=[0, 0, 5], size=[40, 20, 10], operation="new"), *[c for c, _ in calls], name="Bracket"))
+        self.assertEqual(g["nodes"]["annotations"]["inputs"]["value"], [{"type": t, **c.props} for c, t in calls])
+
+        def refused(message, *children):
+            with self.assertRaises(ValueError) as caught:
+                declare_threed(part(*children, name="P"))
+            self.assertEqual(str(caught.exception), message)
+        refused('<featureControlFrame id="f1">: characteristic: must be one of position, straightness, flatness, circularity, cylindricity, '
+                'profileLine, profileSurface, angularity, perpendicularity, parallelism, concentricity, symmetry, circularRunout, totalRunout '
+                '(got "roundness")', featureControlFrame(id="f1", characteristic="roundness", tolerance=0.1, anchor=top))
+        with self.assertRaisesRegex(ValueError, '<note id="n1">: anchor'):
+            declare_threed(part(note(id="n1", text="x", anchor={"type": "of"}), name="P"))
+        refused("<note id=\"n1\">: the tag is the annotation's type", note(id="n1", type_="note", text="x", anchor=top))
+        refused("two annotations are called n1", note(id="n1", text="x", anchor=top), datumFeature(id="n1", letter="A", anchor=top))
+        refused('<slot name="annotations">: annotations is not a slot (its items are written as their own elements: linearDimension(…), '
+                'radialDimension(…), sizeDimension(…), angularDimension(…), note(…), datumFeature(…), datumTarget(…), featureControlFrame(…), '
+                'surfaceFinish(…))', slot(name="annotations", value=[]))
 
 
 if __name__ == "__main__":

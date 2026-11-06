@@ -22,30 +22,75 @@ _AlternateOptional = TypedDict("_AlternateOptional", {"note": str, "approved": b
 class Alternate(_AlternateRequired, _AlternateOptional):
     pass
 
+__Anchor1Required = TypedDict("__Anchor1Required", {"type": Literal["point"], "at": 'Vec3'})
+__Anchor1Optional = TypedDict("__Anchor1Optional", {}, total=False)
+class _Anchor1(__Anchor1Required, __Anchor1Optional):
+    pass
+
+__Anchor2Required = TypedDict("__Anchor2Required", {"type": Literal["topo"], "ref": 'TopoRef'})
+__Anchor2Optional = TypedDict("__Anchor2Optional", {}, total=False)
+class _Anchor2(__Anchor2Required, __Anchor2Optional):
+    pass
+
+#: Geometry that is no face or edge of the model (AP242 supplemental geometry): an axis, a line of a datum target, a point. In millimetres, in the model's frame.
+_AnchorGeometryRequired = TypedDict("_AnchorGeometryRequired", {"type": Literal["geometry"], "shape": 'SupplementalShape'})
+_AnchorGeometryOptional = TypedDict("_AnchorGeometryOptional", {}, total=False)
+class AnchorGeometry(_AnchorGeometryRequired, _AnchorGeometryOptional):
+    pass
+
+#: A feature of several faces, edges or features (an AP242 shape aspect that is not one face): `items` are what it names itself, `of` the features it is made of. `kind` says how (docs/engineering.md § PMI in STEP): absent one feature of the faces and edges in `items` (a bore of two half-cylinders) composite one feature made of the features in `of` (COMPOSITE_SHAPE_ASPECT) pattern a pattern of the features in `of`: "4X" (COMPOSITE_GROUP_SHAPE_ASPECT) allAround all around the profile of `of` (ALL_AROUND_SHAPE_ASPECT) between between the features in `of` (BETWEEN_SHAPE_ASPECT) centre the centre (an axis, a median plane) of the features in `of` (CENTRE_OF_SYMMETRY); `items` its geometry when the file gives it
+_AnchorGroupRequired = TypedDict("_AnchorGroupRequired", {"type": Literal["group"]})
+_AnchorGroupOptional = TypedDict("_AnchorGroupOptional", {"kind": Literal["composite", "pattern", "allAround", "between", "centre"], "items": List['Anchor'], "of": List['Anchor']}, total=False)
+class AnchorGroup(_AnchorGroupRequired, _AnchorGroupOptional):
+    pass
+
+#: The feature another annotation is on: a datum feature, a datum target, a size that is a datum feature.
+_AnchorOfRequired = TypedDict("_AnchorOfRequired", {"type": Literal["of"], "id": str})
+_AnchorOfOptional = TypedDict("_AnchorOfOptional", {}, total=False)
+class AnchorOf(_AnchorOfRequired, _AnchorOfOptional):
+    pass
+
+#: The whole part: a tolerance or a note on the part's shape itself, not on a feature of it (`all over`).
+_AnchorPartRequired = TypedDict("_AnchorPartRequired", {"type": Literal["part"]})
+_AnchorPartOptional = TypedDict("_AnchorPartOptional", {}, total=False)
+class AnchorPart(_AnchorPartRequired, _AnchorPartOptional):
+    pass
+
+__AngularDimension3Required = TypedDict("__AngularDimension3Required", {"zone": str, "source": str})
+__AngularDimension3Optional = TypedDict("__AngularDimension3Optional", {"form": str, "grade": str}, total=False)
+class _AngularDimension3(__AngularDimension3Required, __AngularDimension3Optional):
+    pass
+
+#: Angle at a vertex subtended by two other anchors (rays vertex→a and vertex→b), or the angle between two features that a STEP file states (AP242 ANGULAR_LOCATION: `a` and `b` the features, `value` the angle).
+_AngularDimensionRequired = TypedDict("_AngularDimensionRequired", {"type": Literal["angularDimension"], "a": 'Anchor', "b": 'Anchor', "id": str})
+_AngularDimensionOptional = TypedDict("_AngularDimensionOptional", {"vertex": 'Anchor', "value": float, "angleSelection": Literal["equal", "large", "small"], "label": str, "textAt": 'Vec3', "visible": bool, "tolerance": 'DimensionTolerance', "limits": bool, "fit": '_AngularDimension3', "notes": List[str], "modifiers": List[str], "noValue": bool, "formats": 'ValueFormats'}, total=False)
+class AngularDimension(_AngularDimensionRequired, _AngularDimensionOptional):
+    pass
+
 #: ONE ASSEMBLY STEP: `<assemble>`.
 _AssemblyStepRequired = TypedDict("_AssemblyStepRequired", {"id": str})
 _AssemblyStepOptional = TypedDict("_AssemblyStepOptional", {"order": int, "parts": List[str], "fasteners": List[str], "tools": List[str], "fixture": str, "by": str, "minutes": float, "ratePerHour": float, "currency": str, "instruction": str}, total=False)
 class AssemblyStep(_AssemblyStepRequired, _AssemblyStepOptional):
     pass
 
-__AxisRef1Required = TypedDict("__AxisRef1Required", {"type": Literal["datumAxis"], "axis": Literal["X", "Y", "Z"]})
-__AxisRef1Optional = TypedDict("__AxisRef1Optional", {}, total=False)
-class _AxisRef1(__AxisRef1Required, __AxisRef1Optional):
-    pass
-
-__AxisRef2Required = TypedDict("__AxisRef2Required", {"type": Literal["sketchLine"], "sketch": str, "segment": str})
-__AxisRef2Optional = TypedDict("__AxisRef2Optional", {}, total=False)
-class _AxisRef2(__AxisRef2Required, __AxisRef2Optional):
-    pass
-
-__AxisRef3Required = TypedDict("__AxisRef3Required", {"type": Literal["edge"], "ref": 'TopoRef'})
-__AxisRef3Optional = TypedDict("__AxisRef3Optional", {}, total=False)
-class _AxisRef3(__AxisRef3Required, __AxisRef3Optional):
-    pass
-
-__AxisRef4Required = TypedDict("__AxisRef4Required", {"type": Literal["points"], "a": 'Vec3', "b": 'Vec3'})
+__AxisRef4Required = TypedDict("__AxisRef4Required", {"type": Literal["datumAxis"], "axis": Literal["X", "Y", "Z"]})
 __AxisRef4Optional = TypedDict("__AxisRef4Optional", {}, total=False)
 class _AxisRef4(__AxisRef4Required, __AxisRef4Optional):
+    pass
+
+__AxisRef5Required = TypedDict("__AxisRef5Required", {"type": Literal["sketchLine"], "sketch": str, "segment": str})
+__AxisRef5Optional = TypedDict("__AxisRef5Optional", {}, total=False)
+class _AxisRef5(__AxisRef5Required, __AxisRef5Optional):
+    pass
+
+__AxisRef6Required = TypedDict("__AxisRef6Required", {"type": Literal["edge"], "ref": 'TopoRef'})
+__AxisRef6Optional = TypedDict("__AxisRef6Optional", {}, total=False)
+class _AxisRef6(__AxisRef6Required, __AxisRef6Optional):
+    pass
+
+__AxisRef7Required = TypedDict("__AxisRef7Required", {"type": Literal["points"], "a": 'Vec3', "b": 'Vec3'})
+__AxisRef7Optional = TypedDict("__AxisRef7Optional", {}, total=False)
+class _AxisRef7(__AxisRef7Required, __AxisRef7Optional):
     pass
 
 #: A `<body material>` as a document writes it: a preset and the fields it changes, or only a colour. What it leaves out is its preset's (`resolveMaterial`).
@@ -190,9 +235,32 @@ _CylindricalSurfaceOptional = TypedDict("_CylindricalSurfaceOptional", {}, total
 class CylindricalSurface(_CylindricalSurfaceRequired, _CylindricalSurfaceOptional):
     pass
 
+#: A datum-feature label (the boxed letter A/B/C… with a leader/triangle to the referenced feature).
+_DatumFeatureRequired = TypedDict("_DatumFeatureRequired", {"type": Literal["datumFeature"], "letter": str, "anchor": 'Anchor', "id": str})
+_DatumFeatureOptional = TypedDict("_DatumFeatureOptional", {"datumOn": 'Anchor', "label": str, "textAt": 'Vec3', "visible": bool}, total=False)
+class DatumFeature(_DatumFeatureRequired, _DatumFeatureOptional):
+    pass
+
 _DatumPlaneFeatureRequired = TypedDict("_DatumPlaneFeatureRequired", {"type": Literal["datumPlane"], "base": str, "id": str, "name": str})
 _DatumPlaneFeatureOptional = TypedDict("_DatumPlaneFeatureOptional", {"offset": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class DatumPlaneFeature(_DatumPlaneFeatureRequired, _DatumPlaneFeatureOptional):
+    pass
+
+#: A datum reference in a feature-control frame: a letter and its material modifier. A common datum is its letters joined by a hyphen (`A-B`), or `common` when one of its datums carries a modifier of its own.
+_DatumReferenceRequired = TypedDict("_DatumReferenceRequired", {"letter": str})
+_DatumReferenceOptional = TypedDict("_DatumReferenceOptional", {"modifier": 'MaterialModifier', "modifiers": List[str], "common": List['DatumReference']}, total=False)
+class DatumReference(_DatumReferenceRequired, _DatumReferenceOptional):
+    pass
+
+__DatumTarget8Required = TypedDict("__DatumTarget8Required", {"shape": str, "origin": 'Vec3', "axis": 'Vec3', "refDirection": 'Vec3'})
+__DatumTarget8Optional = TypedDict("__DatumTarget8Optional", {"sizes": Dict[str, float]}, total=False)
+class _DatumTarget8(__DatumTarget8Required, __DatumTarget8Optional):
+    pass
+
+#: A datum target (A1, B2 …): a point, line or area of a feature that establishes datum `letter`. On a face of the model (`anchor`), or placed (`placed`): a shape at a placement, with its size (AP242 PLACED_DATUM_TARGET_FEATURE).
+_DatumTargetRequired = TypedDict("_DatumTargetRequired", {"type": Literal["datumTarget"], "letter": str, "target": str, "id": str})
+_DatumTargetOptional = TypedDict("_DatumTargetOptional", {"anchor": 'Anchor', "placed": '_DatumTarget8', "on": 'Anchor', "datumOn": 'Anchor', "label": str, "textAt": 'Vec3', "visible": bool}, total=False)
+class DatumTarget(_DatumTargetRequired, _DatumTargetOptional):
     pass
 
 _DeleteFaceFeatureRequired = TypedDict("_DeleteFaceFeatureRequired", {"type": Literal["deleteFace"], "faces": List['TopoTarget'], "id": str, "name": str})
@@ -200,14 +268,14 @@ _DeleteFaceFeatureOptional = TypedDict("_DeleteFaceFeatureOptional", {"suppresse
 class DeleteFaceFeature(_DeleteFaceFeatureRequired, _DeleteFaceFeatureOptional):
     pass
 
-__DesignCheck5Required = TypedDict("__DesignCheck5Required", {})
-__DesignCheck5Optional = TypedDict("__DesignCheck5Optional", {"min": float, "max": float}, total=False)
-class _DesignCheck5(__DesignCheck5Required, __DesignCheck5Optional):
+__DesignCheck9Required = TypedDict("__DesignCheck9Required", {})
+__DesignCheck9Optional = TypedDict("__DesignCheck9Optional", {"min": float, "max": float}, total=False)
+class _DesignCheck9(__DesignCheck9Required, __DesignCheck9Optional):
     pass
 
 #: A CHECK THE DOCUMENT MUST PASS: `<check kind … />`. The kinds built in are `interference`, `clearance`, `holes`, `fasteners`, `edges`, `symmetry`, and the tolerance kinds `tolerances`, `fit` and `stackup` (`./tolerances.ts`); another kind is a check that a registered function runs (a manufacturability check), and where none is registered the check is skipped with that reason, never passed.
 _DesignCheckRequired = TypedDict("_DesignCheckRequired", {"id": str, "kind": str})
-_DesignCheckOptional = TypedDict("_DesignCheckOptional", {"bodies": List[str], "against": List[str], "severity": Literal["error", "warning"], "min": float, "minVolume": float, "angle": float, "breakWidth": float, "maxRadius": float, "plane": Literal["yz", "xz", "xy"], "tolerance": float, "hole": str, "shaft": str, "intent": Literal["clearance", "transition", "interference"], "pair": Tuple[str, str], "chain": List[str], "limit": '_DesignCheck5', "method": Literal["worst-case", "rss", "monte-carlo"], "samples": int, "seed": int, "sweep": 'JointSweep', "options": Dict[str, Any]}, total=False)
+_DesignCheckOptional = TypedDict("_DesignCheckOptional", {"bodies": List[str], "against": List[str], "severity": Literal["error", "warning"], "min": float, "minVolume": float, "angle": float, "breakWidth": float, "maxRadius": float, "plane": Literal["yz", "xz", "xy"], "tolerance": float, "hole": str, "shaft": str, "intent": Literal["clearance", "transition", "interference"], "pair": Tuple[str, str], "chain": List[str], "limit": '_DesignCheck9', "method": Literal["worst-case", "rss", "monte-carlo"], "samples": int, "seed": int, "sweep": 'JointSweep', "options": Dict[str, Any]}, total=False)
 class DesignCheck(_DesignCheckRequired, _DesignCheckOptional):
     pass
 
@@ -269,25 +337,25 @@ _DynamicsContactOptional = TypedDict("_DynamicsContactOptional", {"b": str, "col
 class DynamicsContact(_DynamicsContactRequired, _DynamicsContactOptional):
     pass
 
-__DynamicsJoint6Required = TypedDict("__DynamicsJoint6Required", {"mode": Literal["position", "velocity", "torque"]})
-__DynamicsJoint6Optional = TypedDict("__DynamicsJoint6Optional", {"target": float, "gain": float, "maxForce": float, "name": str, "role": str, "ctrlrange": Tuple[float, float]}, total=False)
-class _DynamicsJoint6(__DynamicsJoint6Required, __DynamicsJoint6Optional):
+__DynamicsJoint10Required = TypedDict("__DynamicsJoint10Required", {"mode": Literal["position", "velocity", "torque"]})
+__DynamicsJoint10Optional = TypedDict("__DynamicsJoint10Optional", {"target": float, "gain": float, "maxForce": float, "name": str, "role": str, "ctrlrange": Tuple[float, float]}, total=False)
+class _DynamicsJoint10(__DynamicsJoint10Required, __DynamicsJoint10Optional):
     pass
 
 #: A joint between two bodies: its kind, its axis, its limits and the two references it binds. `<joint>` in code.
 _DynamicsJointRequired = TypedDict("_DynamicsJointRequired", {"id": str, "kind": 'JointKind', "a": str, "anchor": 'Vec32'})
-_DynamicsJointOptional = TypedDict("_DynamicsJointOptional", {"b": str, "axis": 'Vec32', "refA": 'JointReference', "refB": 'JointReference', "limits": Tuple[float, float], "travel": Tuple[float, float], "pitch": float, "efficiency": float, "home": float, "homeTravel": float, "requires": Dict[str, Union[float, Tuple[float, float]]], "actuator": '_DynamicsJoint6'}, total=False)
+_DynamicsJointOptional = TypedDict("_DynamicsJointOptional", {"b": str, "axis": 'Vec32', "refA": 'JointReference', "refB": 'JointReference', "limits": Tuple[float, float], "travel": Tuple[float, float], "pitch": float, "efficiency": float, "home": float, "homeTravel": float, "requires": Dict[str, Union[float, Tuple[float, float]]], "actuator": '_DynamicsJoint10'}, total=False)
 class DynamicsJoint(_DynamicsJointRequired, _DynamicsJointOptional):
     pass
 
-__ExternalPartRef7Required = TypedDict("__ExternalPartRef7Required", {})
-__ExternalPartRef7Optional = TypedDict("__ExternalPartRef7Optional", {"from": 'RodEnd', "to": 'RodEnd'}, total=False)
-class _ExternalPartRef7(__ExternalPartRef7Required, __ExternalPartRef7Optional):
+__ExternalPartRef11Required = TypedDict("__ExternalPartRef11Required", {})
+__ExternalPartRef11Optional = TypedDict("__ExternalPartRef11Optional", {"from": 'RodEnd', "to": 'RodEnd'}, total=False)
+class _ExternalPartRef11(__ExternalPartRef11Required, __ExternalPartRef11Optional):
     pass
 
 #: A LINKED (not embedded) part reference. Unlike ImportFeature — which copies the foreign STEP/IGES bytes into the document — an `ExternalPartRef` only records *where* to find another Drive file (by id or name) and reloads it on open. This keeps a part reusable across assemblies and lets a part edit propagate to every place it's used. The reference system (`cad/references.ts`) turns these into `FileRef`s (`role:"part"`); the editor resolves + meshes them. Foreign solids carry an `importer` ("step"/"iges") so the resolver knows to run the import path rather than run a `.3d.tsx`.
 _ExternalPartRefRequired = TypedDict("_ExternalPartRefRequired", {"type": Literal["externalPart"], "id": str, "name": str})
-_ExternalPartRefOptional = TypedDict("_ExternalPartRefOptional", {"fileId": str, "path": str, "fileName": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx", "pcb.jsx", "pcb.py", "pcb.rs"], "unitScaleMm": float, "placement": 'Placement', "component": str, "localPlacement": 'Placement', "footprint": 'ComponentFootprint', "omit": List[str], "ends": Dict[str, '_ExternalPartRef7'], "moves": List['PlacedMove'], "inputs": Dict[str, float], "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_ExternalPartRefOptional = TypedDict("_ExternalPartRefOptional", {"fileId": str, "path": str, "fileName": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx", "pcb.jsx", "pcb.py", "pcb.rs"], "unitScaleMm": float, "placement": 'Placement', "component": str, "localPlacement": 'Placement', "footprint": 'ComponentFootprint', "omit": List[str], "ends": Dict[str, '_ExternalPartRef11'], "moves": List['PlacedMove'], "inputs": Dict[str, float], "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ExternalPartRef(_ExternalPartRefRequired, _ExternalPartRefOptional):
     pass
 
@@ -300,6 +368,32 @@ class ExtrudeFeature(_ExtrudeFeatureRequired, _ExtrudeFeatureOptional):
 _FastenerStackRequired = TypedDict("_FastenerStackRequired", {"id": str, "part": str, "length": float, "at": 'Vec3', "clamped": List[str]})
 _FastenerStackOptional = TypedDict("_FastenerStackOptional", {"axis": 'Vec3', "corner": 'Vec3', "receiver": str, "washer": str, "nut": str, "grip": float, "fit": 'FastenerFit', "minEngagement": float, "torque": float, "material": str, "partNumber": str}, total=False)
 class FastenerStack(_FastenerStackRequired, _FastenerStackOptional):
+    pass
+
+__FeatureControlFrame12Required = TypedDict("__FeatureControlFrame12Required", {})
+__FeatureControlFrame12Optional = TypedDict("__FeatureControlFrame12Optional", {"angle": float}, total=False)
+class _FeatureControlFrame12(__FeatureControlFrame12Required, __FeatureControlFrame12Optional):
+    pass
+
+__FeatureControlFrame13Required = TypedDict("__FeatureControlFrame13Required", {"length": float})
+__FeatureControlFrame13Optional = TypedDict("__FeatureControlFrame13Optional", {"from": 'Anchor'}, total=False)
+class _FeatureControlFrame13(__FeatureControlFrame13Required, __FeatureControlFrame13Optional):
+    pass
+
+__FeatureControlFrame14Required = TypedDict("__FeatureControlFrame14Required", {"size": float})
+__FeatureControlFrame14Optional = TypedDict("__FeatureControlFrame14Optional", {"area": Literal["square", "rectangular", "circular"], "second": float}, total=False)
+class _FeatureControlFrame14(__FeatureControlFrame14Required, __FeatureControlFrame14Optional):
+    pass
+
+__FeatureControlFrame15Required = TypedDict("__FeatureControlFrame15Required", {"to": str, "relation": str})
+__FeatureControlFrame15Optional = TypedDict("__FeatureControlFrame15Optional", {}, total=False)
+class _FeatureControlFrame15(__FeatureControlFrame15Required, __FeatureControlFrame15Optional):
+    pass
+
+#: A GD&T feature-control frame: characteristic ▸ tolerance (+ Ø zone / modifier) ▸ datum references.
+_FeatureControlFrameRequired = TypedDict("_FeatureControlFrameRequired", {"type": Literal["featureControlFrame"], "characteristic": 'GdtCharacteristic', "tolerance": float, "anchor": 'Anchor', "id": str})
+_FeatureControlFrameOptional = TypedDict("_FeatureControlFrameOptional", {"diameterZone": bool, "modifier": 'MaterialModifier', "datums": List['DatumReference'], "modifiers": List[str], "zone": str, "unequal": float, "runoutZone": '_FeatureControlFrame12', "projected": '_FeatureControlFrame13', "perUnit": '_FeatureControlFrame14', "maximum": float, "segmentOf": '_FeatureControlFrame15', "datumFrame": 'Anchor', "formats": 'ValueFormats', "label": str, "textAt": 'Vec3', "visible": bool}, total=False)
+class FeatureControlFrame(_FeatureControlFrameRequired, _FeatureControlFrameOptional):
     pass
 
 _FilletFeatureRequired = TypedDict("_FilletFeatureRequired", {"type": Literal["fillet"], "edges": List['TopoTarget'], "id": str, "name": str})
@@ -324,24 +418,24 @@ _FullRoundFeatureOptional = TypedDict("_FullRoundFeatureOptional", {"suppressed"
 class FullRoundFeature(_FullRoundFeatureRequired, _FullRoundFeatureOptional):
     pass
 
-__GaussianSplatFeature8Required = TypedDict("__GaussianSplatFeature8Required", {})
-__GaussianSplatFeature8Optional = TypedDict("__GaussianSplatFeature8Optional", {"format": str, "fileId": str, "fileName": str, "shDegree": float, "splatCount": float}, total=False)
-class _GaussianSplatFeature8(__GaussianSplatFeature8Required, __GaussianSplatFeature8Optional):
+__GaussianSplatFeature16Required = TypedDict("__GaussianSplatFeature16Required", {})
+__GaussianSplatFeature16Optional = TypedDict("__GaussianSplatFeature16Optional", {"format": str, "fileId": str, "fileName": str, "shDegree": float, "splatCount": float}, total=False)
+class _GaussianSplatFeature16(__GaussianSplatFeature16Required, __GaussianSplatFeature16Optional):
     pass
 
 #: A **3D Gaussian-Splat volume** — the headline volumetric primitive: a cloud of anisotropic translucent gaussians (position + per-axis scale + orientation + color/opacity), the representation of choice for photoreal capture (video/scan → navigable scene) and volumetric science visualization. Imported from a gaussian PLY (or `.splat`); the DC spherical-harmonic term is baked to an RGB color on import.
 _GaussianSplatFeatureRequired = TypedDict("_GaussianSplatFeatureRequired", {"type": Literal["gaussianSplat"], "count": float, "positions": List[float], "scales": List[float], "rotations": List[float], "colors": List[float], "id": str, "name": str})
-_GaussianSplatFeatureOptional = TypedDict("_GaussianSplatFeatureOptional", {"shDegree": Literal[0, 3, 1, 2], "sh": List[float], "source": '_GaussianSplatFeature8', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_GaussianSplatFeatureOptional = TypedDict("_GaussianSplatFeatureOptional", {"shDegree": Literal[0, 3, 1, 2], "sh": List[float], "source": '_GaussianSplatFeature16', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class GaussianSplatFeature(_GaussianSplatFeatureRequired, _GaussianSplatFeatureOptional):
     pass
 
-__GenNodeRecord9Required = TypedDict("__GenNodeRecord9Required", {"locator": str})
-__GenNodeRecord9Optional = TypedDict("__GenNodeRecord9Optional", {"digest": str}, total=False)
-class _GenNodeRecord9(__GenNodeRecord9Required, __GenNodeRecord9Optional):
+__GenNodeRecord17Required = TypedDict("__GenNodeRecord17Required", {"locator": str})
+__GenNodeRecord17Optional = TypedDict("__GenNodeRecord17Optional", {"digest": str}, total=False)
+class _GenNodeRecord17(__GenNodeRecord17Required, __GenNodeRecord17Optional):
     pass
 
 #: The record a node holds: the output's locator always, the provenance fields when the run returned them. A run that returned only a file still records where its bytes are, in the same slot.
-_GenNodeRecordRequired = TypedDict("_GenNodeRecordRequired", {"output": '_GenNodeRecord9'})
+_GenNodeRecordRequired = TypedDict("_GenNodeRecordRequired", {"output": '_GenNodeRecord17'})
 _GenNodeRecordOptional = TypedDict("_GenNodeRecordOptional", {"operator": str, "implementation": str, "implementationVersion": str, "artifactDigest": str, "artifactImmutable": bool, "inputDigest": str, "paramsDigest": str, "producedAt": str}, total=False)
 class GenNodeRecord(_GenNodeRecordRequired, _GenNodeRecordOptional):
     pass
@@ -358,14 +452,14 @@ _GenerateViaFeatureOptional = TypedDict("_GenerateViaFeatureOptional", {"materia
 class GenerateViaFeature(_GenerateViaFeatureRequired, _GenerateViaFeatureOptional):
     pass
 
-__GraphFeature10Required = TypedDict("__GraphFeature10Required", {})
-__GraphFeature10Optional = TypedDict("__GraphFeature10Optional", {"format": str, "fileId": str, "fileName": str, "title": str, "nodeCount": float, "edgeCount": float}, total=False)
-class _GraphFeature10(__GraphFeature10Required, __GraphFeature10Optional):
+__GraphFeature18Required = TypedDict("__GraphFeature18Required", {})
+__GraphFeature18Optional = TypedDict("__GraphFeature18Optional", {"format": str, "fileId": str, "fileName": str, "title": str, "nodeCount": float, "edgeCount": float}, total=False)
+class _GraphFeature18(__GraphFeature18Required, __GraphFeature18Optional):
     pass
 
 #: A **graph / network** — nodes at 3D positions joined by edges. The substrate for a CONNECTOME (nodes = cells/neurons, edges = synapses/contacts): "a Drosophila brain with exact cell mappings", a C. elegans wiring diagram, a protein-interaction net, a pipe/circuit network. Kernel-free; rendered as node spheres + edge lines. Distinct from `skeleton` (a within-cell branching tree) — this is the between-cell wiring.
 _GraphFeatureRequired = TypedDict("_GraphFeatureRequired", {"type": Literal["graph"], "nodePositions": List[float], "edges": List[float], "id": str, "name": str})
-_GraphFeatureOptional = TypedDict("_GraphFeatureOptional", {"nodeSizes": List[float], "nodeColors": List[float], "nodeGroups": List[float], "edgeWeights": List[float], "directed": bool, "source": '_GraphFeature10', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_GraphFeatureOptional = TypedDict("_GraphFeatureOptional", {"nodeSizes": List[float], "nodeColors": List[float], "nodeGroups": List[float], "edgeWeights": List[float], "directed": bool, "source": '_GraphFeature18', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class GraphFeature(_GraphFeatureRequired, _GraphFeatureOptional):
     pass
 
@@ -433,6 +527,17 @@ _LifecycleOptional = TypedDict("_LifecycleOptional", {"lastTimeBuy": str, "onHan
 class Lifecycle(_LifecycleRequired, _LifecycleOptional):
     pass
 
+__LinearDimension19Required = TypedDict("__LinearDimension19Required", {"zone": str, "source": str})
+__LinearDimension19Optional = TypedDict("__LinearDimension19Optional", {"form": str, "grade": str}, total=False)
+class _LinearDimension19(__LinearDimension19Required, __LinearDimension19Optional):
+    pass
+
+#: Distance between two anchors — true 3D, or projected onto a single axis (ordinate/aligned).
+_LinearDimensionRequired = TypedDict("_LinearDimensionRequired", {"type": Literal["linearDimension"], "a": 'Anchor', "b": 'Anchor', "id": str})
+_LinearDimensionOptional = TypedDict("_LinearDimensionOptional", {"axis": Literal["x", "y", "z"], "value": float, "directed": bool, "measure": str, "label": str, "textAt": 'Vec3', "visible": bool, "tolerance": 'DimensionTolerance', "limits": bool, "fit": '_LinearDimension19', "notes": List[str], "modifiers": List[str], "noValue": bool, "formats": 'ValueFormats'}, total=False)
+class LinearDimension(_LinearDimensionRequired, _LinearDimensionOptional):
+    pass
+
 _LinearPatternFeatureRequired = TypedDict("_LinearPatternFeatureRequired", {"type": Literal["linearPattern"], "seedFeature": str, "id": str, "name": str})
 _LinearPatternFeatureOptional = TypedDict("_LinearPatternFeatureOptional", {"direction": 'Vec3', "spacing": float, "count": int, "direction2": 'Vec3', "spacing2": float, "count2": int, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class LinearPatternFeature(_LinearPatternFeatureRequired, _LinearPatternFeatureOptional):
@@ -466,13 +571,13 @@ _MaterialDefOptional = TypedDict("_MaterialDefOptional", {"opacity": float, "ior
 class MaterialDef(_MaterialDefRequired, _MaterialDefOptional):
     pass
 
-__MeshBodyFeature11Required = TypedDict("__MeshBodyFeature11Required", {})
-__MeshBodyFeature11Optional = TypedDict("__MeshBodyFeature11Optional", {"prompt": str, "expert": str, "generationId": str, "fileId": str, "fileName": str}, total=False)
-class _MeshBodyFeature11(__MeshBodyFeature11Required, __MeshBodyFeature11Optional):
+__MeshBodyFeature20Required = TypedDict("__MeshBodyFeature20Required", {})
+__MeshBodyFeature20Optional = TypedDict("__MeshBodyFeature20Optional", {"prompt": str, "expert": str, "generationId": str, "fileId": str, "fileName": str}, total=False)
+class _MeshBodyFeature20(__MeshBodyFeature20Required, __MeshBodyFeature20Optional):
     pass
 
 _MeshBodyFeatureRequired = TypedDict("_MeshBodyFeatureRequired", {"type": Literal["meshBody"], "positions": List[float], "indices": List[float], "id": str, "name": str})
-_MeshBodyFeatureOptional = TypedDict("_MeshBodyFeatureOptional", {"polygons": List[List[float]], "normals": List[float], "uv": List[float], "sourceUv": List[float], "sourceMaterials": List['SourceMaterial'], "materialGroups": List['SourceMaterialGroup'], "source": '_MeshBodyFeature11', "worldCollider": 'WorldCollider', "worldCenter": Tuple[float, float, float], "worldFriction": float, "worldRestitution": float, "worldMeta": Dict[str, Any], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_MeshBodyFeatureOptional = TypedDict("_MeshBodyFeatureOptional", {"polygons": List[List[float]], "normals": List[float], "uv": List[float], "sourceUv": List[float], "sourceMaterials": List['SourceMaterial'], "materialGroups": List['SourceMaterialGroup'], "source": '_MeshBodyFeature20', "worldCollider": 'WorldCollider', "worldCenter": Tuple[float, float, float], "worldFriction": float, "worldRestitution": float, "worldMeta": Dict[str, Any], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class MeshBodyFeature(_MeshBodyFeatureRequired, _MeshBodyFeatureOptional):
     pass
 
@@ -482,29 +587,29 @@ _MeshModifierFeatureOptional = TypedDict("_MeshModifierFeatureOptional", {"targe
 class MeshModifierFeature(_MeshModifierFeatureRequired, _MeshModifierFeatureOptional):
     pass
 
-__MeshModifierSpec12Required = TypedDict("__MeshModifierSpec12Required", {"kind": Literal["displace"], "distance": float})
-__MeshModifierSpec12Optional = TypedDict("__MeshModifierSpec12Optional", {"normalWeighting": Literal["angle", "area"]}, total=False)
-class _MeshModifierSpec12(__MeshModifierSpec12Required, __MeshModifierSpec12Optional):
+__MeshModifierSpec21Required = TypedDict("__MeshModifierSpec21Required", {"kind": Literal["displace"], "distance": float})
+__MeshModifierSpec21Optional = TypedDict("__MeshModifierSpec21Optional", {"normalWeighting": Literal["angle", "area"]}, total=False)
+class _MeshModifierSpec21(__MeshModifierSpec21Required, __MeshModifierSpec21Optional):
     pass
 
-__MeshModifierSpec13Required = TypedDict("__MeshModifierSpec13Required", {"kind": Literal["smooth"], "iterations": float, "factor": float})
-__MeshModifierSpec13Optional = TypedDict("__MeshModifierSpec13Optional", {"preserveBoundary": bool}, total=False)
-class _MeshModifierSpec13(__MeshModifierSpec13Required, __MeshModifierSpec13Optional):
+__MeshModifierSpec22Required = TypedDict("__MeshModifierSpec22Required", {"kind": Literal["smooth"], "iterations": float, "factor": float})
+__MeshModifierSpec22Optional = TypedDict("__MeshModifierSpec22Optional", {"preserveBoundary": bool}, total=False)
+class _MeshModifierSpec22(__MeshModifierSpec22Required, __MeshModifierSpec22Optional):
     pass
 
-__MeshModifierSpec14Required = TypedDict("__MeshModifierSpec14Required", {"kind": Literal["subdivide"], "levels": float})
-__MeshModifierSpec14Optional = TypedDict("__MeshModifierSpec14Optional", {"limitSurface": bool}, total=False)
-class _MeshModifierSpec14(__MeshModifierSpec14Required, __MeshModifierSpec14Optional):
+__MeshModifierSpec23Required = TypedDict("__MeshModifierSpec23Required", {"kind": Literal["subdivide"], "levels": float})
+__MeshModifierSpec23Optional = TypedDict("__MeshModifierSpec23Optional", {"limitSurface": bool}, total=False)
+class _MeshModifierSpec23(__MeshModifierSpec23Required, __MeshModifierSpec23Optional):
     pass
 
-__MeshModifierSpec15Required = TypedDict("__MeshModifierSpec15Required", {"kind": Literal["solidify"], "thickness": float})
-__MeshModifierSpec15Optional = TypedDict("__MeshModifierSpec15Optional", {"normalWeighting": Literal["angle", "area"]}, total=False)
-class _MeshModifierSpec15(__MeshModifierSpec15Required, __MeshModifierSpec15Optional):
+__MeshModifierSpec24Required = TypedDict("__MeshModifierSpec24Required", {"kind": Literal["solidify"], "thickness": float})
+__MeshModifierSpec24Optional = TypedDict("__MeshModifierSpec24Optional", {"normalWeighting": Literal["angle", "area"]}, total=False)
+class _MeshModifierSpec24(__MeshModifierSpec24Required, __MeshModifierSpec24Optional):
     pass
 
-__MeshModifierSpec16Required = TypedDict("__MeshModifierSpec16Required", {"kind": Literal["shrinkwrap"], "offset": float})
-__MeshModifierSpec16Optional = TypedDict("__MeshModifierSpec16Optional", {}, total=False)
-class _MeshModifierSpec16(__MeshModifierSpec16Required, __MeshModifierSpec16Optional):
+__MeshModifierSpec25Required = TypedDict("__MeshModifierSpec25Required", {"kind": Literal["shrinkwrap"], "offset": float})
+__MeshModifierSpec25Optional = TypedDict("__MeshModifierSpec25Optional", {}, total=False)
+class _MeshModifierSpec25(__MeshModifierSpec25Required, __MeshModifierSpec25Optional):
     pass
 
 _MirrorFeatureRequired = TypedDict("_MirrorFeatureRequired", {"type": Literal["mirror"], "plane": 'PlaneRef', "id": str, "name": str})
@@ -512,14 +617,14 @@ _MirrorFeatureOptional = TypedDict("_MirrorFeatureOptional", {"seedFeature": str
 class MirrorFeature(_MirrorFeatureRequired, _MirrorFeatureOptional):
     pass
 
-__MoleculeFeature17Required = TypedDict("__MoleculeFeature17Required", {})
-__MoleculeFeature17Optional = TypedDict("__MoleculeFeature17Optional", {"format": str, "fileId": str, "fileName": str, "title": str, "atomCount": float}, total=False)
-class _MoleculeFeature17(__MoleculeFeature17Required, __MoleculeFeature17Optional):
+__MoleculeFeature26Required = TypedDict("__MoleculeFeature26Required", {})
+__MoleculeFeature26Optional = TypedDict("__MoleculeFeature26Optional", {"format": str, "fileId": str, "fileName": str, "title": str, "atomCount": float}, total=False)
+class _MoleculeFeature26(__MoleculeFeature26Required, __MoleculeFeature26Optional):
     pass
 
 #: A **molecular structure** — atoms + bonds (+ optional periodic cell), the substrate for real molecular maps of cells, protein/DNA assemblies, and atomically-precise nano-engineering. Imported from the chemistry/crystallography format zoo (PDB, mmCIF, SDF/MOL, MOL2, XYZ, CIF). Kernel-free; rendered ball-and-stick / space-filling. Positions are in ÅNGSTRÖM (rendered scaled) — molecules live at a different scale than mm 3D, so the viewport scales atoms into view; we keep the true Å coordinates.
 _MoleculeFeatureRequired = TypedDict("_MoleculeFeatureRequired", {"type": Literal["molecule"], "positions": List[float], "elements": List[float], "bonds": List[float], "id": str, "name": str})
-_MoleculeFeatureOptional = TypedDict("_MoleculeFeatureOptional", {"bondOrders": List[float], "chains": List[float], "cell": Tuple[float, float, float, float, float, float], "representation": 'MoleculeRepresentation', "source": '_MoleculeFeature17', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_MoleculeFeatureOptional = TypedDict("_MoleculeFeatureOptional", {"bondOrders": List[float], "chains": List[float], "cell": Tuple[float, float, float, float, float, float], "representation": 'MoleculeRepresentation', "source": '_MoleculeFeature26', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class MoleculeFeature(_MoleculeFeatureRequired, _MoleculeFeatureOptional):
     pass
 
@@ -533,6 +638,12 @@ class MoleculeRepresentation(_MoleculeRepresentationRequired, _MoleculeRepresent
 _MountingHoleRequired = TypedDict("_MountingHoleRequired", {"at": 'Vec3', "diameter": float})
 _MountingHoleOptional = TypedDict("_MountingHoleOptional", {"axis": 'Vec3', "depth": float}, total=False)
 class MountingHole(_MountingHoleRequired, _MountingHoleOptional):
+    pass
+
+#: A free note with an optional leader line from an anchor to the text box.
+_NoteRequired = TypedDict("_NoteRequired", {"type": Literal["note"], "text": str, "anchor": 'Anchor', "id": str})
+_NoteOptional = TypedDict("_NoteOptional", {"leaderTo": 'Vec3', "property": str, "lineNames": List[str], "oneItem": bool, "label": str, "textAt": 'Vec3', "visible": bool}, total=False)
+class Note(_NoteRequired, _NoteOptional):
     pass
 
 #: The NURBS half of a curve — degree, knots, weights. Stored verbatim as a sketch spline's `nurbs`.
@@ -617,19 +728,19 @@ _PlanarSurfaceOptional = TypedDict("_PlanarSurfaceOptional", {}, total=False)
 class PlanarSurface(_PlanarSurfaceRequired, _PlanarSurfaceOptional):
     pass
 
-__PlaneRef18Required = TypedDict("__PlaneRef18Required", {"type": Literal["datum"], "plane": str})
-__PlaneRef18Optional = TypedDict("__PlaneRef18Optional", {}, total=False)
-class _PlaneRef18(__PlaneRef18Required, __PlaneRef18Optional):
+__PlaneRef27Required = TypedDict("__PlaneRef27Required", {"type": Literal["datum"], "plane": str})
+__PlaneRef27Optional = TypedDict("__PlaneRef27Optional", {}, total=False)
+class _PlaneRef27(__PlaneRef27Required, __PlaneRef27Optional):
     pass
 
-__PlaneRef19Required = TypedDict("__PlaneRef19Required", {"type": Literal["face"], "ref": 'TopoRef'})
-__PlaneRef19Optional = TypedDict("__PlaneRef19Optional", {}, total=False)
-class _PlaneRef19(__PlaneRef19Required, __PlaneRef19Optional):
+__PlaneRef28Required = TypedDict("__PlaneRef28Required", {"type": Literal["face"], "ref": 'TopoRef'})
+__PlaneRef28Optional = TypedDict("__PlaneRef28Optional", {}, total=False)
+class _PlaneRef28(__PlaneRef28Required, __PlaneRef28Optional):
     pass
 
-__PlaneRef20Required = TypedDict("__PlaneRef20Required", {"type": Literal["unwrap"], "domain": 'UnwrapDomain'})
-__PlaneRef20Optional = TypedDict("__PlaneRef20Optional", {}, total=False)
-class _PlaneRef20(__PlaneRef20Required, __PlaneRef20Optional):
+__PlaneRef29Required = TypedDict("__PlaneRef29Required", {"type": Literal["unwrap"], "domain": 'UnwrapDomain'})
+__PlaneRef29Optional = TypedDict("__PlaneRef29Optional", {}, total=False)
+class _PlaneRef29(__PlaneRef29Required, __PlaneRef29Optional):
     pass
 
 #: A PLATED through-hole — a terminal producer, and a DIFFERENT NODE from the mechanical `hole` it is routinely confused with.
@@ -638,14 +749,14 @@ _PlatedHoleFeatureOptional = TypedDict("_PlatedHoleFeatureOptional", {"material"
 class PlatedHoleFeature(_PlatedHoleFeatureRequired, _PlatedHoleFeatureOptional):
     pass
 
-__PointCloudFeature21Required = TypedDict("__PointCloudFeature21Required", {})
-__PointCloudFeature21Optional = TypedDict("__PointCloudFeature21Optional", {"format": str, "fileId": str, "fileName": str}, total=False)
-class _PointCloudFeature21(__PointCloudFeature21Required, __PointCloudFeature21Optional):
+__PointCloudFeature30Required = TypedDict("__PointCloudFeature30Required", {})
+__PointCloudFeature30Optional = TypedDict("__PointCloudFeature30Optional", {"format": str, "fileId": str, "fileName": str}, total=False)
+class _PointCloudFeature30(__PointCloudFeature30Required, __PointCloudFeature30Optional):
     pass
 
 #: A raw point cloud — scan points, SWC point sets, or a splat stripped of covariance.
 _PointCloudFeatureRequired = TypedDict("_PointCloudFeatureRequired", {"type": Literal["pointCloud"], "positions": List[float], "id": str, "name": str})
-_PointCloudFeatureOptional = TypedDict("_PointCloudFeatureOptional", {"colors": List[float], "pointSize": float, "source": '_PointCloudFeature21', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_PointCloudFeatureOptional = TypedDict("_PointCloudFeatureOptional", {"colors": List[float], "pointSize": float, "source": '_PointCloudFeature30', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class PointCloudFeature(_PointCloudFeatureRequired, _PointCloudFeatureOptional):
     pass
 
@@ -683,6 +794,17 @@ class ProductItem(_ProductItemRequired, _ProductItemOptional):
 _ProfileRefRequired = TypedDict("_ProfileRefRequired", {"sketch": str})
 _ProfileRefOptional = TypedDict("_ProfileRefOptional", {"regions": List[float]}, total=False)
 class ProfileRef(_ProfileRefRequired, _ProfileRefOptional):
+    pass
+
+__RadialDimension31Required = TypedDict("__RadialDimension31Required", {"zone": str, "source": str})
+__RadialDimension31Optional = TypedDict("__RadialDimension31Optional", {"form": str, "grade": str}, total=False)
+class _RadialDimension31(__RadialDimension31Required, __RadialDimension31Optional):
+    pass
+
+#: Diameter (Ø) or radius (R) of a circular feature — center + a rim point, or an explicit value.
+_RadialDimensionRequired = TypedDict("_RadialDimensionRequired", {"type": Literal["radialDimension"], "measure": Literal["radius", "diameter"], "center": 'Anchor', "id": str})
+_RadialDimensionOptional = TypedDict("_RadialDimensionOptional", {"spherical": bool, "of": 'Anchor', "datum": str, "rim": 'Anchor', "value": float, "label": str, "textAt": 'Vec3', "visible": bool, "tolerance": 'DimensionTolerance', "limits": bool, "fit": '_RadialDimension31', "notes": List[str], "modifiers": List[str], "noValue": bool, "formats": 'ValueFormats'}, total=False)
+class RadialDimension(_RadialDimensionRequired, _RadialDimensionOptional):
     pass
 
 _RevolveFeatureRequired = TypedDict("_RevolveFeatureRequired", {"type": Literal["revolve"], "profile": 'ProfileRef', "axis": 'AxisRef', "id": str, "name": str})
@@ -746,14 +868,25 @@ _ShippingOptional = TypedDict("_ShippingOptional", {"hsCode": str, "origin": str
 class Shipping(_ShippingRequired, _ShippingOptional):
     pass
 
-__SkeletonFeature22Required = TypedDict("__SkeletonFeature22Required", {})
-__SkeletonFeature22Optional = TypedDict("__SkeletonFeature22Optional", {"format": str, "fileId": str, "fileName": str}, total=False)
-class _SkeletonFeature22(__SkeletonFeature22Required, __SkeletonFeature22Optional):
+__SizeDimension32Required = TypedDict("__SizeDimension32Required", {"zone": str, "source": str})
+__SizeDimension32Optional = TypedDict("__SizeDimension32Optional", {"form": str, "grade": str}, total=False)
+class _SizeDimension32(__SizeDimension32Required, __SizeDimension32Optional):
+    pass
+
+#: A size of a feature that is no diameter or radius: a thickness, a curve's length, a cone's angle, a torus's diameters (AP242 DIMENSIONAL_SIZE and ANGULAR_SIZE).
+_SizeDimensionRequired = TypedDict("_SizeDimensionRequired", {"type": Literal["sizeDimension"], "measure": str, "of": 'Anchor', "value": float, "id": str})
+_SizeDimensionOptional = TypedDict("_SizeDimensionOptional", {"angleSelection": Literal["equal", "large", "small"], "datum": str, "label": str, "textAt": 'Vec3', "visible": bool, "tolerance": 'DimensionTolerance', "limits": bool, "fit": '_SizeDimension32', "notes": List[str], "modifiers": List[str], "noValue": bool, "formats": 'ValueFormats'}, total=False)
+class SizeDimension(_SizeDimensionRequired, _SizeDimensionOptional):
+    pass
+
+__SkeletonFeature33Required = TypedDict("__SkeletonFeature33Required", {})
+__SkeletonFeature33Optional = TypedDict("__SkeletonFeature33Optional", {"format": str, "fileId": str, "fileName": str}, total=False)
+class _SkeletonFeature33(__SkeletonFeature33Required, __SkeletonFeature33Optional):
     pass
 
 #: A **skeleton** — a tree/graph of nodes with radii, the native representation for neuronal & vascular morphology (SWC: soma/axon/dendrite trees) and connectome traces. Rendered as radius-varying tubes.
 _SkeletonFeatureRequired = TypedDict("_SkeletonFeatureRequired", {"type": Literal["skeleton"], "positions": List[float], "parents": List[float], "id": str, "name": str})
-_SkeletonFeatureOptional = TypedDict("_SkeletonFeatureOptional", {"radii": List[float], "nodeTypes": List[float], "source": '_SkeletonFeature22', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_SkeletonFeatureOptional = TypedDict("_SkeletonFeatureOptional", {"radii": List[float], "nodeTypes": List[float], "source": '_SkeletonFeature33', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SkeletonFeature(_SkeletonFeatureRequired, _SkeletonFeatureOptional):
     pass
 
@@ -778,29 +911,29 @@ _SketchPinOptional = TypedDict("_SketchPinOptional", {"offset": Tuple[float, flo
 class SketchPin(_SketchPinRequired, _SketchPinOptional):
     pass
 
-__SketchPinTarget23Required = TypedDict("__SketchPinTarget23Required", {"kind": Literal["body"], "feature": str})
-__SketchPinTarget23Optional = TypedDict("__SketchPinTarget23Optional", {}, total=False)
-class _SketchPinTarget23(__SketchPinTarget23Required, __SketchPinTarget23Optional):
+__SketchPinTarget34Required = TypedDict("__SketchPinTarget34Required", {"kind": Literal["body"], "feature": str})
+__SketchPinTarget34Optional = TypedDict("__SketchPinTarget34Optional", {}, total=False)
+class _SketchPinTarget34(__SketchPinTarget34Required, __SketchPinTarget34Optional):
     pass
 
-__SketchPinTarget24Required = TypedDict("__SketchPinTarget24Required", {"kind": Literal["face"], "ref": 'TopoRef'})
-__SketchPinTarget24Optional = TypedDict("__SketchPinTarget24Optional", {}, total=False)
-class _SketchPinTarget24(__SketchPinTarget24Required, __SketchPinTarget24Optional):
+__SketchPinTarget35Required = TypedDict("__SketchPinTarget35Required", {"kind": Literal["face"], "ref": 'TopoRef'})
+__SketchPinTarget35Optional = TypedDict("__SketchPinTarget35Optional", {}, total=False)
+class _SketchPinTarget35(__SketchPinTarget35Required, __SketchPinTarget35Optional):
     pass
 
-__SketchPinTarget25Required = TypedDict("__SketchPinTarget25Required", {"kind": Literal["edge"], "ref": 'TopoRef'})
-__SketchPinTarget25Optional = TypedDict("__SketchPinTarget25Optional", {}, total=False)
-class _SketchPinTarget25(__SketchPinTarget25Required, __SketchPinTarget25Optional):
+__SketchPinTarget36Required = TypedDict("__SketchPinTarget36Required", {"kind": Literal["edge"], "ref": 'TopoRef'})
+__SketchPinTarget36Optional = TypedDict("__SketchPinTarget36Optional", {}, total=False)
+class _SketchPinTarget36(__SketchPinTarget36Required, __SketchPinTarget36Optional):
     pass
 
-__SketchPinTarget26Required = TypedDict("__SketchPinTarget26Required", {"kind": Literal["vertex"], "ref": 'TopoRef'})
-__SketchPinTarget26Optional = TypedDict("__SketchPinTarget26Optional", {}, total=False)
-class _SketchPinTarget26(__SketchPinTarget26Required, __SketchPinTarget26Optional):
+__SketchPinTarget37Required = TypedDict("__SketchPinTarget37Required", {"kind": Literal["vertex"], "ref": 'TopoRef'})
+__SketchPinTarget37Optional = TypedDict("__SketchPinTarget37Optional", {}, total=False)
+class _SketchPinTarget37(__SketchPinTarget37Required, __SketchPinTarget37Optional):
     pass
 
-__SketchPinTarget27Required = TypedDict("__SketchPinTarget27Required", {"kind": Literal["pad"], "pad": str, "producer": str})
-__SketchPinTarget27Optional = TypedDict("__SketchPinTarget27Optional", {}, total=False)
-class _SketchPinTarget27(__SketchPinTarget27Required, __SketchPinTarget27Optional):
+__SketchPinTarget38Required = TypedDict("__SketchPinTarget38Required", {"kind": Literal["pad"], "pad": str, "producer": str})
+__SketchPinTarget38Optional = TypedDict("__SketchPinTarget38Optional", {}, total=False)
+class _SketchPinTarget38(__SketchPinTarget38Required, __SketchPinTarget38Optional):
     pass
 
 _SketchPointRequired = TypedDict("_SketchPointRequired", {"id": str, "x": float, "y": float})
@@ -814,43 +947,43 @@ _SketchProjectionOptional = TypedDict("_SketchProjectionOptional", {"feature": s
 class SketchProjection(_SketchProjectionRequired, _SketchProjectionOptional):
     pass
 
-__SketchSegment28Required = TypedDict("__SketchSegment28Required", {"id": str, "type": Literal["line"], "a": str, "b": str})
-__SketchSegment28Optional = TypedDict("__SketchSegment28Optional", {"construction": bool, "from": str}, total=False)
-class _SketchSegment28(__SketchSegment28Required, __SketchSegment28Optional):
+__SketchSegment39Required = TypedDict("__SketchSegment39Required", {"id": str, "type": Literal["line"], "a": str, "b": str})
+__SketchSegment39Optional = TypedDict("__SketchSegment39Optional", {"construction": bool, "from": str}, total=False)
+class _SketchSegment39(__SketchSegment39Required, __SketchSegment39Optional):
     pass
 
-__SketchSegment29Required = TypedDict("__SketchSegment29Required", {"id": str, "type": Literal["circle"], "center": str, "radius": float})
-__SketchSegment29Optional = TypedDict("__SketchSegment29Optional", {"construction": bool, "from": str}, total=False)
-class _SketchSegment29(__SketchSegment29Required, __SketchSegment29Optional):
+__SketchSegment40Required = TypedDict("__SketchSegment40Required", {"id": str, "type": Literal["circle"], "center": str, "radius": float})
+__SketchSegment40Optional = TypedDict("__SketchSegment40Optional", {"construction": bool, "from": str}, total=False)
+class _SketchSegment40(__SketchSegment40Required, __SketchSegment40Optional):
     pass
 
-__SketchSegment30Required = TypedDict("__SketchSegment30Required", {"id": str, "type": Literal["arc"], "center": str, "start": str, "end": str, "radius": float})
-__SketchSegment30Optional = TypedDict("__SketchSegment30Optional", {"construction": bool, "from": str}, total=False)
-class _SketchSegment30(__SketchSegment30Required, __SketchSegment30Optional):
+__SketchSegment41Required = TypedDict("__SketchSegment41Required", {"id": str, "type": Literal["arc"], "center": str, "start": str, "end": str, "radius": float})
+__SketchSegment41Optional = TypedDict("__SketchSegment41Optional", {"construction": bool, "from": str}, total=False)
+class _SketchSegment41(__SketchSegment41Required, __SketchSegment41Optional):
     pass
 
-__SketchSegment31Required = TypedDict("__SketchSegment31Required", {"id": str, "type": Literal["spline"], "points": List[str]})
-__SketchSegment31Optional = TypedDict("__SketchSegment31Optional", {"closed": bool, "construction": bool, "nurbs": 'NurbsSpec', "from": str}, total=False)
-class _SketchSegment31(__SketchSegment31Required, __SketchSegment31Optional):
+__SketchSegment42Required = TypedDict("__SketchSegment42Required", {"id": str, "type": Literal["spline"], "points": List[str]})
+__SketchSegment42Optional = TypedDict("__SketchSegment42Optional", {"closed": bool, "construction": bool, "nurbs": 'NurbsSpec', "from": str}, total=False)
+class _SketchSegment42(__SketchSegment42Required, __SketchSegment42Optional):
     pass
 
-__SketchSegment32Required = TypedDict("__SketchSegment32Required", {"id": str, "type": Literal["ellipse"], "center": str, "focus": str, "minorRadius": float})
-__SketchSegment32Optional = TypedDict("__SketchSegment32Optional", {"construction": bool, "from": str}, total=False)
-class _SketchSegment32(__SketchSegment32Required, __SketchSegment32Optional):
+__SketchSegment43Required = TypedDict("__SketchSegment43Required", {"id": str, "type": Literal["ellipse"], "center": str, "focus": str, "minorRadius": float})
+__SketchSegment43Optional = TypedDict("__SketchSegment43Optional", {"construction": bool, "from": str}, total=False)
+class _SketchSegment43(__SketchSegment43Required, __SketchSegment43Optional):
     pass
 
-__SketchSegment33Required = TypedDict("__SketchSegment33Required", {"id": str, "type": Literal["ellipseArc"], "center": str, "focus": str, "minorRadius": float, "start": str, "end": str})
-__SketchSegment33Optional = TypedDict("__SketchSegment33Optional", {"construction": bool, "from": str}, total=False)
-class _SketchSegment33(__SketchSegment33Required, __SketchSegment33Optional):
+__SketchSegment44Required = TypedDict("__SketchSegment44Required", {"id": str, "type": Literal["ellipseArc"], "center": str, "focus": str, "minorRadius": float, "start": str, "end": str})
+__SketchSegment44Optional = TypedDict("__SketchSegment44Optional", {"construction": bool, "from": str}, total=False)
+class _SketchSegment44(__SketchSegment44Required, __SketchSegment44Optional):
     pass
 
-__SourceCompressedTexture34Required = TypedDict("__SourceCompressedTexture34Required", {"width": float, "height": float, "data": str})
-__SourceCompressedTexture34Optional = TypedDict("__SourceCompressedTexture34Optional", {}, total=False)
-class _SourceCompressedTexture34(__SourceCompressedTexture34Required, __SourceCompressedTexture34Optional):
+__SourceCompressedTexture45Required = TypedDict("__SourceCompressedTexture45Required", {"width": float, "height": float, "data": str})
+__SourceCompressedTexture45Optional = TypedDict("__SourceCompressedTexture45Optional", {}, total=False)
+class _SourceCompressedTexture45(__SourceCompressedTexture45Required, __SourceCompressedTexture45Optional):
     pass
 
 #: GPU-compressed mip payload retained from KTX2 decoding.
-_SourceCompressedTextureRequired = TypedDict("_SourceCompressedTextureRequired", {"kind": Literal["compressed"], "width": float, "height": float, "format": float, "type": float, "mipmaps": List['_SourceCompressedTexture34']})
+_SourceCompressedTextureRequired = TypedDict("_SourceCompressedTextureRequired", {"kind": Literal["compressed"], "width": float, "height": float, "format": float, "type": float, "mipmaps": List['_SourceCompressedTexture45']})
 _SourceCompressedTextureOptional = TypedDict("_SourceCompressedTextureOptional", {"name": str, "colorSpace": str, "channel": float, "wrapS": float, "wrapT": float, "magFilter": float, "minFilter": float, "anisotropy": float, "flipY": bool, "transform": 'SourceTextureTransform'}, total=False)
 class SourceCompressedTexture(_SourceCompressedTextureRequired, _SourceCompressedTextureOptional):
     pass
@@ -867,13 +1000,13 @@ _SourceImageTextureOptional = TypedDict("_SourceImageTextureOptional", {"name": 
 class SourceImageTexture(_SourceImageTextureRequired, _SourceImageTextureOptional):
     pass
 
-__SourceMaterial35Required = TypedDict("__SourceMaterial35Required", {})
-__SourceMaterial35Optional = TypedDict("__SourceMaterial35Optional", {"map": 'SourceTexture', "normalMap": 'SourceTexture', "roughnessMap": 'SourceTexture', "metalnessMap": 'SourceTexture', "aoMap": 'SourceTexture', "emissiveMap": 'SourceTexture', "alphaMap": 'SourceTexture', "bumpMap": 'SourceTexture', "displacementMap": 'SourceTexture', "specularMap": 'SourceTexture', "specularColorMap": 'SourceTexture', "clearcoatMap": 'SourceTexture', "clearcoatNormalMap": 'SourceTexture', "clearcoatRoughnessMap": 'SourceTexture'}, total=False)
-class _SourceMaterial35(__SourceMaterial35Required, __SourceMaterial35Optional):
+__SourceMaterial46Required = TypedDict("__SourceMaterial46Required", {})
+__SourceMaterial46Optional = TypedDict("__SourceMaterial46Optional", {"map": 'SourceTexture', "normalMap": 'SourceTexture', "roughnessMap": 'SourceTexture', "metalnessMap": 'SourceTexture', "aoMap": 'SourceTexture', "emissiveMap": 'SourceTexture', "alphaMap": 'SourceTexture', "bumpMap": 'SourceTexture', "displacementMap": 'SourceTexture', "specularMap": 'SourceTexture', "specularColorMap": 'SourceTexture', "clearcoatMap": 'SourceTexture', "clearcoatNormalMap": 'SourceTexture', "clearcoatRoughnessMap": 'SourceTexture'}, total=False)
+class _SourceMaterial46(__SourceMaterial46Required, __SourceMaterial46Optional):
     pass
 
 _SourceMaterialRequired = TypedDict("_SourceMaterialRequired", {"kind": Literal["basic", "phong", "standard", "physical"]})
-_SourceMaterialOptional = TypedDict("_SourceMaterialOptional", {"name": str, "color": str, "emissive": str, "metalness": float, "roughness": float, "opacity": float, "transparent": bool, "alphaTest": float, "side": float, "flatShading": bool, "depthWrite": bool, "vertexColors": bool, "ior": float, "clearcoat": float, "clearcoatRoughness": float, "specularIntensity": float, "shininess": float, "bumpScale": float, "displacementScale": float, "normalScale": Tuple[float, float], "textures": '_SourceMaterial35'}, total=False)
+_SourceMaterialOptional = TypedDict("_SourceMaterialOptional", {"name": str, "color": str, "emissive": str, "metalness": float, "roughness": float, "opacity": float, "transparent": bool, "alphaTest": float, "side": float, "flatShading": bool, "depthWrite": bool, "vertexColors": bool, "ior": float, "clearcoat": float, "clearcoatRoughness": float, "specularIntensity": float, "shininess": float, "bumpScale": float, "displacementScale": float, "normalScale": Tuple[float, float], "textures": '_SourceMaterial46'}, total=False)
 class SourceMaterial(_SourceMaterialRequired, _SourceMaterialOptional):
     pass
 
@@ -922,10 +1055,41 @@ _SubdivBodyFeatureOptional = TypedDict("_SubdivBodyFeatureOptional", {"operation
 class SubdivBodyFeature(_SubdivBodyFeatureRequired, _SubdivBodyFeatureOptional):
     pass
 
+__SupplementalShape47Required = TypedDict("__SupplementalShape47Required", {"kind": Literal["point"], "at": 'Vec3'})
+__SupplementalShape47Optional = TypedDict("__SupplementalShape47Optional", {}, total=False)
+class _SupplementalShape47(__SupplementalShape47Required, __SupplementalShape47Optional):
+    pass
+
+__SupplementalShape48Required = TypedDict("__SupplementalShape48Required", {"kind": Literal["line"], "from": 'Vec3', "to": 'Vec3'})
+__SupplementalShape48Optional = TypedDict("__SupplementalShape48Optional", {}, total=False)
+class _SupplementalShape48(__SupplementalShape48Required, __SupplementalShape48Optional):
+    pass
+
+__SupplementalShape49Required = TypedDict("__SupplementalShape49Required", {"kind": Literal["circle"], "center": 'Vec3', "normal": 'Vec3', "radius": float})
+__SupplementalShape49Optional = TypedDict("__SupplementalShape49Optional", {"from": 'Vec3', "to": 'Vec3'}, total=False)
+class _SupplementalShape49(__SupplementalShape49Required, __SupplementalShape49Optional):
+    pass
+
+__SupplementalShape50Required = TypedDict("__SupplementalShape50Required", {"kind": Literal["curves"], "of": List['SupplementalShape']})
+__SupplementalShape50Optional = TypedDict("__SupplementalShape50Optional", {}, total=False)
+class _SupplementalShape50(__SupplementalShape50Required, __SupplementalShape50Optional):
+    pass
+
+__SupplementalShape51Required = TypedDict("__SupplementalShape51Required", {"kind": Literal["axes"], "origin": 'Vec3', "axis": 'Vec3', "refDirection": 'Vec3'})
+__SupplementalShape51Optional = TypedDict("__SupplementalShape51Optional", {}, total=False)
+class _SupplementalShape51(__SupplementalShape51Required, __SupplementalShape51Optional):
+    pass
+
 #: WHO SELLS A PART, AND ON WHAT TERMS: one supplier's offer (docs/formats.md § logistics). The quantity terms (`stock`, `moq`, `orderMultiple`, `leadTimeDays`, `priceBreaks`) are the ones a component catalog's offer states. A price or a stock says where and when it was read (`source`, `date`).
 _SupplierOfferRequired = TypedDict("_SupplierOfferRequired", {"name": str})
 _SupplierOfferOptional = TypedDict("_SupplierOfferOptional", {"sku": str, "url": str, "currency": str, "priceBreaks": List['PriceBreak'], "moq": int, "orderMultiple": int, "pack": float, "leadTimeDays": float, "leadTimeDaysHigh": float, "stock": int, "preorder": int, "pool": str, "incoming": List['IncomingLot'], "kind": Literal["stock", "quote", "listing", "broker"], "confidence": Literal["firm", "indication"], "samplesDays": float, "tooling": Union[float, Literal["unknown"]], "service": str, "via": str, "source": str, "date": str, "dates": 'OfferDates', "supplier": str}, total=False)
 class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
+    pass
+
+#: A surface-finish (roughness) symbol on a face.
+_SurfaceFinishRequired = TypedDict("_SurfaceFinishRequired", {"type": Literal["surfaceFinish"], "anchor": 'Anchor', "id": str})
+_SurfaceFinishOptional = TypedDict("_SurfaceFinishOptional", {"roughness": float, "requirement": Literal["any", "required", "prohibited"], "process": str, "label": str, "textAt": 'Vec3', "visible": bool}, total=False)
+class SurfaceFinish(_SurfaceFinishRequired, _SurfaceFinishOptional):
     pass
 
 #: A surface's small relief, drawn as a bump and never built as geometry: moulded grain (a VDI 3400 texture), bead blasting, a brushed finish, a printer's layer lines.
@@ -990,7 +1154,7 @@ class TopoSelector(_TopoSelectorRequired, _TopoSelectorOptional):
     pass
 
 _TopoSignatureRequired = TypedDict("_TopoSignatureRequired", {"point": 'Vec3'})
-_TopoSignatureOptional = TypedDict("_TopoSignatureOptional", {"normal": 'Vec3', "area": float, "length": float, "dir": 'Vec3'}, total=False)
+_TopoSignatureOptional = TypedDict("_TopoSignatureOptional", {"normal": 'Vec3', "area": float, "box": 'TopoBox', "length": float, "dir": 'Vec3'}, total=False)
 class TopoSignature(_TopoSignatureRequired, _TopoSignatureOptional):
     pass
 
@@ -1015,40 +1179,45 @@ _UnwrapChartOptional = TypedDict("_UnwrapChartOptional", {"source": 'TopoRef', "
 class UnwrapChart(_UnwrapChartRequired, _UnwrapChartOptional):
     pass
 
-__UnwrapDomain36Required = TypedDict("__UnwrapDomain36Required", {"chart": str, "residual": float, "tolerance": float})
-__UnwrapDomain36Optional = TypedDict("__UnwrapDomain36Optional", {}, total=False)
-class _UnwrapDomain36(__UnwrapDomain36Required, __UnwrapDomain36Optional):
+__UnwrapDomain52Required = TypedDict("__UnwrapDomain52Required", {"chart": str, "residual": float, "tolerance": float})
+__UnwrapDomain52Optional = TypedDict("__UnwrapDomain52Optional", {}, total=False)
+class _UnwrapDomain52(__UnwrapDomain52Required, __UnwrapDomain52Optional):
     pass
 
-_UnwrapDomainRequired = TypedDict("_UnwrapDomainRequired", {"id": str, "charts": List['UnwrapChart'], "anchor": str, "stitches": List['UnwrapIdentification'], "seams": List['UnwrapIdentification'], "isometric": bool, "developability": List['DevelopabilityVerdict'], "distortion": List['ChartDistortionSummary'], "fits": List['_UnwrapDomain36'], "bindTolerance": float, "resolution": float})
+_UnwrapDomainRequired = TypedDict("_UnwrapDomainRequired", {"id": str, "charts": List['UnwrapChart'], "anchor": str, "stitches": List['UnwrapIdentification'], "seams": List['UnwrapIdentification'], "isometric": bool, "developability": List['DevelopabilityVerdict'], "distortion": List['ChartDistortionSummary'], "fits": List['_UnwrapDomain52'], "bindTolerance": float, "resolution": float})
 _UnwrapDomainOptional = TypedDict("_UnwrapDomainOptional", {}, total=False)
 class UnwrapDomain(_UnwrapDomainRequired, _UnwrapDomainOptional):
     pass
 
-__UnwrapIdentification37Required = TypedDict("__UnwrapIdentification37Required", {"chart": str, "edge": 'ChartEdge'})
-__UnwrapIdentification37Optional = TypedDict("__UnwrapIdentification37Optional", {}, total=False)
-class _UnwrapIdentification37(__UnwrapIdentification37Required, __UnwrapIdentification37Optional):
+__UnwrapIdentification53Required = TypedDict("__UnwrapIdentification53Required", {"chart": str, "edge": 'ChartEdge'})
+__UnwrapIdentification53Optional = TypedDict("__UnwrapIdentification53Optional", {}, total=False)
+class _UnwrapIdentification53(__UnwrapIdentification53Required, __UnwrapIdentification53Optional):
     pass
 
-__UnwrapIdentification38Required = TypedDict("__UnwrapIdentification38Required", {"chart": str, "edge": 'ChartEdge'})
-__UnwrapIdentification38Optional = TypedDict("__UnwrapIdentification38Optional", {}, total=False)
-class _UnwrapIdentification38(__UnwrapIdentification38Required, __UnwrapIdentification38Optional):
+__UnwrapIdentification54Required = TypedDict("__UnwrapIdentification54Required", {"chart": str, "edge": 'ChartEdge'})
+__UnwrapIdentification54Optional = TypedDict("__UnwrapIdentification54Optional", {}, total=False)
+class _UnwrapIdentification54(__UnwrapIdentification54Required, __UnwrapIdentification54Optional):
     pass
 
 #: "These two chart edges are the same curve on the part." The atlas's only authored relation.
-_UnwrapIdentificationRequired = TypedDict("_UnwrapIdentificationRequired", {"id": str, "a": '_UnwrapIdentification37', "b": '_UnwrapIdentification38'})
+_UnwrapIdentificationRequired = TypedDict("_UnwrapIdentificationRequired", {"id": str, "a": '_UnwrapIdentification53', "b": '_UnwrapIdentification54'})
 _UnwrapIdentificationOptional = TypedDict("_UnwrapIdentificationOptional", {"label": str}, total=False)
 class UnwrapIdentification(_UnwrapIdentificationRequired, _UnwrapIdentificationOptional):
     pass
 
-__VolumeFeature39Required = TypedDict("__VolumeFeature39Required", {})
-__VolumeFeature39Optional = TypedDict("__VolumeFeature39Optional", {"format": str, "fileId": str, "fileName": str, "kind": Literal["scalar", "label"]}, total=False)
-class _VolumeFeature39(__VolumeFeature39Required, __VolumeFeature39Optional):
+__ValueFormats55Required = TypedDict("__ValueFormats55Required", {})
+__ValueFormats55Optional = TypedDict("__ValueFormats55Optional", {"format": str, "qualifier": str}, total=False)
+class _ValueFormats55(__ValueFormats55Required, __ValueFormats55Optional):
+    pass
+
+__VolumeFeature56Required = TypedDict("__VolumeFeature56Required", {})
+__VolumeFeature56Optional = TypedDict("__VolumeFeature56Optional", {"format": str, "fileId": str, "fileName": str, "kind": Literal["scalar", "label"]}, total=False)
+class _VolumeFeature56(__VolumeFeature56Required, __VolumeFeature56Optional):
     pass
 
 #: A **scalar/label voxel volume** — CT/MRI/microscopy/segmentation grids (NIfTI/NRRD/DICOM). The field is normalized 0..1 and downsampled to a display-friendly grid on import (large clinical volumes don't fit a JSON doc verbatim). Rendered as three orthogonal MPR slice planes or a marching-cubes isosurface.
 _VolumeFeatureRequired = TypedDict("_VolumeFeatureRequired", {"type": Literal["volume"], "dims": Tuple[float, float, float], "spacing": Tuple[float, float, float], "data": List[float], "id": str, "name": str})
-_VolumeFeatureOptional = TypedDict("_VolumeFeatureOptional", {"origin": 'Vec3', "render": Literal["slices", "iso"], "iso": float, "colormap": str, "source": '_VolumeFeature39', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_VolumeFeatureOptional = TypedDict("_VolumeFeatureOptional", {"origin": 'Vec3', "render": Literal["slices", "iso"], "iso": float, "colormap": str, "source": '_VolumeFeature56', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class VolumeFeature(_VolumeFeatureRequired, _VolumeFeatureOptional):
     pass
 
@@ -1147,14 +1316,14 @@ _ImportPropsOptional = TypedDict("_ImportPropsOptional", {"operation": 'BooleanM
 class ImportProps(_ImportPropsRequired, _ImportPropsOptional):
     pass
 
-__ExternalPartProps40Required = TypedDict("__ExternalPartProps40Required", {})
-__ExternalPartProps40Optional = TypedDict("__ExternalPartProps40Optional", {"from": 'RodEnd', "to": 'RodEnd'}, total=False)
-class _ExternalPartProps40(__ExternalPartProps40Required, __ExternalPartProps40Optional):
+__ExternalPartProps57Required = TypedDict("__ExternalPartProps57Required", {})
+__ExternalPartProps57Optional = TypedDict("__ExternalPartProps57Optional", {"from": 'RodEnd', "to": 'RodEnd'}, total=False)
+class _ExternalPartProps57(__ExternalPartProps57Required, __ExternalPartProps57Optional):
     pass
 
 #: The keywords of externalPart(…): the ExternalPartRef fields, in snake_case.
 _ExternalPartPropsRequired = TypedDict("_ExternalPartPropsRequired", {"id": str})
-_ExternalPartPropsOptional = TypedDict("_ExternalPartPropsOptional", {"file_id": str, "path": str, "file_name": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx", "pcb.jsx", "pcb.py", "pcb.rs"], "unit_scale_mm": float, "placement": 'Placement', "component": str, "local_placement": 'Placement', "footprint": 'ComponentFootprint', "omit": List[str], "ends": Dict[str, '_ExternalPartProps40'], "moves": List['PlacedMove'], "inputs": Dict[str, float], "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_ExternalPartPropsOptional = TypedDict("_ExternalPartPropsOptional", {"file_id": str, "path": str, "file_name": str, "importer": Literal["step", "iges", "3d", "wrl", "glb", "gltf", "obj", "stl", "ply", "3mf", "fbx", "dae", "usd", "kicad_pcb", "pcb.tsx", "pcb.jsx", "pcb.py", "pcb.rs"], "unit_scale_mm": float, "placement": 'Placement', "component": str, "local_placement": 'Placement', "footprint": 'ComponentFootprint', "omit": List[str], "ends": Dict[str, '_ExternalPartProps57'], "moves": List['PlacedMove'], "inputs": Dict[str, float], "operation": 'BooleanMode', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class ExternalPartProps(_ExternalPartPropsRequired, _ExternalPartPropsOptional):
     pass
 
@@ -1332,14 +1501,14 @@ _MeshModifierPropsOptional = TypedDict("_MeshModifierPropsOptional", {"target": 
 class MeshModifierProps(_MeshModifierPropsRequired, _MeshModifierPropsOptional):
     pass
 
-__MeshBodyProps41Required = TypedDict("__MeshBodyProps41Required", {})
-__MeshBodyProps41Optional = TypedDict("__MeshBodyProps41Optional", {"prompt": str, "expert": str, "generationId": str, "fileId": str, "fileName": str}, total=False)
-class _MeshBodyProps41(__MeshBodyProps41Required, __MeshBodyProps41Optional):
+__MeshBodyProps58Required = TypedDict("__MeshBodyProps58Required", {})
+__MeshBodyProps58Optional = TypedDict("__MeshBodyProps58Optional", {"prompt": str, "expert": str, "generationId": str, "fileId": str, "fileName": str}, total=False)
+class _MeshBodyProps58(__MeshBodyProps58Required, __MeshBodyProps58Optional):
     pass
 
 #: The keywords of meshBody(…): the MeshBodyFeature fields, in snake_case.
 _MeshBodyPropsRequired = TypedDict("_MeshBodyPropsRequired", {"positions": List[float], "indices": List[float], "id": str})
-_MeshBodyPropsOptional = TypedDict("_MeshBodyPropsOptional", {"polygons": List[List[float]], "normals": List[float], "uv": List[float], "source_uv": List[float], "source_materials": List['SourceMaterial'], "material_groups": List['SourceMaterialGroup'], "source": '_MeshBodyProps41', "world_collider": 'WorldCollider', "world_center": Tuple[float, float, float], "world_friction": float, "world_restitution": float, "world_meta": Dict[str, Any], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_MeshBodyPropsOptional = TypedDict("_MeshBodyPropsOptional", {"polygons": List[List[float]], "normals": List[float], "uv": List[float], "source_uv": List[float], "source_materials": List['SourceMaterial'], "material_groups": List['SourceMaterialGroup'], "source": '_MeshBodyProps58', "world_collider": 'WorldCollider', "world_center": Tuple[float, float, float], "world_friction": float, "world_restitution": float, "world_meta": Dict[str, Any], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class MeshBodyProps(_MeshBodyPropsRequired, _MeshBodyPropsOptional):
     pass
 
@@ -1349,69 +1518,69 @@ _GeneratePropsOptional = TypedDict("_GeneratePropsOptional", {"refs": Dict[str, 
 class GenerateProps(_GeneratePropsRequired, _GeneratePropsOptional):
     pass
 
-__PointCloudProps42Required = TypedDict("__PointCloudProps42Required", {})
-__PointCloudProps42Optional = TypedDict("__PointCloudProps42Optional", {"format": str, "fileId": str, "fileName": str}, total=False)
-class _PointCloudProps42(__PointCloudProps42Required, __PointCloudProps42Optional):
+__PointCloudProps59Required = TypedDict("__PointCloudProps59Required", {})
+__PointCloudProps59Optional = TypedDict("__PointCloudProps59Optional", {"format": str, "fileId": str, "fileName": str}, total=False)
+class _PointCloudProps59(__PointCloudProps59Required, __PointCloudProps59Optional):
     pass
 
 #: The keywords of pointCloud(…): the PointCloudFeature fields, in snake_case.
 _PointCloudPropsRequired = TypedDict("_PointCloudPropsRequired", {"positions": List[float], "id": str})
-_PointCloudPropsOptional = TypedDict("_PointCloudPropsOptional", {"colors": List[float], "point_size": float, "source": '_PointCloudProps42', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_PointCloudPropsOptional = TypedDict("_PointCloudPropsOptional", {"colors": List[float], "point_size": float, "source": '_PointCloudProps59', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class PointCloudProps(_PointCloudPropsRequired, _PointCloudPropsOptional):
     pass
 
-__GaussianSplatProps43Required = TypedDict("__GaussianSplatProps43Required", {})
-__GaussianSplatProps43Optional = TypedDict("__GaussianSplatProps43Optional", {"format": str, "fileId": str, "fileName": str, "shDegree": float, "splatCount": float}, total=False)
-class _GaussianSplatProps43(__GaussianSplatProps43Required, __GaussianSplatProps43Optional):
+__GaussianSplatProps60Required = TypedDict("__GaussianSplatProps60Required", {})
+__GaussianSplatProps60Optional = TypedDict("__GaussianSplatProps60Optional", {"format": str, "fileId": str, "fileName": str, "shDegree": float, "splatCount": float}, total=False)
+class _GaussianSplatProps60(__GaussianSplatProps60Required, __GaussianSplatProps60Optional):
     pass
 
 #: The keywords of gaussianSplat(…): the GaussianSplatFeature fields, in snake_case.
 _GaussianSplatPropsRequired = TypedDict("_GaussianSplatPropsRequired", {"count": float, "positions": List[float], "scales": List[float], "rotations": List[float], "colors": List[float], "id": str})
-_GaussianSplatPropsOptional = TypedDict("_GaussianSplatPropsOptional", {"sh_degree": Literal[0, 3, 1, 2], "sh": List[float], "source": '_GaussianSplatProps43', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_GaussianSplatPropsOptional = TypedDict("_GaussianSplatPropsOptional", {"sh_degree": Literal[0, 3, 1, 2], "sh": List[float], "source": '_GaussianSplatProps60', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class GaussianSplatProps(_GaussianSplatPropsRequired, _GaussianSplatPropsOptional):
     pass
 
-__MoleculeProps44Required = TypedDict("__MoleculeProps44Required", {})
-__MoleculeProps44Optional = TypedDict("__MoleculeProps44Optional", {"format": str, "fileId": str, "fileName": str, "title": str, "atomCount": float}, total=False)
-class _MoleculeProps44(__MoleculeProps44Required, __MoleculeProps44Optional):
+__MoleculeProps61Required = TypedDict("__MoleculeProps61Required", {})
+__MoleculeProps61Optional = TypedDict("__MoleculeProps61Optional", {"format": str, "fileId": str, "fileName": str, "title": str, "atomCount": float}, total=False)
+class _MoleculeProps61(__MoleculeProps61Required, __MoleculeProps61Optional):
     pass
 
 #: The keywords of molecule(…): the MoleculeFeature fields, in snake_case.
 _MoleculePropsRequired = TypedDict("_MoleculePropsRequired", {"positions": List[float], "elements": List[float], "bonds": List[float], "id": str})
-_MoleculePropsOptional = TypedDict("_MoleculePropsOptional", {"bond_orders": List[float], "chains": List[float], "cell": Tuple[float, float, float, float, float, float], "representation": 'MoleculeRepresentation', "source": '_MoleculeProps44', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_MoleculePropsOptional = TypedDict("_MoleculePropsOptional", {"bond_orders": List[float], "chains": List[float], "cell": Tuple[float, float, float, float, float, float], "representation": 'MoleculeRepresentation', "source": '_MoleculeProps61', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class MoleculeProps(_MoleculePropsRequired, _MoleculePropsOptional):
     pass
 
-__SkeletonProps45Required = TypedDict("__SkeletonProps45Required", {})
-__SkeletonProps45Optional = TypedDict("__SkeletonProps45Optional", {"format": str, "fileId": str, "fileName": str}, total=False)
-class _SkeletonProps45(__SkeletonProps45Required, __SkeletonProps45Optional):
+__SkeletonProps62Required = TypedDict("__SkeletonProps62Required", {})
+__SkeletonProps62Optional = TypedDict("__SkeletonProps62Optional", {"format": str, "fileId": str, "fileName": str}, total=False)
+class _SkeletonProps62(__SkeletonProps62Required, __SkeletonProps62Optional):
     pass
 
 #: The keywords of skeleton(…): the SkeletonFeature fields, in snake_case.
 _SkeletonPropsRequired = TypedDict("_SkeletonPropsRequired", {"positions": List[float], "parents": List[float], "id": str})
-_SkeletonPropsOptional = TypedDict("_SkeletonPropsOptional", {"radii": List[float], "node_types": List[float], "source": '_SkeletonProps45', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_SkeletonPropsOptional = TypedDict("_SkeletonPropsOptional", {"radii": List[float], "node_types": List[float], "source": '_SkeletonProps62', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class SkeletonProps(_SkeletonPropsRequired, _SkeletonPropsOptional):
     pass
 
-__VolumeProps46Required = TypedDict("__VolumeProps46Required", {})
-__VolumeProps46Optional = TypedDict("__VolumeProps46Optional", {"format": str, "fileId": str, "fileName": str, "kind": Literal["scalar", "label"]}, total=False)
-class _VolumeProps46(__VolumeProps46Required, __VolumeProps46Optional):
+__VolumeProps63Required = TypedDict("__VolumeProps63Required", {})
+__VolumeProps63Optional = TypedDict("__VolumeProps63Optional", {"format": str, "fileId": str, "fileName": str, "kind": Literal["scalar", "label"]}, total=False)
+class _VolumeProps63(__VolumeProps63Required, __VolumeProps63Optional):
     pass
 
 #: The keywords of volume(…): the VolumeFeature fields, in snake_case.
 _VolumePropsRequired = TypedDict("_VolumePropsRequired", {"dims": Tuple[float, float, float], "spacing": Tuple[float, float, float], "data": List[float], "id": str})
-_VolumePropsOptional = TypedDict("_VolumePropsOptional", {"origin": 'Vec3', "render": Literal["slices", "iso"], "iso": float, "colormap": str, "source": '_VolumeProps46', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_VolumePropsOptional = TypedDict("_VolumePropsOptional", {"origin": 'Vec3', "render": Literal["slices", "iso"], "iso": float, "colormap": str, "source": '_VolumeProps63', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class VolumeProps(_VolumePropsRequired, _VolumePropsOptional):
     pass
 
-__GraphProps47Required = TypedDict("__GraphProps47Required", {})
-__GraphProps47Optional = TypedDict("__GraphProps47Optional", {"format": str, "fileId": str, "fileName": str, "title": str, "nodeCount": float, "edgeCount": float}, total=False)
-class _GraphProps47(__GraphProps47Required, __GraphProps47Optional):
+__GraphProps64Required = TypedDict("__GraphProps64Required", {})
+__GraphProps64Optional = TypedDict("__GraphProps64Optional", {"format": str, "fileId": str, "fileName": str, "title": str, "nodeCount": float, "edgeCount": float}, total=False)
+class _GraphProps64(__GraphProps64Required, __GraphProps64Optional):
     pass
 
 #: The keywords of graph(…): the GraphFeature fields, in snake_case.
 _GraphPropsRequired = TypedDict("_GraphPropsRequired", {"node_positions": List[float], "edges": List[float], "id": str})
-_GraphPropsOptional = TypedDict("_GraphPropsOptional", {"node_sizes": List[float], "node_colors": List[float], "node_groups": List[float], "edge_weights": List[float], "directed": bool, "source": '_GraphProps47', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_GraphPropsOptional = TypedDict("_GraphPropsOptional", {"node_sizes": List[float], "node_colors": List[float], "node_groups": List[float], "edge_weights": List[float], "directed": bool, "source": '_GraphProps64', "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class GraphProps(_GraphPropsRequired, _GraphPropsOptional):
     pass
 
@@ -1439,7 +1608,10 @@ _CopperPourPropsOptional = TypedDict("_CopperPourPropsOptional", {"bias": 'Route
 class CopperPourProps(_CopperPourPropsRequired, _CopperPourPropsOptional):
     pass
 
-AxisRef = Union['_AxisRef1', '_AxisRef2', '_AxisRef3', '_AxisRef4']
+#: Where an annotation attaches in space. Either a bare world POINT (mm) or a robust TOPOLOGY REFERENCE (face center / edge midpoint / vertex) that re-resolves across rebuilds. A topo anchor always carries a usable position in `ref.signature.point`, so anchorPoint is kernel-free.
+Anchor = Union['_Anchor1', '_Anchor2', 'AnchorGroup', 'AnchorOf', 'AnchorGeometry', 'AnchorPart']
+
+AxisRef = Union['_AxisRef4', '_AxisRef5', '_AxisRef6', '_AxisRef7']
 
 #: How a solid feature combines with existing bodies.
 BooleanMode = Literal["new", "add", "cut", "intersect"]
@@ -1455,6 +1627,9 @@ DrawingViewName = Literal["iso", "front", "top", "right", "left", "bottom", "bac
 #: How a clearance hole fits its screw (ISO 273: close is fine, normal is medium, loose is coarse).
 FastenerFit = Literal["normal", "close", "loose"]
 
+#: The 14 geometric characteristics (ASME Y14.5 / ISO 1101) a feature-control frame can specify.
+GdtCharacteristic = Literal["position", "straightness", "flatness", "circularity", "cylindricity", "profileLine", "profileSurface", "angularity", "perpendicularity", "parallelism", "concentricity", "symmetry", "circularRunout", "totalRunout"]
+
 HoleStyle = Literal["simple", "counterbore", "countersink"]
 
 #: The kinds of joint, by the relative motion each leaves between its two bodies: `fixed` none; `revolute` a turn about the axis; `prismatic` a slide along it; `cylindrical` a turn about it and a slide along it; `planar` a slide in the plane normal to the axis and a turn about the axis; `screw` a turn that advances `pitch` along the axis; `spherical` any turn about the anchor; `universal` two turns about crossed axes.
@@ -1466,16 +1641,19 @@ ManufacturingProcess = Literal["other", "cnc-milling", "cnc-turning", "laser-cut
 #: Mate kinds the assembly solver understands — a real 6-DOF set (translational + rotational).
 MateKind = Literal["coincident", "offset", "parallel", "perpendicular", "distance", "angle", "concentric"]
 
+#: Material-condition modifier applied to a tolerance value or a datum reference.
+MaterialModifier = Literal["M", "L", "S"]
+
 MaterialPreset = Literal["aluminum", "anodized-aluminum", "steel", "stainless-steel", "plastic", "abs", "pbt", "pc", "petg", "pla", "brass", "copper", "chrome", "rubber", "glass", "pcb", "custom"]
 
-MeshModifierSpec = Union['_MeshModifierSpec12', '_MeshModifierSpec13', '_MeshModifierSpec14', '_MeshModifierSpec15', '_MeshModifierSpec16']
+MeshModifierSpec = Union['_MeshModifierSpec21', '_MeshModifierSpec22', '_MeshModifierSpec23', '_MeshModifierSpec24', '_MeshModifierSpec25']
 
 OffsetCap = Literal["round", "butt", "square"]
 
 OffsetJoin = Literal["miter", "round", "bevel"]
 
 #: WHERE A SKETCH LIVES. Three kinds, and the third is not a plane at all.
-PlaneRef = Union['_PlaneRef18', '_PlaneRef19', '_PlaneRef20']
+PlaneRef = Union['_PlaneRef27', '_PlaneRef28', '_PlaneRef29']
 
 #: What a quantity is counted in: parts (`each`), grams, kilograms, metres, millimetres or millilitres.
 QuantityUnit = Literal["mm", "each", "g", "kg", "m", "ml"]
@@ -1494,13 +1672,15 @@ RoutingRule = Literal["45", "90", "any"]
 SketchPinAnchor = Literal["vertex", "centroid", "center", "minU", "maxU", "minV", "maxV", "minU_minV", "maxU_minV", "minU_maxV", "maxU_maxV"]
 
 #: WHICH b-rep thing a pin follows. Bodies are named by the FEATURE that produced them (lineage is what survives a parametric edit — a signature match would drift the moment the body moves, which is exactly when a pin has to keep holding). Sub-shapes reuse the document's signature-matched TopoRef, the same handle every other feature uses to say "that face".
-SketchPinTarget = Union['_SketchPinTarget23', '_SketchPinTarget24', '_SketchPinTarget25', '_SketchPinTarget26', '_SketchPinTarget27']
+SketchPinTarget = Union['_SketchPinTarget34', '_SketchPinTarget35', '_SketchPinTarget36', '_SketchPinTarget37', '_SketchPinTarget38']
 
-SketchSegment = Union['_SketchSegment28', '_SketchSegment29', '_SketchSegment30', '_SketchSegment31', '_SketchSegment32', '_SketchSegment33']
+SketchSegment = Union['_SketchSegment39', '_SketchSegment40', '_SketchSegment41', '_SketchSegment42', '_SketchSegment43', '_SketchSegment44']
 
 SketchSolveStatus = Literal["ok", "over", "under", "inconsistent"]
 
 SourceTexture = Union['SourceImageTexture', 'SourceDataTexture', 'SourceCompressedTexture']
+
+SupplementalShape = Union['_SupplementalShape47', '_SupplementalShape48', '_SupplementalShape49', '_SupplementalShape50', '_SupplementalShape51']
 
 #: What a sweep follows: a sketch's open or closed chain on its plane, or a curve in space.
 SweepPath = Union['ProfileRef', 'CurveRef']
@@ -1509,6 +1689,9 @@ SweepPath = Union['ProfileRef', 'CurveRef']
 TopoTarget = Union['TopoRef', 'TopoSelector']
 
 UnwrapSurface = Union['PlanarSurface', 'CylindricalSurface', 'ConicalSurface', 'SphericalSurface', 'ToroidalSurface']
+
+#: How a value is written, as AP242 qualifies a measure: `format` its VALUE_FORMAT_TYPE_QUALIFIER (`NR2 1.3`: decimal places as ISO 6093 counts them), `qualifier` its TYPE_QUALIFIER (`maximum`, `minimum`), keyed by the field the value is (`value`, `tolerance`, `unequal`, `projected`, `perUnit` …).
+ValueFormats = Dict[str, '_ValueFormats55']
 
 #: A point or vector in 2D (sketch space).
 Vec2 = Tuple[float, float]
