@@ -2969,35 +2969,19 @@
             "schema": {
               "type": "object",
               "properties": {
-                "world": {
+                "of": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "scene": {
                   "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 1024
-                    },
-                    "kind": {
-                      "type": "string",
-                      "enum": [
-                        "simulation"
-                      ]
-                    },
-                    "scene": {
-                      "type": "object",
-                      "additionalProperties": true
-                    }
-                  },
-                  "required": [
-                    "name",
-                    "kind",
-                    "scene"
-                  ],
                   "additionalProperties": true
                 }
               },
               "required": [
-                "world"
+                "of",
+                "scene"
               ],
               "additionalProperties": false
             }
