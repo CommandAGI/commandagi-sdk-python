@@ -19,13 +19,20 @@ call::
     # agents/a2/agent.py — a fork on another model, at a reasoning effort its CLI takes
     result = agent(parent="cloud://global/agents/claude-code", name="A2", model="anthropic/claude-sonnet-5-5", effort="medium")
 
+    # agents/researcher/agent.py — and its runtime configuration: its picture beside it, its equipped skills, its
+    # cognition, its routing weights, its wiring, its reach into its owner's account, and that it asks before it spends
+    result = agent(parent="cloud://global/agents/commandagi", name="Researcher", avatar="avatar.png",
+                   skills=["../../skills/review/SKILL.md"], routing={"quality": 2, "cost": 1},
+                   access={"scopes": ["threads:read"], "reach": "own"}, confirm_spend=True)
+
 A harness is the program that runs an agent and talks to a model: a CLI agent, an API provider's loop, or a program
 with no model. A base instance names its harness and has no parent; every other instance is a fork: it names its parent
 and keeps its parent's harness. ``effort`` is the reasoning effort it runs at, in its harness's words (``low``,
 ``medium``, ``high``, ``xhigh``, ``max``): a CLI harness takes it as the CLI does (Claude Code ``--effort``, Codex
 ``model_reasoning_effort``), and a host refuses an agent whose CLI does not take it. A file never names itself: a harness's id and an agent's id are their folders' names.
 
-Attributes are snake_case keywords (``voice_mode`` is ``voiceMode``). ``realtime`` and ``persona`` are plain data,
+Attributes are snake_case keywords (``voice_mode`` is ``voiceMode``, ``confirm_spend`` is ``confirmSpend``). ``realtime``,
+``persona``, ``kernel``, ``cognition``, ``routing``, ``fabric`` and ``access`` are plain data,
 written with the TypeScript names as keys (``"videoMinutes"``). Nothing adds a default: what the file does not say,
 the document does not have.
 """
@@ -51,7 +58,9 @@ REALTIME_OUT = ["audio", "text", "tools"]
 AUDIO_FORMATS = ["g711-ulaw@8000", "pcm16@8000", "pcm16@16000", "pcm16@24000"]
 HARNESS_FIELDS = ["kind", "label", "provider", "cli", "runs", "tasks", "realtime", "family", "experimental", "homepage", "about"]
 AGENT_FIELDS = ["harness", "parent", "name", "model", "effort", "supervisor", "instructions", "voice", "voiceMode", "tools", "persona", "color",
-                "icon", "gender"]
+                "icon", "gender", "avatar", "sound", "skills", "kernel", "cognition", "routing", "fabric", "access", "confirmSpend"]
+#: The fields of an ``<agent>`` that are plain data, each an object: the platform's own shapes, verbatim.
+AGENT_OBJECT_FIELDS = ["persona", "kernel", "cognition", "routing", "fabric", "access"]
 VOICE_MODES = ["off", "push-to-talk", "open-mic"]
 REALTIME_FIELDS = ["in", "out", "audio", "fps", "hz", "minutes", "videoMinutes"]
 #: An id: a folder name.
@@ -64,7 +73,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
 }
 
 __all__ = ["HARNESS_KINDS", "HARNESS_RUNTIMES", "HARNESS_TASKS", "REALTIME_IN", "REALTIME_OUT", "AUDIO_FORMATS", "HARNESS_FIELDS",
-           "AGENT_FIELDS", "VOICE_MODES", "REALTIME_FIELDS", "AGENT_ID", "SIGNATURES", "HARNESS_VOCABULARY", "AGENT_VOCABULARY",
+           "AGENT_FIELDS", "AGENT_OBJECT_FIELDS", "VOICE_MODES", "REALTIME_FIELDS", "AGENT_ID", "SIGNATURES", "HARNESS_VOCABULARY", "AGENT_VOCABULARY",
            *define(globals(), "agents", SIGNATURES)]
 
 
@@ -152,7 +161,7 @@ def _harness(t: DocTree) -> Dict[str, Any]:
 
 def _agent(t: DocTree) -> Dict[str, Any]:
     a = t["attrs"]
-    for k in ("harness", "parent", "name", "model", "effort", "supervisor", "instructions", "voice", "color", "icon", "gender"):
+    for k in ("harness", "parent", "name", "model", "effort", "supervisor", "instructions", "voice", "color", "icon", "gender", "avatar", "sound"):
         _word(t, k)
     _one_of(t, "voiceMode", VOICE_MODES)
     if "supervisor" in a and not re.match(r"^(agent|person):\S+$", a["supervisor"]):
@@ -166,8 +175,18 @@ def _agent(t: DocTree) -> Dict[str, Any]:
     tools = a.get("tools")
     if "tools" in a and not (isinstance(tools, list) and all(isinstance(x, str) and x for x in tools)):
         raise ValueError(f"<agent> tools is a list of tool names, not {tools!r}")
-    if "persona" in a and not isinstance(a["persona"], dict):
-        raise ValueError(f'<agent> persona is an object ({{"tone": "warm"}}), not {a["persona"]!r}')
+    skills = a.get("skills")
+    if "skills" in a and not (isinstance(skills, list) and all(isinstance(x, str) and x for x in skills)):
+        raise ValueError(f"<agent> skills is a list of refs to SKILL.md files, not {skills!r}")
+    for k in AGENT_OBJECT_FIELDS:
+        if k in a and not isinstance(a[k], dict):
+            example = '{"tone": "warm"}' if k == "persona" else "{ … }"
+            raise ValueError(f"<agent> {k} is an object ({example}), not {a[k]!r}")
+    if "confirmSpend" in a and not isinstance(a["confirmSpend"], bool):
+        raise ValueError(f"<agent> confirmSpend is True or False, not {a['confirmSpend']!r}")
+    avatar = a.get("avatar")
+    if isinstance(avatar, str) and ("/" in avatar or avatar.startswith(".")):
+        raise ValueError(f'<agent> avatar is a file beside this one ("avatar.png"), not {avatar!r}')
     if t["children"]:
         raise ValueError('<agent> has no children; its instructions are its instructions="…" attribute')
     return {k: a[k] for k in AGENT_FIELDS if k in a}

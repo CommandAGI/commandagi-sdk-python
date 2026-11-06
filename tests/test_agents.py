@@ -41,6 +41,25 @@ class AgentTests(unittest.TestCase):
                                             "instructions": "Keep Joe's calendar.", "voiceMode": "push-to-talk",
                                             "tools": ["calendar_save_event"]})
 
+    def test_a_forks_runtime_configuration(self):
+        doc = declare_document(agent(parent="cloud://global/agents/commandagi", name="Researcher", avatar="avatar.png", sound="chime",
+                                     skills=["../../skills/review/SKILL.md"], kernel={"type": "llm"},
+                                     cognition={"urgency": 0.8, "faculties": {"working_memory": True}, "models": [], "speculation": True},
+                                     routing={"quality": 2, "cost": 1}, fabric={"config": {}, "mindPin": None, "added": [], "gates": {}},
+                                     access={"scopes": ["threads:read"], "reach": "own"}, confirm_spend=True))["document"]
+        self.assertEqual(doc["skills"], ["../../skills/review/SKILL.md"])
+        self.assertEqual(doc["access"], {"scopes": ["threads:read"], "reach": "own"})
+        self.assertIs(doc["confirmSpend"], True)
+        self.assertEqual(doc["avatar"], "avatar.png")
+        for made, why in [
+            (lambda: agent(parent="../a", skills="review"), "skills is a list of refs"),
+            (lambda: agent(parent="../a", access=["threads:read"]), "access is an object"),
+            (lambda: agent(parent="../a", confirm_spend="yes"), "confirmSpend is True or False"),
+            (lambda: agent(parent="../a", avatar="../x/avatar.png"), "avatar is a file beside this one"),
+        ]:
+            with self.assertRaisesRegex(ValueError, why):
+                declare_document(made())
+
     def test_a_realtime_harness(self):
         h = declare_document(harness(kind="api", label="OpenAI Realtime API", provider="openai", runs=["worker", "host"], realtime=REALTIME))
         self.assertEqual(h["document"]["realtime"], REALTIME)
