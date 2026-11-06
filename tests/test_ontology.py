@@ -8,8 +8,8 @@ import unittest
 from commandagi.design import run_module
 from commandagi.design.element import declarer_of
 from commandagi.design import firmware as fw
-from commandagi.design.ontology import (body, bound, camera, channel, dashboard, dateRange, device, geoproject, group, node, opgraph, pane,
-                                        interlock, region, scene, split, unit, wire, world)
+from commandagi.design.ontology import (body, bound, camera, channel, dashboard, dateRange, device, geomodel, geoparams, geoproject, group, node,
+                                        opgraph, pane, parameter, interlock, reference, region, scenario, scene, shock, split, unit, wire, world)
 
 
 def declared(root):
@@ -113,6 +113,28 @@ class OntologyTests(unittest.TestCase):
         self.assertEqual(p["document"], {"type": "geoeconomics/project", "schemaVersion": "1.0", "id": "p1", "name": "Chokepoints",
                                          "data": {"defaultDateRange": {"start": "2015-01", "end": "2030-01"},
                                                   "defaultCamera": {"centerLng": 40, "centerLat": 25, "scale": 320}}})
+
+    def test_a_geo_projects_shock_scenario_model_and_parameter_set(self):
+        s = declared(shock(id="closure", name="Hormuz closure", event_type="route-disruption", targets=["cp-hormuz"], start="2028-03",
+                           duration_months=6, magnitude=0.7))["document"]
+        self.assertEqual(s["format"], "shock")
+        self.assertEqual(s["document"], {"type": "geoeconomics/event", "schemaVersion": "1.0", "id": "closure", "name": "Hormuz closure",
+                                         "data": {"eventType": "route-disruption", "targets": ["cp-hormuz"], "start": "2028-03",
+                                                  "durationMonths": 6, "magnitude": 0.7}})
+        sc = declared(scenario(id="s", name="Hormuz", baseline_date="2028-03", time_horizon={"start": "2028-03", "end": "2030-03"},
+                               events=["./shocks/closure.shock.py"], models=["models/commodity-shock.geomodel.py"]))["document"]["document"]
+        self.assertEqual(sc["data"], {"baselineDate": "2028-03", "timeHorizon": {"start": "2028-03", "end": "2030-03"},
+                                      "events": ["./shocks/closure.shock.py"], "models": ["models/commodity-shock.geomodel.py"]})
+        m = declared(geomodel(parameter(name="priceElasticity", default=0.2, min=0.05, max=0.6), reference(role="paper", path="notes.md"),
+                              id="m", name="Commodity shock", runtime="commodity-shock", version="1.0", compatible_events=["route-disruption"]))["document"]["document"]
+        self.assertEqual(m, {"type": "geoeconomics/model", "schemaVersion": "1.0", "id": "m", "name": "Commodity shock",
+                             "references": [{"role": "paper", "path": "notes.md"}],
+                             "data": {"runtime": "commodity-shock", "version": "1.0", "compatibleEvents": ["route-disruption"],
+                                      "parameterSchema": {"priceElasticity": {"default": 0.2, "min": 0.05, "max": 0.6}}}})
+        p = declared(geoparams(id="p", name="Severe", for_model="commodity-shock", values={"priceElasticity": 0.25}))["document"]["document"]
+        self.assertEqual(p["data"], {"forModel": "commodity-shock", "values": {"priceElasticity": 0.25}})
+        with self.assertRaisesRegex(ValueError, "colour is not read"):
+            declared(shock(id="x", name="x", colour="red"))
 
     def test_a_node_graph_is_the_editors_op_graph(self):
         g = declared(opgraph(

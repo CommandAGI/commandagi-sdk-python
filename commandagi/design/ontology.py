@@ -23,6 +23,11 @@ A record is an element and its fields are the element's attributes; a list of re
                                                                            pane (repeat="live-stream": one pane per live
                                                                            stream); region(side, tab …)
     geoproject(id, name …)                            <name>.geo.py        dateRange(start, end), camera, reference
+    shock(id, name, event_type, targets, start …)     <name>.shock.py      reference
+    scenario(id, name, baseline_date, events …)       <name>.scenario.py   reference
+    geomodel(id, name, runtime, version …)            <name>.geomodel.py   parameter(name, default, min, max, label?),
+                                                                           reference
+    geoparams(id, name, for_model, values)            <name>.geoparams.py  reference
     opgraph(name)                                     <name>.opgraph.py    node(id, type, x, y, …ports), wire(from_, to)
 
 Every attribute is a keyword (``commandagi.design.element``: snake_case of the field's name). A field whose own name
@@ -65,6 +70,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "bound": {}, "interlock": {},
     "dashboard": _HOLDS, "param": {}, "split": _HOLDS, "pane": {}, "region": {},
     "geoproject": _HOLDS, "dateRange": {}, "camera": {}, "reference": {},
+    "shock": _HOLDS, "scenario": _HOLDS, "geomodel": _HOLDS, "parameter": {}, "geoparams": _HOLDS,
     "opgraph": _HOLDS, "node": {}, "wire": {},
 }
 
@@ -250,6 +256,39 @@ _GEO = Vocabulary("geo", "a geo project", "geoproject", {
 }, _geo, lambda doc: _unsupported("geo"))
 
 
+# ── a geo project's documents: <name>.shock.py, .scenario.py, .geomodel.py, .geoparams.py ──────────────────────────
+#: What a geo document says of itself. Its times are the file's own: the code holds none.
+_GEO_OWN = ["id", "name", "metadata"]
+
+
+def _geo_file(format: str, noun: str, root: str, type_: str, fields: List[str], record: Dict[str, Any] | None = None) -> Vocabulary:
+    """A geo document: a root call whose keywords are its own fields and its ``data``'s, and ``reference`` children."""
+    tags: Dict[str, Any] = {
+        root: {"parents": [], "required": ["id", "name"], "attrs": _GEO_OWN + fields},
+        "reference": {"parents": [root], "key": "path", "required": ["role", "path"], "attrs": ["role", "path", "hash"]},
+    }
+    if record:
+        tags[record["tag"]] = {"parents": [root], "key": record["key"], "required": record["required"], "attrs": record["attrs"]}
+
+    def from_tree(t: DocTree) -> Dict[str, Any]:
+        refs = [_attrs(r) for r in _kids(t, "reference")]
+        data = _own(t["attrs"], fields)
+        entries = _kids(t, record["tag"]) if record else []
+        if record and entries:
+            data[record["field"]] = {str(e["attrs"][record["key"]]): _omit(e["attrs"], [record["key"]]) for e in entries}
+        # A geo document says which shape it is in; this is the one the studio reads.
+        return {"type": type_, "schemaVersion": "1.0", **_own(t["attrs"], _GEO_OWN), **({"references": refs} if refs else {}), "data": data}
+
+    return Vocabulary(format, noun, root, tags, from_tree, lambda doc: _unsupported(format))
+
+
+_SHOCK = _geo_file("shock", "a shock", "shock", "geoeconomics/event", ["eventType", "targets", "start", "durationMonths", "magnitude", "probability", "implementationLagMonths", "enabled", "affectedVariables", "transmissionChannels", "notes"])
+_SCENARIO = _geo_file("scenario", "a scenario", "scenario", "geoeconomics/scenario", ["baselineDate", "timeHorizon", "parentScenario", "events", "models", "parameterSets", "tags"])
+_GEOMODEL = _geo_file("geomodel", "a geo model", "geomodel", "geoeconomics/model", ["runtime", "version", "compatibleEvents", "assumptions", "limitations", "citations", "validation"],
+                      {"tag": "parameter", "field": "parameterSchema", "key": "name", "attrs": ["name", "label", "default", "min", "max"], "required": ["name", "default", "min", "max"]})
+_GEOPARAMS = _geo_file("geoparams", "a geo parameter set", "geoparams", "geoeconomics/params", ["forModel", "values"])
+
+
 # ── <name>.opgraph.py: the node graph ──────────────────────────────────────────────────────────────────────────────
 
 
@@ -344,7 +383,7 @@ def _unsupported(format: str) -> DocTree:
 
 
 #: The vocabularies of the ontology's files, by format.
-ONTOLOGY = {"world": _WORLD, "device": _DEVICE, "dashboard": _DASHBOARD, "geo": _GEO, "opgraph": _OPGRAPH}
+ONTOLOGY = {"world": _WORLD, "device": _DEVICE, "dashboard": _DASHBOARD, "geo": _GEO, "shock": _SHOCK, "scenario": _SCENARIO, "geomodel": _GEOMODEL, "geoparams": _GEOPARAMS, "opgraph": _OPGRAPH}
 
 for _v in ONTOLOGY.values():
     register_vocabulary(_v, "ontology")
