@@ -141,7 +141,7 @@ class ThreeDTests(unittest.TestCase):
             read(body(id="b4", engineering=engineering("sheet-metal")), body(id="b6", engineering=engineering("cnc-milling", notes="x")),
                  extrude(id="e1", profile=profile, distance=-1, operation="new"))()
         self.assertEqual(str(caught.exception), "\n".join([
-            '<body id="b4">: engineering/process: must be one of other, cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, glass-working, saw-cutting, manual, purchased, reference (got "sheet-metal")',
+            '<body id="b4">: engineering/process: must be one of other, manual, cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, glass-working, saw-cutting, purchased, reference (got "sheet-metal")',
             '<body id="b6">: engineering/notes: is not one of its fields',
             '<extrude id="e1">: distance: must be greater than 0 (got -1)',
         ]))
@@ -233,9 +233,9 @@ class ThreeDTests(unittest.TestCase):
         refused('<joint id="j1">: kind: must be one of fixed, revolute, prismatic, cylindrical, planar, screw, spherical, universal (got "hinge")',
                 joint(id="j1", kind="hinge", a="base", anchor=[0, 0, 0]))
         refused('<joint id="j1">: anchor: is required', joint(id="j1", kind="fixed", a="base"))
-        refused('<body id="base">: engineering/process: must be one of other, cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, '
+        refused('<body id="base">: engineering/process: must be one of other, manual, cnc-milling, cnc-turning, laser-cutting, waterjet-cutting, '
                 'sheet-metal-bending, extrusion, casting, injection-moulding, fdm-printing, sla-printing, sls-printing, welding, grinding, '
-                'glass-working, saw-cutting, manual, purchased, reference (got "magic"); engineering/suppliers/0/name: is required',
+                'glass-working, saw-cutting, purchased, reference (got "magic"); engineering/suppliers/0/name: is required',
                 body(id="base", engineering={"process": "magic", "suppliers": [{"sku": "x"}]}))
         refused('<slot name="dynamics">: joints are written as joint(…) elements', slot(name="dynamics", value={"joints": []}))
         refused("two joint elements are called j1", joint(**{k: v for k, v in j1.items() if k != "refA"}), joint(**{k: v for k, v in j1.items() if k != "refA"}))

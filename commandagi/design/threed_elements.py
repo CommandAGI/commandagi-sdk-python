@@ -718,7 +718,7 @@ class PlacedMove(_PlacedMoveRequired, _PlacedMoveOptional):
 
 #: A device definition placed in a design as a unit: the fields a world's unit has (`packages/domain/world/worlds.js`) less those that name one real machine (serial, revision, release, calibration: a world's). `readDesign` (`packages/domain/world/designs.js`) checks it with the world's own unit rules.
 _PlacedUnitRequired = TypedDict("_PlacedUnitRequired", {"id": str, "name": str, "device": str, "position": Tuple[float, float, float], "rotation": float})
-_PlacedUnitOptional = TypedDict("_PlacedUnitOptional", {"tilt_deg": float, "size_mm": Tuple[float, float, float], "channels": List[Dict[str, Any]]}, total=False)
+_PlacedUnitOptional = TypedDict("_PlacedUnitOptional", {"tilt_deg": float, "size_mm": Tuple[float, float, float], "channels": List[Dict[str, Any]], "domain": str, "support": Literal["manual", "uncommissioned"]}, total=False)
 class PlacedUnit(_PlacedUnitRequired, _PlacedUnitOptional):
     pass
 
@@ -1642,7 +1642,7 @@ HoleStyle = Literal["simple", "counterbore", "countersink"]
 JointKind = Literal["fixed", "revolute", "prismatic", "cylindrical", "planar", "screw", "spherical", "universal"]
 
 #: How a part is made.
-ManufacturingProcess = Literal["other", "cnc-milling", "cnc-turning", "laser-cutting", "waterjet-cutting", "sheet-metal-bending", "extrusion", "casting", "injection-moulding", "fdm-printing", "sla-printing", "sls-printing", "welding", "grinding", "glass-working", "saw-cutting", "manual", "purchased", "reference"]
+ManufacturingProcess = Literal["other", "manual", "cnc-milling", "cnc-turning", "laser-cutting", "waterjet-cutting", "sheet-metal-bending", "extrusion", "casting", "injection-moulding", "fdm-printing", "sla-printing", "sls-printing", "welding", "grinding", "glass-working", "saw-cutting", "purchased", "reference"]
 
 #: Mate kinds the assembly solver understands — a real 6-DOF set (translational + rotational).
 MateKind = Literal["coincident", "offset", "parallel", "perpendicular", "distance", "angle", "concentric"]
