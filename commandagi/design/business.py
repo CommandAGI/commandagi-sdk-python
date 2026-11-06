@@ -31,7 +31,7 @@ from .business_equity import EQUITY_TAGS, rounds_of
 from .business_finance import COMPANY_FINANCE_MANY, COMPANY_FINANCE_ONE, FINANCE_TAGS, finance_of
 from .company_formation import FILING_PAPER_PROPS, FORMATION_LISTS, FORMATION_TAGS, formation_of
 from .company_governance import COMPANY_GOVERNANCE_MANY, COMPANY_GOVERNANCE_ONE, GOVERNANCE_TAGS, PAPER_VOTE_PROPS, governance_of, votes_of
-from .company_deals import COMPANY_DEALS_MANY, DEALS_TAGS, deals_of
+from .company_deals import COMPANY_DEALS_MANY, COMPANY_DEALS_ONE, DEALS_TAGS, deals_of
 from .element import Element, child_elements, declares, define
 from .facts import fact_marker
 from .people_ops import PEOPLE_OPS_TAGS, team_of
@@ -41,7 +41,7 @@ _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
-                        **COMPANY_FINANCE_ONE, "team": "Team", **COMPANY_GOVERNANCE_ONE, "relationships": "Relationships"},
+                        **COMPANY_FINANCE_ONE, "team": "Team", **COMPANY_GOVERNANCE_ONE, "relationships": "Relationships", **COMPANY_DEALS_ONE},
                 "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, "brands": "Brand", **COMPANY_GOVERNANCE_MANY, "products": "Product", **COMPANY_DEALS_MANY}},
     # A priced round, pro forma, and its investments (./business_equity.py).
     **EQUITY_TAGS,
@@ -70,7 +70,7 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Relationships": {"props": {"file": _TEXT}, "required": ["file"]},
     # Seats, the compliance register, IP, insurance and votes (company_governance.py).
     **GOVERNANCE_TAGS,
-    # The sales pipeline: one Deal a deal (company_deals.py).
+    # The sales pipeline: one Deal a deal, and the Pipeline of its stages (company_deals.py).
     **DEALS_TAGS,
     "Rfc": {"props": {"id": _TEXT, "procedure": _TEXT, "title": _TEXT, "body": _TEXT, "target": _TEXT, "engineJson": _TEXT}, "many": {"options": "Option"}},
     "Option": {"props": {"title": _TEXT, "summary": _TEXT}, "many": {"changes": "Change"}},

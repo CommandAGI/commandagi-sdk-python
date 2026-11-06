@@ -27,6 +27,17 @@ class CompanyDealsTests(unittest.TestCase):
             self.assertEqual(d["format"], "company")
             self.assertEqual(d["document"], row["document"])
 
+    def test_the_keywords_are_the_attributes(self):
+        from commandagi.design.business import Company, Deal, DealMove, DealStage, Pipeline
+        d = document_of(Company(
+            Pipeline(DealStage(id="lead", label="first call", probability=0.1), stale_days=30),
+            Deal(DealMove(from_="lead", to="won", at="2026-11-01T17:02:00Z", by="person:ada"),
+                 id="a", title="A", stage="won", probability=1, probability_reason="signed"),
+            name="X"))["document"]
+        self.assertEqual(d["pipeline"], {"staleDays": 30, "stages": [{"id": "lead", "label": "first call", "probability": 0.1}]})
+        self.assertEqual(d["deals"][0]["probabilityReason"], "signed")
+        self.assertEqual(d["deals"][0]["moves"], [{"from": "lead", "to": "won", "at": "2026-11-01T17:02:00Z", "by": "person:ada"}])
+
     def test_what_the_vocabulary_does_not_say_is_refused(self):
         for row in GOLDEN["invalid"]:
             with self.assertRaisesRegex(ValueError, row["error"]):

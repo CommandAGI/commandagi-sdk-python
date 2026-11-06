@@ -4,19 +4,39 @@
       "tree": {
         "tag": "Company", "attrs": { "name": "Northwind" },
         "children": [
-          { "tag": "Deal", "attrs": { "id": "acme-pilot", "title": "Pilot of ten units", "counterparty": "relationships/cards/acme.vcf", "stage": "proposal", "value": "120000", "currency": "USD", "expected": "2027-03-31", "owner": "ceo", "since": "2026-11-01", "source": "the call of 2026-10-30", "note": "ten units, a year of support" } },
+          { "tag": "Pipeline", "attrs": { "staleDays": 21 }, "children": [
+            { "tag": "DealStage", "attrs": { "id": "lead", "probability": 0.05 } },
+            { "tag": "DealStage", "attrs": { "id": "demo", "label": "demo given", "probability": "0.3" } },
+            { "tag": "DealStage", "attrs": { "id": "contract", "probability": 0.8 } }
+          ] },
+          { "tag": "Deal", "attrs": { "id": "acme-pilot", "title": "Pilot of ten units", "counterparty": "relationships/cards/acme.vcf", "stage": "demo", "value": "120000", "currency": "USD", "expected": "2027-03-31", "owner": "ceo", "since": "2026-11-01", "probability": 0.2, "probabilityReason": "their budget is not approved", "source": "the call of 2026-10-30", "note": "ten units, a year of support" }, "children": [
+            { "tag": "DealMove", "attrs": { "from": "lead", "to": "demo", "at": "2026-11-03T17:02:00Z", "by": "person:ada", "note": "the demo went well" } }
+          ] },
           { "tag": "Deal", "attrs": { "id": "county-survey", "title": "County survey", "counterparty": "county", "stage": "lead" } },
-          { "tag": "Deal", "attrs": { "id": "farm-2025", "title": "Farm survey 2025", "counterparty": "relationships/cards/farm.vcf", "stage": "won", "value": 8500, "currency": "USD", "closed": "2025-09-12" } }
+          { "tag": "Deal", "attrs": { "id": "farm-2025", "title": "Farm survey 2025", "counterparty": "relationships/cards/farm.vcf", "stage": "won", "value": 8500, "currency": "USD", "closed": "2025-09-12" }, "children": [
+            { "tag": "DealMove", "attrs": { "to": "won", "at": "2025-09-12T09:00:00Z" } }
+          ] }
         ]
       },
       "document": {
         "format": "commandagi-company", "name": "Northwind", "about": "", "files": [], "dashboard": null, "entity": null, "standard": { "enabled": false },
+        "pipeline": { "staleDays": 21, "stages": [
+          { "id": "lead", "probability": 0.05 },
+          { "id": "demo", "label": "demo given", "probability": "0.3" },
+          { "id": "contract", "probability": 0.8 }
+        ] },
         "deals": [
-          { "id": "acme-pilot", "title": "Pilot of ten units", "counterparty": "relationships/cards/acme.vcf", "stage": "proposal", "value": "120000", "currency": "USD", "expected": "2027-03-31", "owner": "ceo", "since": "2026-11-01", "source": "the call of 2026-10-30", "note": "ten units, a year of support" },
+          { "id": "acme-pilot", "title": "Pilot of ten units", "counterparty": "relationships/cards/acme.vcf", "stage": "demo", "value": "120000", "currency": "USD", "expected": "2027-03-31", "owner": "ceo", "since": "2026-11-01", "probability": 0.2, "probabilityReason": "their budget is not approved", "source": "the call of 2026-10-30", "note": "ten units, a year of support",
+            "moves": [{ "from": "lead", "to": "demo", "at": "2026-11-03T17:02:00Z", "by": "person:ada", "note": "the demo went well" }] },
           { "id": "county-survey", "title": "County survey", "counterparty": "county", "stage": "lead" },
-          { "id": "farm-2025", "title": "Farm survey 2025", "counterparty": "relationships/cards/farm.vcf", "stage": "won", "value": 8500, "currency": "USD", "closed": "2025-09-12" }
+          { "id": "farm-2025", "title": "Farm survey 2025", "counterparty": "relationships/cards/farm.vcf", "stage": "won", "value": 8500, "currency": "USD", "closed": "2025-09-12",
+            "moves": [{ "to": "won", "at": "2025-09-12T09:00:00Z" }] }
         ]
       }
+    },
+    {
+      "tree": { "tag": "Company", "attrs": { "name": "Lean" }, "children": [{ "tag": "Pipeline", "attrs": {} }] },
+      "document": { "format": "commandagi-company", "name": "Lean", "about": "", "files": [], "dashboard": null, "entity": null, "standard": { "enabled": false }, "pipeline": { "stages": [] } }
     },
     {
       "tree": { "tag": "Company", "attrs": { "name": "Shop" } },
@@ -26,7 +46,10 @@
   "invalid": [
     { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A" } }] }, "error": "needs stage" },
     { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "stage": "lead" } }] }, "error": "needs title" },
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A", "stage": "lead", "probability": "0.5" } }] }, "error": "has no attribute probability" },
-    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A", "stage": "lead", "value": true } }] }, "error": "value is text or a number" }
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A", "stage": "lead", "odds": "0.5" } }] }, "error": "has no attribute odds" },
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A", "stage": "lead", "value": true } }] }, "error": "value is text or a number" },
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Deal", "attrs": { "id": "a", "title": "A", "stage": "lead" }, "children": [{ "tag": "DealMove", "attrs": { "to": "won" } }] }] }, "error": "needs at" },
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Pipeline", "attrs": {}, "children": [{ "tag": "DealStage", "attrs": { "id": "lead" } }] }] }, "error": "needs probability" },
+    { "tree": { "tag": "Company", "attrs": { "name": "X" }, "children": [{ "tag": "Pipeline", "attrs": {} }, { "tag": "Pipeline", "attrs": {} }] }, "error": "has two" }
   ]
 }
