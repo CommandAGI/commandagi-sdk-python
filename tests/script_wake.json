@@ -1,0 +1,31 @@
+{
+  "valid": [
+    {
+      "attrs": {"when": {"class": "sec.filing.8-k*"}, "prompt": "Say what the report changes."},
+      "document": {"when": {"class": "sec.filing.8-k*"}, "every": null, "prompt": "Say what the report changes.", "agent": null, "maxSpend": null}
+    },
+    {
+      "attrs": {"when": {"class": "sec.filing.8-k*"}, "prompt": "Say what the report changes.", "agent": "Filings analyst", "maxSpend": 0.5},
+      "document": {"when": {"class": "sec.filing.8-k*"}, "every": null, "prompt": "Say what the report changes.", "agent": "Filings analyst", "maxSpend": 0.5}
+    },
+    {
+      "attrs": {"prompt": "Read what came."},
+      "document": {"when": null, "every": null, "prompt": "Read what came.", "agent": null, "maxSpend": null}
+    },
+    {
+      "attrs": {"every": "7d", "prompt": "Write the week's brief.", "maxSpend": 2},
+      "document": {"when": null, "every": "7d", "prompt": "Write the week's brief.", "agent": null, "maxSpend": 2}
+    }
+  ],
+  "invalid": [
+    {"attrs": {"prompt": "p", "agent": ""}, "error": "agent is a word"},
+    {"attrs": {"prompt": "p", "agent": 3}, "error": "agent is a word"},
+    {"attrs": {"prompt": "p", "maxSpend": 0}, "error": "maxSpend is a price in USD"},
+    {"attrs": {"prompt": "p", "maxSpend": -1}, "error": "maxSpend is a price in USD"},
+    {"attrs": {"prompt": "p", "maxSpend": "1"}, "error": "maxSpend is a price in USD"},
+    {"attrs": {"prompt": "p", "every": "1d", "when": {"class": "x.*"}}, "error": "not both"},
+    {"attrs": {"prompt": "p", "every": "8d"}, "error": "every is a duration from 30s to 7d"},
+    {"attrs": {"prompt": "p", "when": {"cvss": 9}}, "error": "is class, about, key, title or a data path"},
+    {"attrs": {"prompt": "p", "match": "x.*"}, "error": "match is not read"}
+  ]
+}

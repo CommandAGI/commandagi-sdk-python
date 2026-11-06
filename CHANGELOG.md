@@ -14,6 +14,12 @@ Added
   `Compliance(horizon=…)`; `IpAsset(claimants=[…])`.
 - A brand's `Site(url=…, host=…, project=…)` for a site hosted elsewhere; `Domain(transfer_lock=…)`;
   `Mailbox(address=…, kind=…)`.
+- Scripts (`scripts.py`; CommandAGI's docs/scripts.md): a `<name>.script.py` declares one `script(title, class_,
+  about, readme, same_as)` with `source(… stream)`, `tail(of, when, stream)`, `derive(… stream)`, `wake(when | every)`,
+  `discover(...)` and `judge(...)`. A tail, a derive's port and a discover's `of` name a file (a script, a run's
+  `records.jsonl`) or a series (`fred:DGS10`), never a folder (`tail_ref_problem`). A wake's `when` is a record
+  predicate. `script_with_defaults` fills `stream: "records"`. One golden fixture of a wake for the three SDKs,
+  `tests/script_wake.json`. Scripts replace monitors; `monitors.py` goes when the platform reads scripts only.
 - A board's `fab(...)` states the house's other least dimensions, as KiCad's board setup states them:
   `min_via_diameter`, `min_hole_clearance` (copper to a hole), `min_hole_to_hole` and `min_edge_clearance` (mm), and
   `via_in_pad` (True or False: the house fills and caps a via in a pad, so a net's via may stand in its own pads).
