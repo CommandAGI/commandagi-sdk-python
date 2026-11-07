@@ -287,6 +287,20 @@ class ThreeDTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "serial"):
             run_module(src.replace("rotation=0)", "rotation=0, serial='SN-1')"), "C.3d.py")
 
+    def test_capture_places_a_captured_place_by_its_geo_pose(self):
+        # The TypeScript and Rust SDKs read the same fields (threed.test.ts, threed.rs).
+        src = ("from commandagi.design.threed import *\n"
+               "result = part(\n"
+               "    capture(id='bridgeway', src='./bridgeway.ply', at={'latDeg': 37.8564, 'lonDeg': -122.4796, 'heightM': 4.109, 'headingDeg': 12},\n"
+               "            captured='2017-03-21', licence='CC-BY-SA-4.0'),\n"
+               "    name='Matrix',\n"
+               ")\n")
+        n = run_module(src, "M.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["captures"]["inputs"]["value"], [{"id": "bridgeway", "src": "./bridgeway.ply", "at": {"latDeg": 37.8564, "lonDeg": -122.4796, "heightM": 4.109, "headingDeg": 12},
+                                                            "captured": "2017-03-21", "licence": "CC-BY-SA-4.0"}])
+        with self.assertRaisesRegex(ValueError, "latDeg"):
+            run_module(src.replace("'latDeg': 37.8564", "'latDeg': 137"), "M.3d.py")
+
     def test_tactile_places_a_grid_of_taxels_on_a_face_of_a_body(self):
         src = ("from commandagi.design.threed import *\n"
                "result = part(\n"

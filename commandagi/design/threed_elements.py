@@ -104,6 +104,12 @@ _BoxFeatureOptional = TypedDict("_BoxFeatureOptional", {"center": 'Vec3', "size"
 class BoxFeature(_BoxFeatureRequired, _BoxFeatureOptional):
     pass
 
+#: Where a captured place's frame stands on the Earth: its origin (WGS84, the height above the ellipsoid) and the heading of its +y axis.
+_CaptureGeoPoseRequired = TypedDict("_CaptureGeoPoseRequired", {"latDeg": float, "lonDeg": float, "heightM": float})
+_CaptureGeoPoseOptional = TypedDict("_CaptureGeoPoseOptional", {"headingDeg": float}, total=False)
+class CaptureGeoPose(_CaptureGeoPoseRequired, _CaptureGeoPoseOptional):
+    pass
+
 _ChamferFeatureRequired = TypedDict("_ChamferFeatureRequired", {"type": Literal["chamfer"], "edges": List['TopoTarget'], "id": str, "name": str})
 _ChamferFeatureOptional = TypedDict("_ChamferFeatureOptional", {"distance": float, "distance2": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ChamferFeature(_ChamferFeatureRequired, _ChamferFeatureOptional):
@@ -708,6 +714,12 @@ class PcbTraceFeature(_PcbTraceFeatureRequired, _PcbTraceFeatureOptional):
 _PermittedFindingRequired = TypedDict("_PermittedFindingRequired", {"id": str, "check": str, "body": str, "reason": str})
 _PermittedFindingOptional = TypedDict("_PermittedFindingOptional", {"process": str, "edgeDir": 'Vec3', "region": 'CheckRegion', "diameter": float}, total=False)
 class PermittedFinding(_PermittedFindingRequired, _PermittedFindingOptional):
+    pass
+
+#: A captured place drawn in a georeferenced document (the Matrix) as Gaussian splats: `<capture>` in code (docs/worlds-and-runs.md § the Matrix's captured places). It is captured data, never live: the viewer shows its date and source beside it. Geo-core `splats.ts` reads it (`captureSourceOf`, `capturePlacement`, `fileCapture`).
+_PlacedCaptureRequired = TypedDict("_PlacedCaptureRequired", {"id": str, "src": str})
+_PlacedCaptureOptional = TypedDict("_PlacedCaptureOptional", {"at": 'CaptureGeoPose', "captured": str, "source": str, "licence": str, "credit": str, "terms": str, "devices": List[str]}, total=False)
+class PlacedCapture(_PlacedCaptureRequired, _PlacedCaptureOptional):
     pass
 
 #: One body of a placed 3D document moved in its file's frame (`<externalPart moves>`).
