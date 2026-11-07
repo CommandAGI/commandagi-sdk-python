@@ -86,6 +86,8 @@ The calls (each keyword is the field of the same name, in snake_case: ``x_axis``
                                               keyword the field of the same name (``3d-core/annotations.ts``); an
                                               anchor is {"type": "point" | "topo" | "group" | "of" | "geometry", …}.
                                               The calls, whatever their types, are the list in the order written
+    view(id=, name=, camera=, ride=)          a camera kept under a name (``views``): the Views menu applies it, and
+                                              ``ride`` ({"target", "view": chase | cockpit | orbit}) is what it rides
     slot(name=, value=)                       any other field of the document, whole
 
 The reader declares the document's graph exactly: a feature is a node of its type with its fields as ports, a plane a
@@ -121,7 +123,7 @@ from .threed_schema import SCHEMA
 THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
-_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "contact", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "port", "item", "assemble", "library", "product", "unit", "capture", "point", "constraint", "projection", "line", "circle",
+_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "contact", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "port", "item", "assemble", "library", "product", "unit", "capture", "view", "point", "constraint", "projection", "line", "circle",
                  "arc", "spline", "ellipse", "ellipseArc", "input", "linearDimension", "radialDimension", "sizeDimension", "angularDimension", "note",
                  "datumFeature", "datumTarget", "featureControlFrame", "surfaceFinish"}
 #: A sketch's segment kinds, by tag.
@@ -138,7 +140,7 @@ _VIEW_ATTRS = ["semanticVisibility"]
 _PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step", "tolerance"]
 #: Document fields a slot may not hold: they have elements of their own, or are the graph itself.
 _NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility",
-              "drawings", "checks", "accepted", "permitted", "fasteners", "tactile", "ports", "items", "assemblySteps", "library", "products", "placements", "captures",
+              "drawings", "checks", "accepted", "permitted", "fasteners", "tactile", "ports", "items", "assemblySteps", "library", "products", "placements", "captures", "views",
               "annotations"}
 #: The annotations of a 3D document, by tag: each tag is its annotation's ``type`` (``3d-core/annotations.ts``).
 THREED_ANNOTATIONS: List[str] = ["linearDimension", "radialDimension", "sizeDimension", "angularDimension", "note", "datumFeature", "datumTarget",
@@ -164,6 +166,7 @@ THREED_LISTS: Dict[str, Dict[str, str]] = {
     "product": {"node": "products", "port": "value", "def": "ProductFacts"},
     "unit": {"node": "placements", "port": "value", "def": "PlacedUnit"},
     "capture": {"node": "captures", "port": "value", "def": "PlacedCapture"},
+    "view": {"node": "views", "port": "value", "def": "NamedView"},
     **{tag: {"node": "annotations", "port": "value", "def": tag[0].upper() + tag[1:], "kind": "annotation"} for tag in THREED_ANNOTATIONS},
 }
 
@@ -178,7 +181,7 @@ _HOLDS: Dict[str, Any] = {"holds": "children"}
 #: Every tag of the 3D document: what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
     "part": _HOLDS, "assembly": _HOLDS, "parameter": {}, "plane": {}, "body": {}, "slot": {}, "feature": {},
-    "joint": {}, "contact": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "tactile": {}, "port": {}, "item": {}, "assemble": {}, "library": {}, "product": {}, "unit": {}, "capture": {},
+    "joint": {}, "contact": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "tactile": {}, "port": {}, "item": {}, "assemble": {}, "library": {}, "product": {}, "unit": {}, "capture": {}, "view": {},
     **{t: {} for t in THREED_ANNOTATIONS},
     **{t: (_HOLDS if t == "sketch" else {}) for t in THREED_FEATURES},
     "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {},

@@ -646,6 +646,12 @@ _MountingHoleOptional = TypedDict("_MountingHoleOptional", {"axis": 'Vec3', "dep
 class MountingHole(_MountingHoleRequired, _MountingHoleOptional):
     pass
 
+#: A camera kept under a name (`ThreeDDocument.views`): `<view>` in code.
+_NamedViewRequired = TypedDict("_NamedViewRequired", {"id": str, "name": str, "camera": 'ViewCamera'})
+_NamedViewOptional = TypedDict("_NamedViewOptional", {"ride": 'ViewRide'}, total=False)
+class NamedView(_NamedViewRequired, _NamedViewOptional):
+    pass
+
 #: A free note with an optional leader line from an anchor to the text box.
 _NoteRequired = TypedDict("_NoteRequired", {"type": Literal["note"], "text": str, "anchor": 'Anchor', "id": str})
 _NoteOptional = TypedDict("_NoteOptional", {"leaderTo": 'Vec3', "property": str, "lineNames": List[str], "oneItem": bool, "label": str, "textAt": 'Vec3', "visible": bool}, total=False)
@@ -1228,6 +1234,18 @@ __ValueFormats55Optional = TypedDict("__ValueFormats55Optional", {"format": str,
 class _ValueFormats55(__ValueFormats55Required, __ValueFormats55Optional):
     pass
 
+#: A camera that orbits a point: where it looks, how far from it, and the two angles of the orbit.
+_ViewCameraRequired = TypedDict("_ViewCameraRequired", {"target": Tuple[float, float, float], "radius": float, "theta": float, "phi": float})
+_ViewCameraOptional = TypedDict("_ViewCameraOptional", {}, total=False)
+class ViewCamera(_ViewCameraRequired, _ViewCameraOptional):
+    pass
+
+#: What a view's camera rides: applying the view starts the ride; the viewer says so when the thing is not drawn then.
+_ViewRideRequired = TypedDict("_ViewRideRequired", {"target": str, "view": 'RideView'})
+_ViewRideOptional = TypedDict("_ViewRideOptional", {}, total=False)
+class ViewRide(_ViewRideRequired, _ViewRideOptional):
+    pass
+
 __VolumeFeature56Required = TypedDict("__VolumeFeature56Required", {})
 __VolumeFeature56Optional = TypedDict("__VolumeFeature56Optional", {"format": str, "fileId": str, "fileName": str, "kind": Literal["scalar", "label"]}, total=False)
 class _VolumeFeature56(__VolumeFeature56Required, __VolumeFeature56Optional):
@@ -1675,6 +1693,9 @@ PlaneRef = Union['_PlaneRef27', '_PlaneRef28', '_PlaneRef29']
 
 #: What a quantity is counted in: parts (`each`), grams, kilograms, metres, millimetres or millilitres.
 QuantityUnit = Literal["mm", "each", "g", "kg", "m", "ml"]
+
+#: How a ridden camera stands to what it rides (docs/worlds-and-runs.md § the Matrix's cameras).
+RideView = Literal["chase", "cockpit", "orbit"]
 
 #: How an end is held: soldered to a pad or a joint, crimped, inserted in a socket, or pinned at a point (free to turn).
 RodHold = Literal["solder", "crimp", "insert", "pin"]

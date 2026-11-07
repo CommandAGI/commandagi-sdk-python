@@ -301,6 +301,22 @@ class ThreeDTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "latDeg"):
             run_module(src.replace("'latDeg': 37.8564", "'latDeg': 137"), "M.3d.py")
 
+    def test_view_keeps_a_camera_under_a_name_and_what_it_rides(self):
+        # The TypeScript and Rust SDKs read the same element to the same inputs (threed.test.ts, threed.rs).
+        src = ("from commandagi.design.threed import *\n"
+               "result = part(\n"
+               "    view(id='ferry', name='Ride the ferry', camera={'target': [0, 0, 0], 'radius': 3e6, 'theta': 0.5, 'phi': 1},\n"
+               "         ride={'target': 'vessel-367123450', 'view': 'chase'}),\n"
+               "    name='Matrix',\n"
+               ")\n")
+        n = run_module(src, "M.3d.py")["graph"]["nodes"]
+        self.assertEqual(n["views"]["inputs"]["value"], [{"id": "ferry", "name": "Ride the ferry", "camera": {"target": [0, 0, 0], "radius": 3e6, "theta": 0.5, "phi": 1},
+                                                         "ride": {"target": "vessel-367123450", "view": "chase"}}])
+        with self.assertRaisesRegex(ValueError, "view"):
+            run_module(src.replace("'view': 'chase'", "'view': 'sideways'"), "M.3d.py")
+        with self.assertRaisesRegex(ValueError, "views is not a slot"):
+            run_module("from commandagi.design.threed import *\nresult = part(slot(name='views', value=[]), name='Matrix')\n", "M.3d.py")
+
     def test_tactile_places_a_grid_of_taxels_on_a_face_of_a_body(self):
         src = ("from commandagi.design.threed import *\n"
                "result = part(\n"
