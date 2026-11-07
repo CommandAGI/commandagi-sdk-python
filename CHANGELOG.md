@@ -8,6 +8,11 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.connectors`: a remote API as a folder tree, `<name>.connector.py`, the same document as the TypeScript SDK's
+  `<name>.connector.tsx` (`connector`, `credential`, `licence`, `folder`, `request`, `here`, `each`, `dir`, `file`; the
+  attributes `in`, `as` and `is` are `in_`, `as_`, `is_`). A connector that would make an impolite or unreadable request is
+  refused with why.
+
 - A fact a company or a brand does not know is `unknown("<why>")` (`{"unknown": …}`), and one it knows only roughly
   `about(<value>)` (`commandagi.design.facts`). Any attribute takes either, a required one too.
 - `Product(id, name, about, maker, seller, status, file)` and `Relationships(file)` in a `Company`;
