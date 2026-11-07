@@ -10,9 +10,9 @@ as the elements their editors edit. The same elements as the TypeScript SDK's ``
     )
 
 A record is an element and its fields are the element's attributes; a list of records is the parent's children
-(``units`` -> ``unit(...)``, ``channels`` -> ``channel(...)``, a scene's ``bodies`` -> ``body(...)``). The tags:
+(``units`` -> ``unit(...)``, ``channels`` -> ``channel(...)``). The tags:
 
-    world(name, description?, from_?, model?,         world.py             space, unit(uid …), view, scene (body children)
+    world(name, description?, from_?, model?,         world.py             space, unit(uid …), view
           links?)
     device(name …, firmware?, revision?)              definition.py        channel(id, dir, medium, format, transport …),
                                                                            bound(channel, field, min?, max?, max_rate?,
@@ -92,7 +92,10 @@ GROUP_FIELDS = ["uid", "name", "description", "group", "size_mm", "position", "r
 #: ``links``: the parts of the world's model that a run moves (packages/domain/world/pose.js modelPose), a definition's
 #: link grammar with the unit named in each joint and emit; ``node`` is the id of the model's feature that makes the part.
 #: ``policies``: the world's follow policies (docs/follow.md): one unit's robot follows another's joints, by angle.
-WORLD_FIELDS = ["name", "kind", "description", "from", "model", "links", "policies"]
+WORLD_FIELDS = ["name", "description", "from", "model", "links", "policies"]
+#: What a world no longer says, read only to refuse it by name: every world is real, and a simulation is a ``.3d.py``'s.
+WORLD_KIND = "a world names real things: it has no kind; a simulation is a run of a .3d.tsx"
+WORLD_SCENE = 'a world declares no scene: its twin steps its model\'s scene (model="model.3d.tsx"), and a simulation\'s scene is a .3d.tsx\'s'
 #: A ``bound``'s attributes: the channel it bounds, the field, and its limits.
 BOUND_FIELDS = ["channel", "field", "min", "max", "maxRate", "maxSpeed", "why"]
 #: An ``interlock``'s attributes; ``unit`` only in a world.
@@ -126,10 +129,11 @@ def _attrs(t: DocTree) -> Dict[str, Any]:
 
 
 def _world(t: DocTree) -> Dict[str, Any]:
-    kind = t["attrs"].get("kind")
-    if kind is not None and kind not in ("physical", "simulation"):
-        raise ValueError(f'<world> kind is "physical" or "simulation", not {kind!r}')
-    space_, view_, scene_ = (next(iter(_kids(t, k)), None) for k in ("space", "view", "scene"))
+    if "kind" in t["attrs"]:
+        raise ValueError(f"<world kind>: {WORLD_KIND}")
+    if list(_kids(t, "scene")):
+        raise ValueError(f"<scene> in a <world>: {WORLD_SCENE}")
+    space_, view_ = (next(iter(_kids(t, k)), None) for k in ("space", "view"))
     out: Dict[str, Any] = _own(t["attrs"], WORLD_FIELDS)
     if space_ is not None:
         out["space"] = _attrs(space_)
@@ -139,9 +143,6 @@ def _world(t: DocTree) -> Dict[str, Any]:
     out["units"] = [_attrs(u) for u in _kids(t, "unit")]
     if view_ is not None:
         out["view"] = _attrs(view_)
-    if scene_ is not None:
-        bodies = [_attrs(b) for b in _kids(scene_, "body")]
-        out["scene"] = {**_attrs(scene_), **({"bodies": bodies} if bodies else {})}
     interlocks = [_attrs(i) for i in _kids(t, "interlock")]
     if interlocks:
         out["interlocks"] = interlocks
@@ -149,13 +150,13 @@ def _world(t: DocTree) -> Dict[str, Any]:
 
 
 _WORLD = Vocabulary("world", "a world", "world", {
-    "world": {"parents": [], "required": ["name"], "attrs": WORLD_FIELDS},
+    "world": {"parents": [], "required": ["name"], "attrs": [*WORLD_FIELDS, "kind"]},
     "space": {"parents": ["world"], "single": True, "required": ["origin_mm", "size_mm"], "attrs": ["origin_mm", "size_mm"]},
     "group": {"parents": ["world"], "key": "uid", "required": ["uid", "name"], "attrs": GROUP_FIELDS},
     "unit": {"parents": ["world"], "key": "uid", "required": ["uid", "name", "device"], "attrs": UNIT_FIELDS},
     "view": {"parents": ["world"], "single": True},
-    "scene": {"parents": ["world"], "single": True},
-    "body": {"parents": ["scene"], "key": "id", "required": ["id"]},
+    "scene": {"parents": ["world"]},
+    "body": {"parents": ["scene"]},
     "interlock": {"parents": ["world"], "key": "name", "required": ["name", "unit", "channel", "requires", "why"], "attrs": INTERLOCK_FIELDS},
 }, _world, lambda doc: _unsupported("world"))
 

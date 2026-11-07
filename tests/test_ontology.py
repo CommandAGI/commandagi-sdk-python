@@ -20,14 +20,16 @@ def declared(root):
 class OntologyTests(unittest.TestCase):
     def test_a_world_is_its_world_json(self):
         d = declared(world(unit(uid="arm", name="arm", device="../../devices/so-101/definition.tsx", position=[100, 0, 0], rotation=90),
-                           scene(body(id="cube", shape={"type": "box", "hx": 0.02}, at=[0, 0, 1]), hz=240),
-                           name="Shop", kind="simulation"))["document"]
+                           name="Shop"))["document"]
         self.assertEqual(d, {"format": "world", "sources": {}, "document": {
             "name": "Shop",
-            "kind": "simulation",
             "units": [{"uid": "arm", "name": "arm", "device": "../../devices/so-101/definition.tsx", "position": [100, 0, 0], "rotation": 90}],
-            "scene": {"hz": 240, "bodies": [{"id": "cube", "shape": {"type": "box", "hx": 0.02}, "at": [0, 0, 1]}]},
         }})
+        # Every world is real: a kind and a scene are refused by name.
+        with self.assertRaisesRegex(ValueError, "<world kind>: a world names real things: it has no kind"):
+            declared(world(name="Shop", kind="physical"))
+        with self.assertRaisesRegex(ValueError, "<scene> in a <world>: a world declares no scene"):
+            declared(world(scene(body(id="cube"), hz=240), name="Shop"))
         # The world's model and the parts of it a run moves: attributes of world(), as the TypeScript SDK writes them.
         links = [{"node": "ram", "joint": {"unit": "press-1", "channel": "axes", "name": "z", "type": "prismatic", "axis": "z", "origin_mm": [0, 0, 0], "home": 0}}]
         posed = declared(world(name="Press", model="press.3d.tsx", links=links))["document"]["document"]
@@ -36,8 +38,6 @@ class OntologyTests(unittest.TestCase):
         policies = [{"id": "sim-control", "kind": "follow", "robot": "arm", "reality": "physical", "leader": {"unit": "arm", "run": "twin"}, "hz": 30}]
         followed = declared(world(name="Cell", policies=policies))["document"]["document"]
         self.assertEqual(followed, {"name": "Cell", "policies": policies, "units": []})
-        with self.assertRaisesRegex(ValueError, "physical\" or \"simulation\", not"):
-            declared(world(name="W", kind="real"))
         with self.assertRaisesRegex(ValueError, 'two <unit> in <world> have uid "a"'):
             declared(world(unit(uid="a", name="a", device="d"), unit(uid="a", name="b", device="d"), name="W"))
         with self.assertRaisesRegex(ValueError, "speed is not read"):
@@ -183,18 +183,18 @@ class OntologyTests(unittest.TestCase):
 
     def test_a_document_names_each_elements_call_by_its_tree_path(self):
         out = run_module(
-            "from commandagi.design.ontology import body, scene, unit, world\n"
+            "from commandagi.design.ontology import unit, view, world\n"
             "result = world(\n"
             "    unit(uid='rover', name='rover', device='d.json', position=[0, 0, 0], rotation=0),\n"
-            "    scene(body(id='cube'), hz=240),\n"
-            "    name='Yard', kind='physical',\n"
+            "    view(selected='rover'),\n"
+            "    name='Yard',\n"
             ")\n",
             "worlds/yard/world.py",
         )
         self.assertEqual(out["graph"]["nodes"], {})
         self.assertEqual(out["document"]["format"], "world")
         self.assertEqual({k: (v["tag"], v["line"]) for k, v in out["document"]["sources"].items()},
-                         {"": ("world", 2), "unit#rover": ("unit", 3), "scene": ("scene", 4), "scene/body#cube": ("body", 4)})
+                         {"": ("world", 2), "unit#rover": ("unit", 3), "view": ("view", 4)})
         self.assertEqual(out["document"]["sources"]["unit#rover"]["props"]["uid"]["value"], "rover")
         # The map rides on the empty graph beside the document.
         self.assertEqual(out["graph"]["meta"]["sourceMap"]["language"], "py")

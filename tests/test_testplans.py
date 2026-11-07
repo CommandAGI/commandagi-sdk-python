@@ -93,7 +93,7 @@ class FirmwareTests(unittest.TestCase):
 class UnitTests(unittest.TestCase):
     def test_a_unit_says_its_serial_and_its_hardware_revision(self):
         d = declare_document(world(unit(uid="cam-1", name="cam", device="d.tsx", serial="CAM-000123", revision="B", position=[0, 0, 0], rotation=0),
-                                   name="fleet", kind="physical"))
+                                   name="fleet"))
         self.assertEqual(d["document"]["units"][0], {"uid": "cam-1", "name": "cam", "device": "d.tsx", "serial": "CAM-000123", "revision": "B",
                                                       "position": [0, 0, 0], "rotation": 0})
 
