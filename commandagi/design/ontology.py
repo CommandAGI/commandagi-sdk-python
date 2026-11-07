@@ -6,13 +6,13 @@ as the elements their editors edit. The same elements as the TypeScript SDK's ``
 
     result = world(
         unit(uid="arm", name="arm", device="../../devices/so-101/definition.tsx", position=[0, 0, 0], rotation=0),
-        name="Shop", kind="physical",
+        name="Shop",
     )
 
 A record is an element and its fields are the element's attributes; a list of records is the parent's children
 (``units`` -> ``unit(...)``, ``channels`` -> ``channel(...)``, a scene's ``bodies`` -> ``body(...)``). The tags:
 
-    world(name, kind, description?, from_?, model?,   world.py             space, unit(uid …), view, scene (body children)
+    world(name, description?, from_?, model?,         world.py             space, unit(uid …), view, scene (body children)
           links?)
     device(name …, firmware?, revision?)              definition.py        channel(id, dir, medium, format, transport …),
                                                                            bound(channel, field, min?, max?, max_rate?,
@@ -127,8 +127,8 @@ def _attrs(t: DocTree) -> Dict[str, Any]:
 
 def _world(t: DocTree) -> Dict[str, Any]:
     kind = t["attrs"].get("kind")
-    if kind not in ("physical", "simulation"):
-        raise ValueError(f'<world> kind is "physical" or "simulation", said explicitly, not {kind!r}')
+    if kind is not None and kind not in ("physical", "simulation"):
+        raise ValueError(f'<world> kind is "physical" or "simulation", not {kind!r}')
     space_, view_, scene_ = (next(iter(_kids(t, k)), None) for k in ("space", "view", "scene"))
     out: Dict[str, Any] = _own(t["attrs"], WORLD_FIELDS)
     if space_ is not None:
@@ -149,7 +149,7 @@ def _world(t: DocTree) -> Dict[str, Any]:
 
 
 _WORLD = Vocabulary("world", "a world", "world", {
-    "world": {"parents": [], "required": ["name", "kind"], "attrs": WORLD_FIELDS},
+    "world": {"parents": [], "required": ["name"], "attrs": WORLD_FIELDS},
     "space": {"parents": ["world"], "single": True, "required": ["origin_mm", "size_mm"], "attrs": ["origin_mm", "size_mm"]},
     "group": {"parents": ["world"], "key": "uid", "required": ["uid", "name"], "attrs": GROUP_FIELDS},
     "unit": {"parents": ["world"], "key": "uid", "required": ["uid", "name", "device"], "attrs": UNIT_FIELDS},

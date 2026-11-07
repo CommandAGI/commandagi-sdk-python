@@ -30,33 +30,33 @@ class OntologyTests(unittest.TestCase):
         }})
         # The world's model and the parts of it a run moves: attributes of world(), as the TypeScript SDK writes them.
         links = [{"node": "ram", "joint": {"unit": "press-1", "channel": "axes", "name": "z", "type": "prismatic", "axis": "z", "origin_mm": [0, 0, 0], "home": 0}}]
-        posed = declared(world(name="Press", kind="physical", model="press.3d.tsx", links=links))["document"]["document"]
-        self.assertEqual(posed, {"name": "Press", "kind": "physical", "model": "press.3d.tsx", "links": links, "units": []})
+        posed = declared(world(name="Press", model="press.3d.tsx", links=links))["document"]["document"]
+        self.assertEqual(posed, {"name": "Press", "model": "press.3d.tsx", "links": links, "units": []})
         # A world's follow policies (docs/follow.md): an attribute of world(), as the TypeScript SDK writes it.
         policies = [{"id": "sim-control", "kind": "follow", "robot": "arm", "reality": "physical", "leader": {"unit": "arm", "run": "twin"}, "hz": 30}]
-        followed = declared(world(name="Cell", kind="physical", policies=policies))["document"]["document"]
-        self.assertEqual(followed, {"name": "Cell", "kind": "physical", "policies": policies, "units": []})
-        with self.assertRaisesRegex(ValueError, "said explicitly"):
+        followed = declared(world(name="Cell", policies=policies))["document"]["document"]
+        self.assertEqual(followed, {"name": "Cell", "policies": policies, "units": []})
+        with self.assertRaisesRegex(ValueError, "physical\" or \"simulation\", not"):
             declared(world(name="W", kind="real"))
         with self.assertRaisesRegex(ValueError, 'two <unit> in <world> have uid "a"'):
-            declared(world(unit(uid="a", name="a", device="d"), unit(uid="a", name="b", device="d"), name="W", kind="physical"))
+            declared(world(unit(uid="a", name="a", device="d"), unit(uid="a", name="b", device="d"), name="W"))
         with self.assertRaisesRegex(ValueError, "speed is not read"):
-            declared(world(unit(uid="a", name="a", device="d", speed=3), name="W", kind="physical"))
+            declared(world(unit(uid="a", name="a", device="d", speed=3), name="W"))
         with self.assertRaisesRegex(TypeError, "<unit> holds nothing"):
-            unit(world(name="W", kind="physical"))
+            unit(world(name="W"))
         # A group is what a unit stands in or on: a shelf and its level, the level in the shelf, the unit naming its level.
         shelved = declared(world(group(uid="shelf", name="machine shelf", size_mm=[2440, 760, 2600], position=[0, 3600, 0], rotation=0),
                                  group(uid="shelf-1", name="level 1", group="shelf", size_mm=[2440, 760, 650], position=[0, 3600, 150], rotation=0),
                                  unit(uid="cnc-01", name="router", device="../../devices/cnc/definition.tsx", group="shelf-1",
                                       position=[-900, 3600, 150], rotation=0),
-                                 name="Shop", kind="physical"))["document"]["document"]
+                                 name="Shop"))["document"]["document"]
         self.assertEqual(shelved["groups"], [
             {"uid": "shelf", "name": "machine shelf", "size_mm": [2440, 760, 2600], "position": [0, 3600, 0], "rotation": 0},
             {"uid": "shelf-1", "name": "level 1", "group": "shelf", "size_mm": [2440, 760, 650], "position": [0, 3600, 150], "rotation": 0},
         ])
         self.assertEqual(shelved["units"][0]["group"], "shelf-1")
         with self.assertRaisesRegex(ValueError, "device is not read"):
-            declared(world(group(uid="g", name="g", device="d"), name="W", kind="physical"))
+            declared(world(group(uid="g", name="g", device="d"), name="W"))
 
     def test_bounds_and_interlocks_are_elements(self):
         requires = [{"channel": "switches", "field": "home", "eq": True}]
@@ -72,7 +72,7 @@ class OntologyTests(unittest.TestCase):
             declared(device(bound(channel="x", field="f", max=1), name="A"))
         w = declared(world(unit(uid="tray", name="tray", device="d"),
                            interlock(name="shuttle-needs-hatch-open", unit="tray", channel="shuttle", requires=[{"unit": "hatch", "channel": "gate", "field": "open", "eq": True}], why="the tray would strike the gate"),
-                           name="Unit", kind="physical"))["document"]["document"]
+                           name="Unit"))["document"]["document"]
         self.assertEqual(w["interlocks"][0]["unit"], "tray")
 
     def test_a_definition_names_its_firmware_and_a_firmware_declares_its_channels(self):
