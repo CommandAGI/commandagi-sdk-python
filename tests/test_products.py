@@ -56,6 +56,7 @@ class ProductTests(unittest.TestCase):
             "priceCents is a whole number of cents, at least 50": (phys, {**v, "priceCents": 10}),
             "fulfilment is an object": ({**phys, "fulfilment": "ship"}, v),
             "colour": ({**phys, "colour": "red"}, v),
+            "taxCode is a Stripe product tax code like txcd_99999999": ({**phys, "tax_code": "txcd_1"}, v),
         }
         for why, (attrs, var) in bad.items():
             with self.assertRaisesRegex(ValueError, why, msg=why):

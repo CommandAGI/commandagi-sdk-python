@@ -29,7 +29,7 @@ from .element import define
 
 PRODUCT_KINDS = ["physical", "digital"]
 PRODUCT_STATUSES = ["draft", "active", "archived"]
-PRODUCT_FIELDS = ["name", "kind", "slug", "subtitle", "description", "images", "status", "shipping", "fulfilment", "quantityTerms", "embodimentKind"]
+PRODUCT_FIELDS = ["name", "kind", "slug", "subtitle", "description", "images", "status", "shipping", "fulfilment", "quantityTerms", "embodimentKind", "taxCode"]
 VARIANT_FIELDS = ["sku", "name", "priceCents", "compareAtCents", "stock", "options", "weightGrams", "file", "deposit"]
 DISCOUNT_FIELDS = ["code", "percent", "amountCents", "startsAt", "endsAt", "usageLimit"]
 
@@ -226,6 +226,10 @@ def product_of(t: DocTree) -> Dict[str, Any]:
         if not _text(a["embodimentKind"], 80):
             raise ValueError(f"{at} embodimentKind is a short text (at most 80), not {_said(a['embodimentKind'])}")
         out["embodimentKind"] = a["embodimentKind"]
+    if "taxCode" in a:
+        if not (isinstance(a["taxCode"], str) and re.fullmatch(r"txcd_[0-9]{8}", a["taxCode"])):
+            raise ValueError(f"{at} taxCode is a Stripe product tax code like txcd_99999999, not {_said(a['taxCode'])}")
+        out["taxCode"] = a["taxCode"]
     variants = [c for c in t["children"] if c["tag"] == "variant"]
     # A file not finished yet may hold none; the checkout refuses a product that sells nothing.
     if len(variants) > 50:
