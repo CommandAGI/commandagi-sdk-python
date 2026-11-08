@@ -16,9 +16,13 @@ Added
   the same documents as the TypeScript SDK's `.opportunity.tsx` and `.experiment.tsx` (`opportunity`, `contact`,
   `action`, `evidence`, `move`, `draft`, `experiment`, `arm`, `objective`, `decision`; `from_` is `from`, `approved_by`
   is `approvedBy`). Each refusal is by name.
-- `commandagi.design.goods`: a good, `<name>.good.py`, the same document as the TypeScript SDK's `<name>.good.tsx`
-  (`good`, `variant`; keywords in snake_case: `price_cents`, `inventory_qty`, `weight_grams`). A physical good with a
-  pre-order `deposit`, or a digital good with each variant's `file`; each refusal is by name.
+- `commandagi.design.products`: a product, `<name>.product.py`, the same document as the TypeScript SDK's
+  `<name>.product.tsx` (`product`, `variant`, `discount`; keywords in snake_case: `price_cents`, `compare_at_cents`,
+  `stock`, `options`, `weight_grams`, `amount_cents`, `starts_at`, `ends_at`, `usage_limit`). A physical product with
+  stock and a pre-order `deposit`, or a digital product with each variant's `file`; a discount takes a `percent` or an
+  `amount_cents` off, by its `code`, in a window. Each refusal is by name.
+- `commandagi.design.carts`: a buyer's cart at one seller, `Carts/<seller>.cart.py` (`cart`, `item`, `offer`). A cart
+  names no price.
 
 - `commandagi.design.connectors`: a remote API as a folder tree, `<name>.connector.py`, the same document as the TypeScript SDK's
   `<name>.connector.tsx` (`connector`, `credential`, `licence`, `folder`, `request`, `here`, `each`, `dir`, `file`; the

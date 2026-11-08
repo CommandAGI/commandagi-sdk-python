@@ -108,6 +108,8 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.business` | a company, an RFC, a case |
 | `commandagi.design.tasks` | a task, a project |
 | `commandagi.design.mounts` | a thread's mounted tasks (`mounts.py`, in the thread's run folder) |
+| `commandagi.design.products` | a product a seller sells (`name.product.py`): `product`, `variant`, `discount` |
+| `commandagi.design.carts` | a buyer's cart at one seller (`Carts/<seller>.cart.py`): `cart`, `item`, `offer`; no price |
 | `commandagi.design.connectors` | a remote API as a folder tree a mount can list (`name.connector.py`): `connector`, `credential`, `licence`, `folder`, `request`, `here`, `each(in_=…, as_=…)`, `dir`, `file` |
 | `commandagi.design.infra` | a VPN exit (`exit.py`), a logged-in state (`session.py`), a vantage (`vantage.py`). The CommandAGI platform does not run these: its scripts read `vantage.tsx` and `session.tsx`, and `make infra-plan` reads `exit.tsx` |
 | `commandagi.design.evals` | an eval (`eval`: its `case`s), a metric (`metric`) |
