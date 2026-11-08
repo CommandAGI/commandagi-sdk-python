@@ -5,7 +5,7 @@ import unittest
 
 from commandagi.design import run_module
 from commandagi.design.documents import declare_document
-from commandagi.design.market import MARKET_VOCABULARY, account, bid, book, cancel, fill, holding, market, order, order_update, quote, trade
+from commandagi.design.market import MARKET_VOCABULARY, account, bid, book, cancel, fill, holding, market, option_symbol, order, order_update, parse_option, quote, trade
 
 # A copy of seed/user-commandagi/examples/market/code/Paper.market.py in the CommandAGI repository: the golden all
 # three SDKs declare alike.
@@ -138,6 +138,31 @@ class MarketTests(unittest.TestCase):
     def test_an_account_says_only_the_lists_it_has(self):
         d = declare_document(market(account(t=T, venue="sim", mode="sim")))
         self.assertEqual(d["document"]["records"], [{"kind": "account", "t": T, "venue": "sim", "mode": "sim"}])
+
+    def test_an_option_contract_is_one_sym_in_one_spelling(self):
+        call = "AAPL 2026-12-18 C 200"
+        self.assertEqual(option_symbol("AAPL", "2026-12-18", "call", 200), call)
+        self.assertEqual(option_symbol("SPY", "2027-01-15", "P", "450.50", multiplier=10), "SPY 2027-01-15 P 450.5 x10")
+        self.assertEqual(option_symbol("AAPL", "2026-12-18", "C", "200", multiplier="100"), call, "100 is not written")
+        self.assertEqual(parse_option(call), {"underlying": "AAPL", "expiry": "2026-12-18", "right": "C", "strike": "200", "multiplier": "100"})
+        self.assertIsNone(parse_option("BTC/USD"), "a symbol with no space is not a contract")
+        for sym, words in [
+            ("AAPL 2026-12-18 C 200.50", r"strike is written 200\.5, not 200\.50"),
+            ("AAPL 2026-12-18 call 200", r'right is C \(a call\) or P \(a put\), not "call"'),
+            ("AAPL 2026-02-30 C 200", r'expiry is a date, YYYY-MM-DD, not "2026-02-30"'),
+            ("AAPL 2026-12-18 C 200 x100", r"a multiplier of 100 is not written: AAPL 2026-12-18 C 200 is that contract"),
+            ("AAPL 2026-12-18 C 0", r"strike is decimal text above 0"),
+            ("AAPL Dec-18 200C", r"an option contract is <underlying> <expiry YYYY-MM-DD> <C\|P> <strike>"),
+        ]:
+            with self.assertRaisesRegex(ValueError, words):
+                parse_option(sym)
+        # In a recording: a contract's quote and its order (with what it opens); a sym spelled otherwise is refused.
+        o = dict(t=T, id="o-a1b2c3d4e5f6", sym=call, side="buy", qty="2", type="limit", limit="3.1", effect="open", tif="day",
+                 venue="tradier-sandbox", mode="paper", by="person:ada", grant="g-paper")
+        doc = declare_document(market(quote(t=T, sym=call, last="3.1"), order(**o)))["document"]
+        self.assertEqual(doc, {"records": [{"kind": "quote", "t": T, "sym": call, "last": "3.1"}, {"kind": "order", **o}]})
+        with self.assertRaisesRegex(ValueError, r"<quote> sym: an option's strike is written 200, not 200\.0"):
+            declare_document(market(quote(t=T, sym="AAPL 2026-12-18 C 200.0", last="3.1")))
 
 
 if __name__ == "__main__":

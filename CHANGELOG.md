@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.market`: an option contract is one `sym` in one spelling, `AAPL 2026-12-18 C 200` (the
+  underlying, the expiry, C or P, the strike, and `x<multiplier>` only when it is not 100). `option_symbol` writes it,
+  `parse_option` reads it, and a `sym` with a space spelled any other way is refused by name. An `order` and an `amend`
+  may say `effect` (`open` or `close`).
 - `commandagi.design.opportunities`: an opportunity (`<name>.opportunity.py`) and an experiment (`<name>.experiment.py`),
   the same documents as the TypeScript SDK's `.opportunity.tsx` and `.experiment.tsx` (`opportunity`, `contact`,
   `action`, `evidence`, `move`, `draft`, `experiment`, `arm`, `objective`, `decision`; `from_` is `from`, `approved_by`
