@@ -8,6 +8,10 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.opportunities`: an opportunity (`<name>.opportunity.py`) and an experiment (`<name>.experiment.py`),
+  the same documents as the TypeScript SDK's `.opportunity.tsx` and `.experiment.tsx` (`opportunity`, `contact`,
+  `action`, `evidence`, `move`, `draft`, `experiment`, `arm`, `objective`, `decision`; `from_` is `from`, `approved_by`
+  is `approvedBy`). Each refusal is by name.
 - `commandagi.design.goods`: a good, `<name>.good.py`, the same document as the TypeScript SDK's `<name>.good.tsx`
   (`good`, `variant`; keywords in snake_case: `price_cents`, `inventory_qty`, `weight_grams`). A physical good with a
   pre-order `deposit`, or a digital good with each variant's `file`; each refusal is by name.
