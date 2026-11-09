@@ -1599,7 +1599,7 @@
           {
             "name": "routeNets",
             "tool": "pcb_route_nets",
-            "doc": "Route what is open of the nets named ({ nets }; all when none) with their net classes' rules, from the copper they have, on the copper layers given ({ layers }; default the two outer layers, through vias), and write the traces into the board's code. { ripUp: true } removes the nets' copper first. The result names each connection left unrouted; `complete` is false while one is.",
+            "doc": "Route what is open of the nets named ({ nets }; all when none) with their net classes' rules, from the copper they have, on the copper layers given ({ layers }; default every copper layer that holds no plane, through vias), and write the traces into the board's code. { ripUp: true } removes the nets' copper first. The result names each connection left unrouted; `complete` is false while one is.",
             "params": [
               {
                 "name": "fileId",
