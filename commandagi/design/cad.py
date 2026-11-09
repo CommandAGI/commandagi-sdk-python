@@ -152,31 +152,44 @@ class SketchBuilder:
         self.points[i] = {"id": i, "x": x, "y": y}
         return i
 
-    def _seg(self, seg: Dict[str, Any]) -> None:
+    def _seg(self, seg: Dict[str, Any], of: Optional[str] = None) -> None:
         self._n += 1
         i = f"s{self._n}"
-        self.segments[i] = {**seg, "id": i}
+        self.segments[i] = {**seg, "id": i, **({"of": of} if of else {})}
+
+    @staticmethod
+    def _sides(what: str, of: Optional[Sequence[Optional[str]]], sides: int) -> List[Optional[str]]:
+        """``of``: the segment each side names in a region's reference (TypeScript's ``Sides``): a side split in the
+        editor names the side it was cut from, and every side of the call the id it had, since the builder numbers its
+        segments in the order it draws them."""
+        if of is None:
+            return [None] * sides
+        if len(of) != sides:
+            raise ValueError(f"{what}: of names {len(of)} sides, and it has {sides}")
+        return list(of)
 
     def point(self, at: Vec2) -> "SketchBuilder":
         """A point by itself: where a line the editor draws starts."""
         self._point(at[0], at[1])
         return self
 
-    def line(self, points: Sequence[Vec2]) -> "SketchBuilder":
+    def line(self, points: Sequence[Vec2], of: Optional[Sequence[Optional[str]]] = None) -> "SketchBuilder":
         """An open polyline through these points."""
         if len(points) < 2:
             raise ValueError("a line needs at least two points")
+        sides = self._sides("line", of, len(points) - 1)
         ids = [self._point(p[0], p[1]) for p in points]
-        for a, b in zip(ids, ids[1:]):
-            self._seg({"type": "line", "a": a, "b": b})
+        for k, (a, b) in enumerate(zip(ids, ids[1:])):
+            self._seg({"type": "line", "a": a, "b": b}, sides[k])
         return self
 
-    def polygon(self, points: Sequence[Vec2]) -> "SketchBuilder":
+    def polygon(self, points: Sequence[Vec2], of: Optional[Sequence[Optional[str]]] = None) -> "SketchBuilder":
         if len(points) < 3:
             raise ValueError("a polygon needs at least three points")
+        sides = self._sides("polygon", of, len(points))
         ids = [self._point(p[0], p[1]) for p in points]
         for i, a in enumerate(ids):
-            self._seg({"type": "line", "a": a, "b": ids[(i + 1) % len(ids)]})
+            self._seg({"type": "line", "a": a, "b": ids[(i + 1) % len(ids)]}, sides[i])
         return self
 
     def rect(self, size: Vec2, center: Optional[Vec2] = None, corner: Optional[Vec2] = None) -> "SketchBuilder":
@@ -210,20 +223,31 @@ def sketch(plane: Union[str, Tuple[str, float]], draw: Callable[[SketchBuilder],
     return SketchRef(s, ref.id)
 
 
+Regions = Optional[Sequence[Union[int, str]]]
+"""A profile's regions: an index into the sketch's closed regions, or a region's reference (``"s5+s6+s7+s8"``)."""
+
+
 def extrude(profile: SketchRef, distance: float, symmetric: bool = False, reverse: bool = False, name: Optional[str] = None,
-            operation: str = "new", after: Optional[Sequence[Body]] = None) -> Body:
+            operation: str = "new", after: Optional[Sequence[Body]] = None, regions: Regions = None) -> Body:
+    """Extrude a sketch's closed regions (``regions``, or each outer loop) ``distance`` along the plane's normal."""
     fields: Dict[str, Any] = {"profile": profile, "distance": distance}
     if symmetric:
         fields["symmetric"] = True
     if reverse:
         fields["reverse"] = True
+    if regions is not None:
+        fields["regions"] = list(regions)
     fields["operation"] = operation
     return _feature("extrude()", "extrude", fields, name, _after(after))
 
 
 def revolve(profile: SketchRef, axis: str, angle: float = 360, name: Optional[str] = None, operation: str = "new",
-            after: Optional[Sequence[Body]] = None) -> Body:
-    return _feature("revolve()", "revolve", {"profile": profile, "axis": _axis_ref(axis), "angle": _rad(angle), "operation": operation}, name, _after(after))
+            after: Optional[Sequence[Body]] = None, regions: Regions = None) -> Body:
+    fields: Dict[str, Any] = {"profile": profile, "axis": _axis_ref(axis), "angle": _rad(angle)}
+    if regions is not None:
+        fields["regions"] = list(regions)
+    fields["operation"] = operation
+    return _feature("revolve()", "revolve", fields, name, _after(after))
 
 
 def _boolean(what: str, op: str, target: Body, tools: Sequence[Body]) -> Body:

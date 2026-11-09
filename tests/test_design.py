@@ -4,7 +4,8 @@ import json
 import unittest
 
 from commandagi.design import (board, box, channels, circuit, component, connect, cylinder, extrude, fillet, footprints, graph,
-                               hole, input_, linear_pattern, net, node, part, part_type_for, run_module, sketch, subtract, union)
+                               hole, input_, linear_pattern, net, node, part, part_type_for, revolve, run_module, sketch, subtract,
+                               union)
 from commandagi.design import cadquery as cq
 
 
@@ -52,6 +53,21 @@ class CadTests(unittest.TestCase):
         sk = next(n for n in g["nodes"].values() if n["type"] == "sketch")
         self.assertEqual(sk["inputs"]["plane"], wire(datum["id"]))
 
+
+    def test_extrude_and_revolve_take_regions_and_a_polygon_its_sides_sources(self):
+        """The call form takes what the element form takes: a profile's regions by index or by reference, and a side's
+        source, so a split side's reference survives the builder's numbering (TypeScript's design.test.ts the same)."""
+        def body():
+            s = sketch("XY", lambda b: b.polygon([(0, 0), (10, 0), (10, 5), (10, 10), (0, 10)], of=["s6", "s7", "s7", "s8", "s9"]))
+            return [extrude(s, distance=2, regions=["s6+s7+s8+s9", 0]), revolve(s, axis="Y", regions=[1])]
+
+        g = part("P", body).ir
+        node = lambda t: next(n for n in g["nodes"].values() if n["type"] == t)
+        self.assertEqual(node("extrude")["inputs"]["regions"], ["s6+s7+s8+s9", 0])
+        self.assertEqual(node("revolve")["inputs"]["regions"], [1])
+        self.assertEqual([x.get("of") for x in node("sketch")["inputs"]["sketch"]["segments"].values()], ["s6", "s7", "s7", "s8", "s9"])
+        with self.assertRaisesRegex(ValueError, "polygon: of names 1 sides, and it has 3"):
+            part("Q", lambda: extrude(sketch("XY", lambda b: b.polygon([(0, 0), (1, 0), (0, 1)], of=["a"])), distance=1))
 
     def test_a_feature_is_wired_to_the_heads_of_its_body_and_to_its_last_feature(self):
         """What a feature acts on, and what runs first, in two wires: a part of n features declares about 2n wires,
