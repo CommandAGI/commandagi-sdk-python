@@ -816,7 +816,7 @@ class ProductItem(_ProductItemRequired, _ProductItemOptional):
 
 #: A profile drawn from a sketch's solved closed regions.
 _ProfileRefRequired = TypedDict("_ProfileRefRequired", {"sketch": str})
-_ProfileRefOptional = TypedDict("_ProfileRefOptional", {"regions": List[float]}, total=False)
+_ProfileRefOptional = TypedDict("_ProfileRefOptional", {"regions": List[Union[str, float]]}, total=False)
 class ProfileRef(_ProfileRefRequired, _ProfileRefOptional):
     pass
 
@@ -972,32 +972,32 @@ class SketchProjection(_SketchProjectionRequired, _SketchProjectionOptional):
     pass
 
 __SketchSegment39Required = TypedDict("__SketchSegment39Required", {"id": str, "type": Literal["line"], "a": str, "b": str})
-__SketchSegment39Optional = TypedDict("__SketchSegment39Optional", {"construction": bool, "from": str}, total=False)
+__SketchSegment39Optional = TypedDict("__SketchSegment39Optional", {"construction": bool, "from": str, "of": str}, total=False)
 class _SketchSegment39(__SketchSegment39Required, __SketchSegment39Optional):
     pass
 
 __SketchSegment40Required = TypedDict("__SketchSegment40Required", {"id": str, "type": Literal["circle"], "center": str, "radius": float})
-__SketchSegment40Optional = TypedDict("__SketchSegment40Optional", {"construction": bool, "from": str}, total=False)
+__SketchSegment40Optional = TypedDict("__SketchSegment40Optional", {"construction": bool, "from": str, "of": str}, total=False)
 class _SketchSegment40(__SketchSegment40Required, __SketchSegment40Optional):
     pass
 
 __SketchSegment41Required = TypedDict("__SketchSegment41Required", {"id": str, "type": Literal["arc"], "center": str, "start": str, "end": str, "radius": float})
-__SketchSegment41Optional = TypedDict("__SketchSegment41Optional", {"construction": bool, "from": str}, total=False)
+__SketchSegment41Optional = TypedDict("__SketchSegment41Optional", {"construction": bool, "from": str, "of": str}, total=False)
 class _SketchSegment41(__SketchSegment41Required, __SketchSegment41Optional):
     pass
 
 __SketchSegment42Required = TypedDict("__SketchSegment42Required", {"id": str, "type": Literal["spline"], "points": List[str]})
-__SketchSegment42Optional = TypedDict("__SketchSegment42Optional", {"closed": bool, "construction": bool, "nurbs": 'NurbsSpec', "from": str}, total=False)
+__SketchSegment42Optional = TypedDict("__SketchSegment42Optional", {"closed": bool, "construction": bool, "nurbs": 'NurbsSpec', "from": str, "of": str}, total=False)
 class _SketchSegment42(__SketchSegment42Required, __SketchSegment42Optional):
     pass
 
 __SketchSegment43Required = TypedDict("__SketchSegment43Required", {"id": str, "type": Literal["ellipse"], "center": str, "focus": str, "minorRadius": float})
-__SketchSegment43Optional = TypedDict("__SketchSegment43Optional", {"construction": bool, "from": str}, total=False)
+__SketchSegment43Optional = TypedDict("__SketchSegment43Optional", {"construction": bool, "from": str, "of": str}, total=False)
 class _SketchSegment43(__SketchSegment43Required, __SketchSegment43Optional):
     pass
 
 __SketchSegment44Required = TypedDict("__SketchSegment44Required", {"id": str, "type": Literal["ellipseArc"], "center": str, "focus": str, "minorRadius": float, "start": str, "end": str})
-__SketchSegment44Optional = TypedDict("__SketchSegment44Optional", {"construction": bool, "from": str}, total=False)
+__SketchSegment44Optional = TypedDict("__SketchSegment44Optional", {"construction": bool, "from": str, "of": str}, total=False)
 class _SketchSegment44(__SketchSegment44Required, __SketchSegment44Optional):
     pass
 
