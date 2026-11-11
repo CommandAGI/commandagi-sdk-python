@@ -30,6 +30,7 @@ from typing import Any, Dict, List, Optional
 from .business_equity import EQUITY_TAGS, rounds_of
 from .business_finance import COMPANY_FINANCE_MANY, COMPANY_FINANCE_ONE, FINANCE_TAGS, finance_of
 from .company_formation import FILING_PAPER_PROPS, FORMATION_LISTS, FORMATION_TAGS, formation_of
+from .company_profile import PROFILE_COMPANY_PROPS, PROFILE_LISTS, PROFILE_TAGS, profile_of
 from .company_governance import COMPANY_GOVERNANCE_MANY, COMPANY_GOVERNANCE_ONE, GOVERNANCE_TAGS, PAPER_VOTE_PROPS, governance_of, votes_of
 from .company_deals import COMPANY_DEALS_MANY, COMPANY_DEALS_ONE, DEALS_TAGS, deals_of
 from .element import Element, child_elements, declares, define
@@ -39,10 +40,10 @@ from .people_ops import PEOPLE_OPS_TAGS, team_of
 _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
 
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
-    "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT}, "required": ["name"],
+    "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT, **PROFILE_COMPANY_PROPS}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
                         **COMPANY_FINANCE_ONE, "team": "Team", **COMPANY_GOVERNANCE_ONE, "relationships": "Relationships", **COMPANY_DEALS_ONE},
-                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, "brands": "Brand", **COMPANY_GOVERNANCE_MANY, "products": "Product", **COMPANY_DEALS_MANY}},
+                "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, **PROFILE_LISTS, "brands": "Brand", **COMPANY_GOVERNANCE_MANY, "products": "Product", **COMPANY_DEALS_MANY}},
     # A priced round, pro forma, and its investments (./business_equity.py).
     **EQUITY_TAGS,
     "Entity": {"props": {"jurisdiction": _TEXT, "form": _TEXT, "taxClassification": _TEXT, "name": _TEXT, "formed": _TEXT,
@@ -62,6 +63,8 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     "Signature": {"props": {"party": _TEXT, "signer": _TEXT, "capacity": _TEXT, "date": _TEXT, "method": _TEXT, "evidence": _TEXT}, "required": ["party"]},
     "Version": {"props": {"file": _TEXT, "date": _TEXT, "note": _TEXT}, "required": ["file"]},
     **FORMATION_TAGS,
+    # The legal profile: addresses by purpose, classes of stock, beneficial owners (./company_profile.py).
+    **PROFILE_TAGS,
     # A brand of the company: its own ``.brand.py``, by ref (docs/company-substrate.md § the brand surface).
     "Brand": {"props": {"file": _TEXT}, "required": ["file"]},
     # What the company sells or makes: who makes it and who sells it (the merchant of record), when they differ.
@@ -227,7 +230,7 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
             **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
             "dashboard": p.get("dashboard"), "entity": entity, "standard": standard,
             **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {}),
-            **({"finance": finance} if finance else {}), **formation_of(node), **({"rounds": rounds} if rounds else {}),
+            **({"finance": finance} if finance else {}), **formation_of(node), **profile_of(node), **({"rounds": rounds} if rounds else {}),
             **({"team": team_of(one["team"])} if one["team"] else {}),
             **({"brands": brands} if brands else {}), **({"products": products} if products else {}),
             **({"relationships": one["relationships"]["props"]["file"]} if one["relationships"] else {}), **governance_of(node), **deals_of(node)}

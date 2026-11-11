@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.company_profile`: `Company(website=...)`, `Address`, `Stock` and `Owner`, the company's legal
+  profile, read as the document's `website`, `addresses`, `stock` and `owners`.
 - `commandagi.design.scripts`: `publish(rule=..., when=...)`, the script's own records folded into plain files by a
   rule of the ontology, by program (`PUBLISH_RULES`: `capital`); a script's `publishes` is always a list.
 - `commandagi.design.market`: an option contract is one `sym` in one spelling, `AAPL 2026-12-18 C 200` (the
