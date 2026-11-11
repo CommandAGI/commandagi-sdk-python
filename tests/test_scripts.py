@@ -10,7 +10,7 @@ import unittest
 from commandagi.design.documents import declare_document
 from commandagi.design.element import Element
 from commandagi.design.scripts import (SCRIPT_FILE, SCRIPTS, derive, discover, judge, param, script, script_with_defaults,
-                                       source, tail, tail_ref_problem, wake)
+                                       publish, source, tail, tail_ref_problem, wake)
 
 V = SCRIPTS["script"]
 
@@ -42,7 +42,7 @@ class ScriptTests(unittest.TestCase):
             "tails": [{"of": "../../central-banks/fed/fed.script.tsx", "when": {"class": "fomc.*"}}],
             "derives": [],
             "wakes": [{"when": {"class": "sec.filing.8-k*"}, "prompt": "Say what the report changes."}],
-            "discovers": [], "judges": [], "params": []})
+            "discovers": [], "judges": [], "params": [], "publishes": []})
         self.assertEqual(V.from_tree(V.to_tree(m)), m, "both ways")
         full = script_with_defaults(m)
         self.assertEqual(full["sources"][0], {
@@ -54,7 +54,7 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(full["wakes"], [{"when": {"class": "sec.filing.8-k*"}, "every": None, "prompt": "Say what the report changes.", "agent": None, "maxSpend": None}])
 
     def test_an_empty_script_its_file_name_and_a_part_that_names_another_stream(self):
-        empty = {"sources": [], "tails": [], "derives": [], "wakes": [], "discovers": [], "judges": [], "params": []}
+        empty = {"sources": [], "tails": [], "derives": [], "wakes": [], "discovers": [], "judges": [], "params": [], "publishes": []}
         self.assertEqual(doc(), empty)
         self.assertEqual(V.empty("script"), empty)
         for name in ["nvidia.script.tsx", "a.script.jsx", "b.script.py", "c.script.rs"]:
@@ -179,6 +179,18 @@ class ScriptTests(unittest.TestCase):
             doc(tail(of="../${of}"))
         with self.assertRaisesRegex(ValueError, "class is the class file"):
             doc(discover(slug="cve", class_="${a-b}"))
+
+    def test_a_publish_folds_by_a_rule_one_a_rule(self):
+        m = doc(publish(rule="capital", when={"class": "*.topic"}))
+        self.assertEqual(m["publishes"], [{"rule": "capital", "when": {"class": "*.topic"}}])
+        self.assertEqual(V.from_tree(V.to_tree(m)), m, "both ways")
+        self.assertEqual(script_with_defaults(doc(publish(rule="capital")))["publishes"], [{"rule": "capital", "when": None}])
+        with self.assertRaisesRegex(ValueError, 'rule is "capital", not "news"'):
+            doc(publish(rule="news"))
+        with self.assertRaisesRegex(ValueError, 'two <publish> in <script> have rule "capital"'):
+            doc(publish(rule="capital"), publish(rule="capital"))
+        with self.assertRaisesRegex(ValueError, "when"):
+            doc(publish(rule="capital", when=3))
 
     def test_a_wake_on_its_own_records_or_on_a_clock(self):
         # script_wake.json is the golden of the three SDKs (the TypeScript SDK's script-wake.golden.json).

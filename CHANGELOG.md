@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.scripts`: `publish(rule=..., when=...)`, the script's own records folded into plain files by a
+  rule of the ontology, by program (`PUBLISH_RULES`: `capital`); a script's `publishes` is always a list.
 - `commandagi.design.market`: an option contract is one `sym` in one spelling, `AAPL 2026-12-18 C 200` (the
   underlying, the expiry, C or P, the strike, and `x<multiplier>` only when it is not 100). `option_symbol` writes it,
   `parse_option` reads it, and a `sym` with a space spelled any other way is refused by name. An `order` and an `amend`

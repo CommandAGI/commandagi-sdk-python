@@ -17,9 +17,11 @@ A script's ``class`` is written ``class_`` (a Python keyword). A tail names the 
 script's folder to a script file, a run's ``records.jsonl``, or a statistics series by its id, ``fred:DGS10``), never
 a folder, and takes the records its ``when`` (a record predicate) holds for. A wake wakes the agent on the script's own
 records (``when``) or on a clock (``every="7d"``), never both. ``stream`` names the stream of the run a part appends to
-(absent: ``records``). Nothing adds a default: what the file does not say, the document does not have;
+(absent: ``records``). A publish folds the script's own records into plain files of its owner's Drive by a rule of
+the ontology, by program and with no model (``capital``: a capital faucet's cycle files); its ``when`` says which.
+Nothing adds a default: what the file does not say, the document does not have;
 ``script_with_defaults`` gives the document as the platform reads it. A script's ``sameAs``, ``sources``, ``tails``,
-``derives``, ``wakes``, ``discovers``, ``judges`` and ``params`` are always lists. A script with ``param`` parts is a
+``derives``, ``wakes``, ``discovers``, ``judges``, ``params`` and ``publishes`` are always lists. A script with ``param`` parts is a
 template: each ``${id}`` placeholder is filled when it is copied, and a placeholder as a whole value passes the checks
 of the file it will name.
 """
@@ -50,6 +52,9 @@ JUDGE_FIELDS = ["id", "of", "rubric", "model"]
 #: What a judge judges: each turn of the thread's agents, or each turn on a mounted task.
 JUDGE_OF = ["turn", "task"]
 DERIVE_FIELDS = ["id", "op", "inputs", "params", "since", "stream"]
+PUBLISH_FIELDS = ["rule", "when"]
+#: The rules a publish folds records by: ``capital``, a capital faucet's cycle files (docs/capital.md § files).
+PUBLISH_RULES = ["capital"]
 #: A template's parameter (docs/scripts.md § the catalogue): its ``${id}`` placeholders are filled when it is copied.
 SCRIPT_PARAM_FIELDS = ["id", "type", "label", "default", "required", "choices", "accept"]
 #: What a parameter is: the same types a dashboard template's parameters have.
@@ -83,10 +88,11 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "discover": {},
     "judge": {},
     "param": {},
+    "publish": {},
 }
 
 __all__ = ["SCRIPT_FIELDS", "SUBJECT", "SOURCE_FIELDS", "TAIL_FIELDS", "DERIVE_FIELDS", "WAKE_FIELDS", "DISCOVER_FIELDS",
-           "JUDGE_FIELDS", "JUDGE_OF", "SCRIPT_PARAM_FIELDS", "SCRIPT_PARAM_TYPES", "DISCOVER_MAX", "VISIBILITIES", "VIAS", "VM_VIAS", "MODES", "RETAIN", "SINCE",
+           "JUDGE_FIELDS", "JUDGE_OF", "PUBLISH_FIELDS", "PUBLISH_RULES", "SCRIPT_PARAM_FIELDS", "SCRIPT_PARAM_TYPES", "DISCOVER_MAX", "VISIBILITIES", "VIAS", "VM_VIAS", "MODES", "RETAIN", "SINCE",
            "EVERY_BOUNDS", "SCRIPT_FILE", "STREAM_NAME", "UNIT_REF", "SIGNATURES", "duration_seconds", "tail_ref_problem",
            "script_with_defaults", "SCRIPT_VOCABULARY", "SCRIPTS",
            *define(globals(), "scripts", SIGNATURES)]
@@ -390,6 +396,17 @@ def _param(t: DocTree) -> Dict[str, Any]:
     return _said(a, SCRIPT_PARAM_FIELDS)
 
 
+def _publish(t: DocTree) -> Dict[str, Any]:
+    """A publish: the script's own records folded into plain files by a rule of the ontology, by program."""
+    a = t["attrs"]
+    _one_of(t, "rule", PUBLISH_RULES, "rule")
+    if a.get("when") is not None:
+        bad = _when_shape(a["when"])
+        if bad:
+            raise ValueError(f'<publish rule="{a.get("rule")}"> when: {bad}')
+    return _said(a, PUBLISH_FIELDS)
+
+
 def _stream(t: DocTree) -> None:
     """A part's ``stream``, when it says one: a word."""
     v = t["attrs"].get("stream")
@@ -419,7 +436,7 @@ def _script(t: DocTree) -> Dict[str, Any]:
         ids.add(p["id"])
     return {**_said(t["attrs"], SCRIPT_FIELDS), "sources": [_source(c) for c in parts("source")], "tails": tails,
             "derives": derives, "wakes": wakes, "discovers": [_discover(c) for c in parts("discover")], "judges": judges,
-            "params": params}
+            "params": params, "publishes": [_publish(c) for c in parts("publish")]}
 
 
 def _attrs_of(o: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
@@ -438,6 +455,7 @@ def _to_tree(m: Dict[str, Any]) -> DocTree:
         *parts("discover", m.get("discovers") or [], DISCOVER_FIELDS),
         *parts("judge", m.get("judges") or [], JUDGE_FIELDS),
         *parts("param", m.get("params") or [], SCRIPT_PARAM_FIELDS),
+        *parts("publish", m.get("publishes") or [], PUBLISH_FIELDS),
     ]}
 
 
@@ -451,7 +469,8 @@ SCRIPT_VOCABULARY = Vocabulary("script", "a script", "script", {
     "discover": {"parents": ["script"], "required": ["slug", "class"], "attrs": DISCOVER_FIELDS},
     "judge": {"parents": ["script"], "key": "id", "required": ["id", "of", "rubric", "model"], "attrs": JUDGE_FIELDS},
     "param": {"parents": ["script"], "key": "id", "required": ["id", "type"], "attrs": SCRIPT_PARAM_FIELDS},
-}, _script, _to_tree, lambda _format: {"sources": [], "tails": [], "derives": [], "wakes": [], "discovers": [], "judges": [], "params": []})
+    "publish": {"parents": ["script"], "key": "rule", "required": ["rule"], "attrs": PUBLISH_FIELDS},
+}, _script, _to_tree, lambda _format: {"sources": [], "tails": [], "derives": [], "wakes": [], "discovers": [], "judges": [], "params": [], "publishes": []})
 
 register_vocabulary(SCRIPT_VOCABULARY, "scripts")
 
@@ -488,4 +507,5 @@ def script_with_defaults(m: Dict[str, Any]) -> Dict[str, Any]:
             "judges": [{"id": j["id"], "of": j["of"], "rubric": j["rubric"], "model": j["model"]} for j in m.get("judges", [])],
             "params": [{"id": p["id"], "type": p["type"], "label": p.get("label"), "default": p.get("default"),
                         "required": p.get("required", True), "choices": p.get("choices"), "accept": p.get("accept")}
-                       for p in m.get("params", [])]}
+                       for p in m.get("params", [])],
+            "publishes": [{"rule": p["rule"], "when": p.get("when")} for p in m.get("publishes", [])]}
