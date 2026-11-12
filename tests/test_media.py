@@ -100,6 +100,13 @@ class SongTests(unittest.TestCase):
             {"id": "clip_Keys_1_n2", "pitch": 64, "start": 1, "dur": 1, "vel": 0.8},
         ])
         self.assertEqual(pitch_of("F#3"), 54)
+        # A note may sound between two keys and carry its expression, passed as written.
+        bent = declare_song(song(track(instrument(preset="violin"), clip(note(pitch=60.25, start=0, articulation="legato", amp_curve=[[0, 0.5], [0.2, 1]],
+                                                                                pitch_curve=[[0, -20], [0.1, 0]], params={"tone": 2})), name="T")))["nodes"]
+        self.assertEqual(bent["clip_T_1"]["inputs"]["notes"], [{"id": "clip_T_1_n1", "pitch": 60.25, "start": 0, "dur": 1, "vel": 0.8, "articulation": "legato",
+                                                                 "ampCurve": [[0, 0.5], [0.2, 1]], "pitchCurve": [[0, -20], [0.1, 0]], "params": {"tone": 2}}])
+        with self.assertRaisesRegex(ValueError, "prop bend is not read on a <note>"):
+            declare_song(song(track(instrument(preset="violin"), clip(note(pitch=60, bend=2)))))
         self.assertEqual(pitch_name(61), "C#4")
         with self.assertRaisesRegex(ValueError, "need an <instrument>"):
             declare_song(song(track(clip())))

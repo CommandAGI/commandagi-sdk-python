@@ -979,6 +979,12 @@ def tempo_of(v: Any) -> Optional[List[Dict[str, float]]]:
 
 
 AUDIO_CLIP = {"in": 0, "volume": 1, "loop": False}
+#: Where and how hard a song's note is played.
+NOTE_PLACE = ("pitch", "start", "duration", "velocity")
+#: What a song's note may say beside them, passed to the sound kernel as written: an ``articulation``, curves over the
+#: note's own time as ``[seconds, value]`` points (``pitch_curve`` in cents, ``amp_curve`` as a gain, ``timbre_curve``
+#: 0 to 1) and ``params``, the per-note values its instrument reads (``{"tone": 2}``).
+NOTE_EXPRESSION = ("articulation", "pitchCurve", "ampCurve", "timbreCurve", "params")
 
 
 def _sound_src(el: Element) -> str:
@@ -1159,13 +1165,16 @@ def declare_song(root: Element) -> Dict[str, Any]:
                 for n in child_elements(el):
                     if n.type != "note":
                         raise ValueError(f"<{n.type}> is not read in a <clip> (it holds <note>)")
-                    _refuse_unknown(n, ["pitch", "start", "duration", "velocity"])
-                    p = pitch_of(n.props.get("pitch"))
+                    _refuse_unknown(n, [*NOTE_PLACE, *NOTE_EXPRESSION])
+                    # A song's note may sound between two keys (a note read from a recording): a number with a fraction.
+                    given = n.props.get("pitch")
+                    fraction = isinstance(given, float) and math.isfinite(given) and 0 <= given <= 127 and not given.is_integer()
+                    p = given if fraction else pitch_of(given)
                     if p is None:
                         raise ValueError(f'<note>: pitch is a MIDI number (0–127) or a name ("C4", "F#3"), not {json.dumps(n.props.get("pitch"))}')
                     nid = f"{cid}_n{len(notes) + 1}"
                     notes.append({"id": nid, "pitch": p, "start": _or(_num(n, "start", 0), 0), "dur": _or(_num(n, "duration", 0), 1),
-                                  "vel": _or(_num(n, "velocity", 0, 1), 0.8)})
+                                  "vel": _or(_num(n, "velocity", 0, 1), 0.8), **_written(n, NOTE_PLACE)})
                     sources[f"note:{nid}"] = n.source
                 nodes[cid] = _node(cid, "midiClip", {"name": clip_name, "start": _or(_num(el, "start", 0), 0), "length": _or(_num(el, "length", 0), 4),
                                                      "notes": notes, "loop": _or(_bool(el, "loop"), False)}, meta=_meta_of(el, sources))

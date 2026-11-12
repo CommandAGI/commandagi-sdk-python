@@ -19,6 +19,9 @@ Changed (a song written before this needs an edit)
 
 Added (media)
 
+- A song's `note` may say its expression, passed to the sound kernel as written: `articulation`, `pitch_curve`,
+  `amp_curve` and `timbre_curve` (points `[seconds, value]` over the note's own time) and `params` (the per-note
+  values its instrument reads). Its `pitch` may be a number with a fraction (a note read from a recording).
 - A song's structure and performance: its `key`, `style`, `seed`, `form`, `rules` and `tuningHz`, and `player`, `instrument(kind=..., preset=...)`, `motif`, `section(harmony=...)`, `voice` with `notes`, `use(motif=..., transform=...)`, `counterpoint`, `accompany`, `harmonize`, `drums` and `rest`, `phrase`, `tempo`, `ending`, `groove`, `room`, `bus`, `send` and `master`.
   `SONG_STRUCTURE` names every tag, its attributes and what it holds. Each element is one `score.<tag>` node with its
   attributes as written; the CommandAGI music app reads them as a score, performs it and renders it.
