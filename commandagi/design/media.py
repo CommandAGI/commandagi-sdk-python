@@ -78,6 +78,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "accompany": {}, "counterpoint": {}, "drums": {}, "room": {},
     "pan": {}, "width": {}, "multiband": {}, "limiter": {}, "gate": {}, "transient": {}, "deesser": {}, "saturate": {}, "exciter": {}, "chorus": {},
     "flanger": {}, "phaser": {}, "tremolo": {}, "vibrato": {}, "convolve": {}, "duck": {}, "vocoder": {},
+    "pitchShift": {}, "harmonizer": {}, "autotune": {}, "shimmer": {}, "bitcrush": {}, "ringMod": {}, "frequencyShift": {}, "waveshape": {}, "tapeStop": {}, "stutter": {}, "reverse": {}, "lofi": {}, "granular": {}, "spectralFreeze": {}, "haas": {}, "autopan": {}, "rotary": {}, "declick": {}, "dehum": {}, "dcBlock": {}, "polarity": {}, "loudnessMatch": {}, "clipper": {}, "dynamicEq": {}, "upwardCompressor": {}, "expander": {},
 }
 
 __all__ = ["MEDIA_ROOTS", "SIGNATURES", "declare_video", "declare_song", "media_kind", "pitch_of", "pitch_name", "tempo_of",
@@ -1004,7 +1005,8 @@ def _stem(src: str) -> str:
 
 #: The sound kernel's effect kinds: each is a tag of a song (``compressor(threshold_db=-18)``).
 SONG_EFFECT_KINDS = ("gain", "pan", "width", "eq", "filter", "compressor", "multiband", "limiter", "gate", "transient", "deesser", "saturate", "exciter",
-                     "delay", "chorus", "flanger", "phaser", "tremolo", "vibrato", "reverb", "convolve", "duck", "vocoder")
+                     "delay", "chorus", "flanger", "phaser", "tremolo", "vibrato", "reverb", "convolve", "duck", "vocoder",
+                     "pitchShift", "harmonizer", "autotune", "shimmer", "bitcrush", "ringMod", "frequencyShift", "waveshape", "tapeStop", "stutter", "reverse", "lofi", "granular", "spectralFreeze", "haas", "autopan", "rotary", "denoise", "declick", "dehum", "dcBlock", "polarity", "loudnessMatch", "clipper", "dynamicEq", "upwardCompressor", "expander")
 _VOICE_ITEMS = ("notes", "use", "rest", "harmonize", "accompany", "counterpoint", "drums")
 #: A song's structure and performance, by tag: the attributes each takes (``None``: its own kind's, passed to the sound
 #: kernel as they are) and the tags it holds. Each element is one node ``score.<tag>`` whose inputs are its attributes
@@ -1144,15 +1146,20 @@ def declare_song(root: Element) -> Dict[str, Any]:
                     raise ValueError(f'{_where(tr)}: a <send> names its bus (bus="hall")')
                 sends.append({"bus": bus, "gainDb": _or(_num(el, "gainDb"), 0)})
             elif el.type == "clip" and player and el.props.get("src") is not None:
-                _refuse_unknown(el, ["name", "src", "start", "length", "in", "volume", "loop"])
+                _refuse_unknown(el, ["name", "src", "start", "length", "in", "volume", "loop", "stretch", "stretchMode", "reverse"])
                 if list(child_elements(el)):
                     raise ValueError(f"{_where(el)}: an audio clip holds no notes (notes go in a clip on a track with an instrument)")
                 src = _sound_src(el)
                 clip_name = _or(_str(el, "name"), _stem(src))
                 cid = new_id(f"clip_{clip_name}")
-                nodes[cid] = _node(cid, "sample", {"name": clip_name, "src": src, "start": _or(_num(el, "start", 0), 0), "length": _or(_num(el, "length", 0), 4),
-                                                   "offsetSeconds": _or(_num(el, "in", 0), AUDIO_CLIP["in"]), "gain": _or(_num(el, "volume", 0), AUDIO_CLIP["volume"]),
-                                                   "loop": _or(_bool(el, "loop"), AUDIO_CLIP["loop"])}, meta=_meta_of(el))
+                params = {"name": clip_name, "src": src, "start": _or(_num(el, "start", 0), 0), "length": _or(_num(el, "length", 0), 4),
+                          "offsetSeconds": _or(_num(el, "in", 0), AUDIO_CLIP["in"]), "gain": _or(_num(el, "volume", 0), AUDIO_CLIP["volume"]),
+                          "loop": _or(_bool(el, "loop"), AUDIO_CLIP["loop"])}
+                # The clip's own operations, said only when written: the sound kernel stretches the span or turns it round.
+                for key, value in (("stretch", _num(el, "stretch", 0.25, 4)), ("stretchMode", _str(el, "stretchMode", ("vocoder", "wsola"))), ("reverse", _bool(el, "reverse"))):
+                    if value is not None:
+                        params[key] = value
+                nodes[cid] = _node(cid, "sample", params, meta=_meta_of(el))
                 clips.append(cid)
             elif el.type == "clip":
                 if el.props.get("src") is not None:

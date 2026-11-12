@@ -25,6 +25,11 @@ Added (media)
 - A song's structure and performance: its `key`, `style`, `seed`, `form`, `rules` and `tuningHz`, and `player`, `instrument(kind=..., preset=...)`, `motif`, `section(harmony=...)`, `voice` with `notes`, `use(motif=..., transform=...)`, `counterpoint`, `accompany`, `harmonize`, `drums` and `rest`, `phrase`, `tempo`, `ending`, `groove`, `room`, `bus`, `send` and `master`.
   `SONG_STRUCTURE` names every tag, its attributes and what it holds. Each element is one `score.<tag>` node with its
   attributes as written; the CommandAGI music app reads them as a score, performs it and renders it.
+- The sound kernel's other effect kinds by tag: `pitchShift`, `harmonizer`, `autotune`, `shimmer`, `bitcrush`, `ringMod`,
+  `frequencyShift`, `waveshape`, `tapeStop`, `stutter`, `reverse`, `lofi`, `granular`, `spectralFreeze`, `haas`, `autopan`,
+  `rotary`, `denoise`, `declick`, `dehum`, `dcBlock`, `polarity`, `loudnessMatch`, `clipper`, `dynamicEq`, `upwardCompressor`
+  and `expander`. An audio clip's `stretch` (0.25 to 4: its span that many times as long at the same pitch),
+  `stretchMode` (`vocoder` or `wsola`) and `reverse`.
 - An effect's `sidechain`: the name of a track, a player or a bus whose sound the effect listens to (a pad ducked
   by the kick). The sound kernel's `duck` (down by its amount while the key sounds) and `vocoder` (its sound played at
   the key's level in each band).
