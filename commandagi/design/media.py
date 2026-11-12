@@ -3,7 +3,7 @@
 ``midiClip``, ``instrument``, ``fx.*``, ``track``, ``master``) store and edit. The same elements, node for node, as the
 TypeScript SDK's ``media.ts`` (``.vid.tsx``, ``.mus.tsx``)::
 
-    from commandagi.design.media import clip, note, song, synth, title, track, video
+    from commandagi.design.media import clip, instrument, note, song, title, track, video
 
     result = video(
         track(clip(src="media/sky.png", start=0, duration=3), title(text="Hello", start=0, duration=2), name="V1"),
@@ -13,9 +13,9 @@ TypeScript SDK's ``media.ts`` (``.vid.tsx``, ``.mus.tsx``)::
     )
 
     result = song(
-        track(synth(wave="triangle"), clip(note(pitch="C4", start=0, duration=1), name="Keys 1", start=0, length=4), name="Keys"),
+        track(instrument(preset="grandPiano"), clip(note(pitch="C4", start=0, duration=1), name="Keys 1", start=0, length=4), name="Keys"),
         track(clip(src="media/tone.wav", start=4, length=2, in_=0.25, volume=0.8), name="Tone"),
-        track(sampler(src="media/tone.wav", root="A4"), clip(name="Bells 1", start=0, length=4), name="Bells"),
+        track(instrument(kind="sampler", zones=[{"src": "media/tone.wav", "root": 69}]), clip(name="Bells 1", start=0, length=4), name="Bells"),
         name="Loop", tempo=120, meter="4/4", bars=8, cycle_start=0, cycle_end=16,
     )
 
@@ -71,7 +71,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "shape": _HOLDS, "adjustment": _HOLDS,
     "midi": _HOLDS, "effect": _HOLDS,
     "marker": {}, "transition": {}, "intro": {}, "outro": {}, "keyframe": {}, "note": {}, "override": _HOLDS,
-    "synth": {}, "sampler": {}, "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {}, "denoise": {}, "loudness": {},
+    "gain": {}, "filter": {}, "delay": {}, "reverb": {}, "eq": {}, "compressor": {}, "distortion": {}, "denoise": {}, "loudness": {},
     # A song's structure and performance, and the sound kernel's instruments and other effect kinds.
     "player": _HOLDS, "bus": _HOLDS, "master": _HOLDS, "section": _HOLDS, "ending": _HOLDS, "voice": _HOLDS,
     "instrument": {}, "send": {}, "motif": {}, "groove": {}, "tempo": {}, "phrase": {}, "notes": {}, "use": {}, "rest": {}, "harmonize": {},
@@ -954,18 +954,6 @@ def pitch_name(p: int) -> str:
     return f"{_NAMES[p % 12]}{p // 12 - 1}"
 
 
-WAVES = ("sine", "square", "sawtooth", "triangle")
-SYNTH = {"wave": "sawtooth", "gain": 0.7, "detune": 8, "voices": 1, "transpose": 0}
-ENVELOPE = {"attack": 0.01, "decay": 0.15, "sustain": 0.6, "release": 0.25}
-SONG_EFFECTS = {
-    "gain": ("fx.gain", "Gain", {"gain": 1}),
-    "filter": ("fx.filter", "Filter", {"mode": "lowpass", "freq": 1200, "q": 1}),
-    "delay": ("fx.delay", "Delay", {"timeBeats": 0.5, "feedback": 0.35, "mix": 0.3}),
-    "reverb": ("fx.reverb", "Reverb", {"decay": 1.8, "mix": 0.3}),
-    "eq": ("fx.eq", "EQ", {"lowGain": 0, "midGain": 0, "highGain": 0}),
-}
-
-
 def meter_of(v: Any) -> Optional[Dict[str, int]]:
     """A meter written "3/4" → {num: 3, den: 4}; one in groups ("2+2+3/8") counts them: {num: 7, den: 8}."""
     m = re.match(r"^\s*(\d+(?:\s*\+\s*\d+)*)\s*/\s*(\d+)\s*$", v) if isinstance(v, str) else None
@@ -990,7 +978,6 @@ def tempo_of(v: Any) -> Optional[List[Dict[str, float]]]:
     return out if out[0]["atBeat"] <= 0 else None
 
 
-SAMPLER = {"root": 69, "gain": 1}
 AUDIO_CLIP = {"in": 0, "volume": 1, "loop": False}
 
 
@@ -1074,8 +1061,8 @@ def _declare_structure(el: Element, parent: str, nodes: Dict[str, Any], new_id: 
 def declare_song(root: Element) -> Dict[str, Any]:
     """Declare a song (``song(...)``) as the music studio's own op graph.
 
-    Notes typed by hand are on tracks: a ``track`` plays a ``synth``, a ``sampler`` or an ``instrument(kind=...)`` of the
-    sound kernel (its clips hold notes), or holds audio clips (``clip(src=...)``: a sound file placed on the song, played
+    Notes typed by hand are on tracks: a ``track`` plays an ``instrument(kind=..., preset=...)`` of the sound
+    kernel (its clips hold notes), or holds audio clips (``clip(src=...)``: a sound file placed on the song, played
     by the track's player); effects follow the instrument or the player, and a ``send(bus=...)`` feeds a bus.
 
     Structure and performance are declared beside them (``SONG_STRUCTURE``): the song's ``key``, ``player``s, ``motif``s,
@@ -1116,7 +1103,7 @@ def declare_song(root: Element) -> Dict[str, Any]:
         track_name = _or(_str(tr, "name"), f"Track {order + 1}")
         track_id = new_id(f"track_{track_name}")
         children = list(child_elements(tr))
-        audio_track = bool(children) and not any(el.type in ("synth", "sampler", "instrument") for el in children)
+        audio_track = bool(children) and not any(el.type == "instrument" for el in children)
         upstream: Optional[str] = None
         instrument: Optional[str] = None
         player: Optional[str] = None
@@ -1127,40 +1114,21 @@ def declare_song(root: Element) -> Dict[str, Any]:
             nodes[player] = _node(player, "player", {"name": track_name})
             upstream = player
         for el in children:
-            if el.type in ("synth", "sampler", "instrument"):
+            if el.type == "instrument":
                 if instrument:
-                    raise ValueError(f"{_where(tr)}: a track plays one instrument (a <synth>, a <sampler> or an <instrument>)")
-                if el.type == "instrument":
-                    if not _str(el, "kind") and not _str(el, "preset"):
-                        raise ValueError(f'{_where(el)}: an instrument names its kind (kind="string", "modal", "wind", "additive", "fm", "subtractive", "sampler", "drums") or a preset (preset="violin")')
-                    spec: Dict[str, Any] = _written(el, ("name",))
-                else:
-                    if el.type == "synth":
-                        _refuse_unknown(el, ["name", *SYNTH, *ENVELOPE])
-                        spec = {"kind": "synth", "wave": _or(_str(el, "wave", WAVES), SYNTH["wave"])}
-                        for k in ("gain", "detune", "voices", "transpose"):
-                            spec[k] = _or(_num(el, k), SYNTH[k])
-                    else:
-                        _refuse_unknown(el, ["name", "src", "root", "gain", *ENVELOPE])
-                        base = SAMPLER["root"] if el.props.get("root") is None else pitch_of(el.props.get("root"))
-                        if base is None:
-                            raise ValueError(f'<sampler>: root is the pitch the file sounds at, a MIDI number (0–127) or a name ("A4"), not {json.dumps(el.props.get("root"))}')
-                        spec = {"kind": "sampler", "src": _sound_src(el), "baseNote": base, "gain": _or(_num(el, "gain", 0), SAMPLER["gain"])}
-                    spec["env"] = {k: _or(_num(el, k, 0), d) for k, d in ENVELOPE.items()}
+                    raise ValueError(f"{_where(tr)}: a track plays one instrument")
+                if not _str(el, "kind") and not _str(el, "preset"):
+                    raise ValueError(f'{_where(el)}: an instrument names its kind (kind="string", "modal", "wind", "additive", "fm", "subtractive", "sampler", "drums") or a preset (preset="violin")')
                 instrument = new_id(f"inst_{track_name}")
-                nodes[instrument] = _node(instrument, "instrument", {"name": _or(_str(el, "name"), track_name), "spec": spec}, meta=_meta_of(el))
+                nodes[instrument] = _node(instrument, "instrument", {"name": _or(_str(el, "name"), track_name), "spec": _written(el, ("name",))}, meta=_meta_of(el))
                 upstream = instrument
             elif el.type in SONG_EFFECT_KINDS:
                 if not upstream:
                     raise ValueError(f"<{el.type}> comes after the track's instrument (the chain runs instrument → effects → track)")
-                # The studio's five effects have its fields with their defaults; a kind's other fields are the sound kernel's.
-                _fx_type, fx_name, defaults = SONG_EFFECTS.get(el.type, (None, el.type[0].upper() + el.type[1:], {}))
-                spec = {"type": el.type}
-                for k, d in defaults.items():
-                    spec[k] = _or(_num(el, k), d) if isinstance(d, (int, float)) else _or(_str(el, k, ("lowpass", "highpass", "bandpass")), d)
-                spec.update(_written(el, ("name", *defaults)))
+                # An effect's fields are the sound kernel's, as written: the kernel has each field's default.
                 fid = new_id(f"fx_{track_name}_{el.type}")
-                nodes[fid] = _node(fid, f"fx.{el.type}", {"name": _or(_str(el, "name"), fx_name), "spec": spec, "audio": _wire(upstream, "audio")},
+                spec = {"kind": el.type, **_written(el, ("name",))}
+                nodes[fid] = _node(fid, f"fx.{el.type}", {"name": _or(_str(el, "name"), el.type[0].upper() + el.type[1:]), "spec": spec, "audio": _wire(upstream, "audio")},
                                  meta=_meta_of(el))
                 upstream = fid
             elif el.type == "send":
@@ -1203,13 +1171,13 @@ def declare_song(root: Element) -> Dict[str, Any]:
                                                      "notes": notes, "loop": _or(_bool(el, "loop"), False)}, meta=_meta_of(el, sources))
                 clips.append(cid)
             else:
-                raise ValueError(f"<{el.type}> is not read on a <track> (it holds a <synth>, a <sampler> or an <instrument>, effects ({', '.join(SONG_EFFECT_KINDS)}), <send> and <clip>)")
+                raise ValueError(f"<{el.type}> is not read on a <track> (it holds an <instrument>, effects ({', '.join(SONG_EFFECT_KINDS)}), <send> and <clip>)")
         if instrument:
             for i, c in enumerate(clips):
                 nodes[instrument]["inputs"][f"midi.{i + 1}"] = _wire(c, "midi")
         if player:
             if any(nodes[c]["type"] == "midiClip" for c in clips):
-                raise ValueError(f"{_where(tr)}: its clips need a <synth>, a <sampler> or an <instrument> to play them")
+                raise ValueError(f"{_where(tr)}: its clips need an <instrument> to play them")
             for i, c in enumerate(clips):
                 nodes[player]["inputs"][f"audio.{i + 1}"] = _wire(c, "audio")
         track_inputs: Dict[str, Any] = {"name": track_name, "volumeDb": _or(_num(tr, "volumeDb"), 0), "pan": _or(_num(tr, "pan", -1, 1), 0),

@@ -4,8 +4,8 @@ element's source. Run: python -m unittest discover -s tests"""
 import unittest
 
 from commandagi.design import run_module
-from commandagi.design.media import (clip, declare_song, declare_video, effect, gain, keyframe, marker, note, pitch_name, pitch_of, reverb,
-                                     sampler, song, synth, title, track, transition, video)
+from commandagi.design.media import (clip, declare_song, declare_video, effect, gain, instrument, keyframe, marker, note, pitch_name, pitch_of, reverb,
+                                     song, title, track, transition, video)
 
 
 def wire(node, port):
@@ -83,7 +83,7 @@ class VideoTests(unittest.TestCase):
 
 class SongTests(unittest.TestCase):
     def test_a_song_declares_the_chain_and_inline_notes(self):
-        n = declare_song(song(track(synth(wave="triangle", attack=0.02), reverb(mix=0.5),
+        n = declare_song(song(track(instrument(kind="subtractive", oscillators=[{"shape": "triangle"}], attack=0.02), reverb(mix=0.5),
                                     clip(note(pitch="C4", start=0, duration=1), note(pitch=64, start=1), start=4), name="Keys"),
                               name="Loop", tempo=96, meter="3/4"))["nodes"]
         self.assertEqual(n["master"]["inputs"]["tempo"], [{"atBeat": 0, "bpm": 96}])
@@ -92,31 +92,36 @@ class SongTests(unittest.TestCase):
         self.assertEqual(n["track_Keys"]["inputs"]["audio"], wire("fx_Keys_reverb", "audio"))
         self.assertEqual(n["track_Keys"]["meta"], {"order": 0})
         self.assertEqual(n["inst_Keys"]["inputs"]["midi.1"], wire("clip_Keys_1", "midi"))
+        # An instrument's and an effect's fields are the sound kernel's, as written: no default is added here.
+        self.assertEqual(n["inst_Keys"]["inputs"]["spec"], {"kind": "subtractive", "oscillators": [{"shape": "triangle"}], "attack": 0.02})
+        self.assertEqual(n["fx_Keys_reverb"]["inputs"], {"name": "Reverb", "spec": {"kind": "reverb", "mix": 0.5}, "audio": wire("inst_Keys", "audio")})
         self.assertEqual(n["clip_Keys_1"]["inputs"]["notes"], [
             {"id": "clip_Keys_1_n1", "pitch": 60, "start": 0, "dur": 1, "vel": 0.8},
             {"id": "clip_Keys_1_n2", "pitch": 64, "start": 1, "dur": 1, "vel": 0.8},
         ])
         self.assertEqual(pitch_of("F#3"), 54)
         self.assertEqual(pitch_name(61), "C#4")
-        with self.assertRaisesRegex(ValueError, "need a <synth>"):
+        with self.assertRaisesRegex(ValueError, "need an <instrument>"):
             declare_song(song(track(clip())))
+        with self.assertRaisesRegex(ValueError, "a track plays one instrument"):
+            declare_song(song(track(instrument(preset="grandPiano"), instrument(preset="harp"))))
 
-    def test_a_song_holds_audio_clips_a_sampler_and_a_cycle(self):
+    def test_a_song_holds_audio_clips_a_sampler_of_the_kernel_and_a_cycle(self):
         n = declare_song(song(
-            track(gain(gain=0.5), clip(src="media/tone.wav", start=2, length=3, in_=0.25, volume=0.8), clip(src="media/tone.wav", name="Again", start=8),
+            track(gain(gain_db=-6), clip(src="media/tone.wav", start=2, length=3, in_=0.25, volume=0.8), clip(src="media/tone.wav", name="Again", start=8),
                   name="Tone"),
-            track(sampler(src="media/tone.wav", root="C5", release=1), clip(note(pitch="E5")), name="Bells"),
+            track(instrument(kind="sampler", zones=[{"src": "media/tone.wav", "root": 72}], release=1), clip(note(pitch="E5")), name="Bells"),
             cycle_start=4, cycle_end=12))["nodes"]
         self.assertEqual(n["master"]["inputs"]["cycle"], {"start": 4, "end": 12})
         self.assertEqual(n["player_Tone"]["inputs"], {"name": "Tone", "audio.1": wire("clip_tone", "audio"), "audio.2": wire("clip_Again", "audio")})
         self.assertEqual(n["fx_Tone_gain"]["inputs"]["audio"], wire("player_Tone", "audio"))
         self.assertEqual(n["clip_tone"]["inputs"], {"name": "tone", "src": "media/tone.wav", "start": 2, "length": 3, "offsetSeconds": 0.25, "gain": 0.8, "loop": False})
-        self.assertEqual(n["inst_Bells"]["inputs"]["spec"], {"kind": "sampler", "src": "media/tone.wav", "baseNote": 72, "gain": 1,
-                                                             "env": {"attack": 0.01, "decay": 0.15, "sustain": 0.6, "release": 1}})
+        self.assertEqual(n["inst_Bells"]["inputs"]["spec"], {"kind": "sampler", "zones": [{"src": "media/tone.wav", "root": 72}], "release": 1})
+        self.assertEqual(n["fx_Tone_gain"]["inputs"]["spec"], {"kind": "gain", "gainDb": -6})
         self.assertEqual(n["inst_Bells"]["inputs"]["midi.1"], wire("clip_Bells_1", "midi"))
         for bad, message in [(track(clip(src="/abs/tone.wav")), "relative to this file"), (track(clip(src="take.mp4")), "not a sound file"),
-                             (track(synth(), clip(src="tone.wav")), "goes on a track without one"),
-                             (track(clip(src="tone.wav"), clip()), "need a <synth>, a <sampler> or an <instrument>"), (track(sampler(src="a.wav", root="Q")), "root is the pitch")]:
+                             (track(instrument(preset="grandPiano"), clip(src="tone.wav")), "goes on a track without one"),
+                             (track(clip(src="tone.wav"), clip()), "need an <instrument>")]:
             with self.assertRaisesRegex(ValueError, message):
                 declare_song(song(bad))
         with self.assertRaisesRegex(ValueError, "names both"):
@@ -154,8 +159,8 @@ class SongTests(unittest.TestCase):
         self.assertEqual(n["use_head"]["inputs"], {"motif": "head", "transform": [{"op": "transpose", "steps": 2}]})
         self.assertEqual(n["master_2"]["inputs"], {"targetLufs": -16, "children": ["compressor"]})
         self.assertEqual(n["inst_Bell"]["inputs"]["spec"], {"kind": "modal", "preset": "glockenspiel"})
-        self.assertEqual(n["fx_Bell_compressor"]["inputs"]["spec"], {"type": "compressor", "thresholdDb": -20})
-        self.assertEqual(n["fx_Bell_reverb"]["inputs"]["spec"], {"type": "reverb", "decay": 1.8, "mix": 0.4, "predelay": 0.02})
+        self.assertEqual(n["fx_Bell_compressor"]["inputs"]["spec"], {"kind": "compressor", "thresholdDb": -20})
+        self.assertEqual(n["fx_Bell_reverb"]["inputs"]["spec"], {"kind": "reverb", "mix": 0.4, "predelay": 0.02})
         t = n["track_Bell"]["inputs"]
         self.assertEqual([t["place"], t["out"], t["sends"]], [{"azimuth": 30, "distance": 4}, "hall", [{"bus": "hall", "gainDb": -6}]])
         # The order of the nodes is the order of the elements: a node before what it holds.
@@ -168,15 +173,15 @@ class SongTests(unittest.TestCase):
 
     def test_a_note_written_in_a_loop_names_its_one_call(self):
         n = run_module(
-            "from commandagi.design.media import clip, note, song, synth, track\n"
-            "result = song(track(synth(), clip(*[note(pitch=60 + i, start=i) for i in range(3)], name='Arp'), name='Keys'))\n",
+            "from commandagi.design.media import clip, instrument, note, song, track\n"
+            "result = song(track(instrument(preset='grandPiano'), clip(*[note(pitch=60 + i, start=i) for i in range(3)], name='Arp'), name='Keys'))\n",
             "loop.mus.py",
         )["graph"]["nodes"]
         meta = n["clip_Arp"]["meta"]
         self.assertEqual(meta["source"]["tag"], "clip")
         self.assertEqual(sorted(meta["sources"]), ["note:clip_Arp_n1", "note:clip_Arp_n2", "note:clip_Arp_n3"])
         self.assertEqual({v["evaluations"] for v in meta["sources"].values()}, {3})
-        self.assertEqual(n["inst_Keys"]["meta"]["source"]["tag"], "synth")
+        self.assertEqual(n["inst_Keys"]["meta"]["source"]["tag"], "instrument")
         self.assertEqual(n["track_Keys"]["meta"]["order"], 0)
         self.assertEqual(n["track_Keys"]["meta"]["source"]["tag"], "track")
         self.assertEqual(n["master"]["meta"]["source"]["tag"], "song")
