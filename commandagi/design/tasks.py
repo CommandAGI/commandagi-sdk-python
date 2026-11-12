@@ -38,8 +38,8 @@ from .documents import DocTree, Vocabulary, register_vocabulary
 from .element import define
 
 TASK_FIELDS = ["id", "title", "status", "priority", "glyph", "assignees", "projects", "blockedBy", "labels", "startAt", "dueAt",
-               "closedAt", "threadId", "createdBy", "readme", "expires", "approvedBy", "approvedAt", "grants", "createdAt",
-               "updatedAt"]
+               "closedAt", "threadId", "taskKey", "createdBy", "readme", "expires", "approvedBy", "approvedAt", "grants",
+               "createdAt", "updatedAt"]
 ASK_FIELDS = ["world", "units", "channels", "verbs", "folder", "files", "venues", "symbols", "maxQty", "maxNotional", "perDay",
               "hours", "note"]
 CHANGE_FIELDS = ["file", "base", "proposed"]
