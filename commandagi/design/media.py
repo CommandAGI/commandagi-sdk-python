@@ -79,6 +79,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "pan": {}, "width": {}, "multiband": {}, "limiter": {}, "gate": {}, "transient": {}, "deesser": {}, "saturate": {}, "exciter": {}, "chorus": {},
     "flanger": {}, "phaser": {}, "tremolo": {}, "vibrato": {}, "convolve": {}, "duck": {}, "vocoder": {},
     "pitchShift": {}, "harmonizer": {}, "autotune": {}, "shimmer": {}, "bitcrush": {}, "ringMod": {}, "frequencyShift": {}, "waveshape": {}, "tapeStop": {}, "stutter": {}, "reverse": {}, "lofi": {}, "granular": {}, "spectralFreeze": {}, "haas": {}, "autopan": {}, "rotary": {}, "declick": {}, "dehum": {}, "dcBlock": {}, "polarity": {}, "loudnessMatch": {}, "clipper": {}, "dynamicEq": {}, "upwardCompressor": {}, "expander": {},
+    "voiceRemove": {}, "voiceIsolate": {},
 }
 
 __all__ = ["MEDIA_ROOTS", "SIGNATURES", "declare_video", "declare_song", "media_kind", "pitch_of", "pitch_name", "tempo_of",
@@ -1006,7 +1007,8 @@ def _stem(src: str) -> str:
 #: The sound kernel's effect kinds: each is a tag of a song (``compressor(threshold_db=-18)``).
 SONG_EFFECT_KINDS = ("gain", "pan", "width", "eq", "filter", "compressor", "multiband", "limiter", "gate", "transient", "deesser", "saturate", "exciter",
                      "delay", "chorus", "flanger", "phaser", "tremolo", "vibrato", "reverb", "convolve", "duck", "vocoder",
-                     "pitchShift", "harmonizer", "autotune", "shimmer", "bitcrush", "ringMod", "frequencyShift", "waveshape", "tapeStop", "stutter", "reverse", "lofi", "granular", "spectralFreeze", "haas", "autopan", "rotary", "denoise", "declick", "dehum", "dcBlock", "polarity", "loudnessMatch", "clipper", "dynamicEq", "upwardCompressor", "expander")
+                     "pitchShift", "harmonizer", "autotune", "shimmer", "bitcrush", "ringMod", "frequencyShift", "waveshape", "tapeStop", "stutter", "reverse", "lofi", "granular", "spectralFreeze", "haas", "autopan", "rotary", "denoise", "declick", "dehum", "dcBlock", "polarity", "loudnessMatch", "clipper", "dynamicEq", "upwardCompressor", "expander",
+                     "voiceRemove", "voiceIsolate")
 _VOICE_ITEMS = ("notes", "use", "rest", "harmonize", "accompany", "counterpoint", "drums")
 #: A song's structure and performance, by tag: the attributes each takes (``None``: its own kind's, passed to the sound
 #: kernel as they are) and the tags it holds. Each element is one node ``score.<tag>`` whose inputs are its attributes
