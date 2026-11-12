@@ -85,7 +85,7 @@ class SongTests(unittest.TestCase):
     def test_a_song_declares_the_chain_and_inline_notes(self):
         n = declare_song(song(track(synth(wave="triangle", attack=0.02), reverb(mix=0.5),
                                     clip(note(pitch="C4", start=0, duration=1), note(pitch=64, start=1), start=4), name="Keys"),
-                              name="Loop", tempo=96, time_signature="3/4"))["nodes"]
+                              name="Loop", tempo=96, meter="3/4"))["nodes"]
         self.assertEqual(n["master"]["inputs"]["tempo"], [{"atBeat": 0, "bpm": 96}])
         self.assertEqual(n["master"]["inputs"]["timeSig"], {"num": 3, "den": 4})
         self.assertEqual(n["master"]["inputs"]["audio.1"], wire("track_Keys", "audio"))
@@ -116,13 +116,55 @@ class SongTests(unittest.TestCase):
         self.assertEqual(n["inst_Bells"]["inputs"]["midi.1"], wire("clip_Bells_1", "midi"))
         for bad, message in [(track(clip(src="/abs/tone.wav")), "relative to this file"), (track(clip(src="take.mp4")), "not a sound file"),
                              (track(synth(), clip(src="tone.wav")), "goes on a track without one"),
-                             (track(clip(src="tone.wav"), clip()), "need a <synth> or a <sampler>"), (track(sampler(src="a.wav", root="Q")), "root is the pitch")]:
+                             (track(clip(src="tone.wav"), clip()), "need a <synth>, a <sampler> or an <instrument>"), (track(sampler(src="a.wav", root="Q")), "root is the pitch")]:
             with self.assertRaisesRegex(ValueError, message):
                 declare_song(song(bad))
         with self.assertRaisesRegex(ValueError, "names both"):
             declare_song(song(cycle_start=4))
         with self.assertRaisesRegex(ValueError, "comes after"):
             declare_song(song(cycle_start=4, cycle_end=4))
+
+    def test_a_song_declares_its_structure_as_score_nodes(self):
+        from commandagi.design.media import (bus, compressor, instrument, master, motif, notes, phrase, player, room, section, send, use, voice)
+        g = declare_song(song(
+            player(instrument(kind="string", preset="violin"), reverb(preset="hall", mix=0.2), send(bus="hall", gain_db=-12),
+                   name="violin", family="strings", place={"azimuth": -20, "distance": 3}),
+            motif(name="head", notes="1:8 2 3 5:4."),
+            section(phrase(bars="1-4", dynamics="p < f"),
+                    voice(use(motif="head", transform=[{"op": "transpose", "steps": 2}]), notes(line="1:1"), player="violin", role="melody"),
+                    name="A", bars=4, key="F", harmony="i | iv | V7 | i"),
+            bus(reverb(preset="hall", mix=1), name="hall"),
+            room(size=[8, 12, 5], rt60={"low": 1.2, "mid": 1, "high": 0.7}),
+            master(compressor(ratio=2), target_lufs=-16),
+            track(instrument(kind="modal", preset="glockenspiel"), compressor(threshold_db=-20), reverb(mix=0.4, predelay=0.02), send(bus="hall", gain_db=-6),
+                  clip(note(pitch="D5")), name="Bell", place={"azimuth": 30, "distance": 4}, out="hall"),
+            name="Air", key="D minor", meter="2+2+3/8", tempo=72, style="baroque", seed=7))
+        n = g["nodes"]
+        m = n["master"]["inputs"]
+        self.assertEqual(m["timeSig"], {"num": 7, "den": 8})
+        self.assertEqual([m["meter"], m["key"], m["style"], m["seed"]], ["2+2+3/8", "D minor", "baroque", 7])
+        self.assertEqual(m["score"], ["player_violin", "motif_head", "section_A", "bus_hall", "room", "master_2"])
+        self.assertEqual(n["player_violin"]["type"], "score.player")
+        self.assertEqual(n["player_violin"]["inputs"], {"name": "violin", "family": "strings", "place": {"azimuth": -20, "distance": 3}, "children": ["instrument", "reverb", "send"]})
+        self.assertEqual(n["instrument"]["inputs"], {"kind": "string", "preset": "violin"})
+        self.assertEqual(n["send"]["inputs"], {"bus": "hall", "gainDb": -12})
+        self.assertEqual(n["section_A"]["inputs"]["children"], ["phrase", "voice_violin"])
+        self.assertEqual(n["section_A"]["inputs"]["key"], "F")
+        self.assertEqual(n["voice_violin"]["inputs"], {"player": "violin", "role": "melody", "children": ["use_head", "notes"]})
+        self.assertEqual(n["use_head"]["inputs"], {"motif": "head", "transform": [{"op": "transpose", "steps": 2}]})
+        self.assertEqual(n["master_2"]["inputs"], {"targetLufs": -16, "children": ["compressor"]})
+        self.assertEqual(n["inst_Bell"]["inputs"]["spec"], {"kind": "modal", "preset": "glockenspiel"})
+        self.assertEqual(n["fx_Bell_compressor"]["inputs"]["spec"], {"type": "compressor", "thresholdDb": -20})
+        self.assertEqual(n["fx_Bell_reverb"]["inputs"]["spec"], {"type": "reverb", "decay": 1.8, "mix": 0.4, "predelay": 0.02})
+        t = n["track_Bell"]["inputs"]
+        self.assertEqual([t["place"], t["out"], t["sends"]], [{"azimuth": 30, "distance": 4}, "hall", [{"bus": "hall", "gainDb": -6}]])
+        # The order of the nodes is the order of the elements: a node before what it holds.
+        self.assertEqual(list(n)[:4], ["player_violin", "instrument", "reverb", "send"])
+        for bad, message in [(voice(player="violin"), "<voice> is not read in a <song>"), (section(name="A", chords="i"), "prop chords is not read on a <section>"),
+                             (section(voice(note(pitch=60), player="v"), name="A"), "<note> is not read in a <voice>"),
+                             (track(instrument(release=1)), "an instrument names its kind .* or a preset"), (motif(name="m", notes="1:4", key="x"), "prop key is not read on a <motif>")]:
+            with self.assertRaisesRegex(ValueError, message):
+                declare_song(song(bad))
 
     def test_a_note_written_in_a_loop_names_its_one_call(self):
         n = run_module(

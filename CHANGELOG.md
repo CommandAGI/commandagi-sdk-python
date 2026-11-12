@@ -6,6 +6,20 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 ## Unreleased
 
+Changed (a song written before this needs an edit)
+
+- A song's meter is `song(meter=...)` (it was `song(time_signature=...)`); `time_signature_of` is `meter_of`. A meter may be written in groups (`"2+2+3/8"`).
+
+Added (media)
+
+- A song's structure and performance: its `key`, `style`, `seed`, `form`, `rules` and `tuningHz`, and `player`, `instrument(kind=..., preset=...)`, `motif`, `section(harmony=...)`, `voice` with `notes`, `use(motif=..., transform=...)`, `counterpoint`, `accompany`, `harmonize`, `drums` and `rest`, `phrase`, `tempo`, `ending`, `groove`, `room`, `bus`, `send` and `master`.
+  `SONG_STRUCTURE` names every tag, its attributes and what it holds. Each element is one `score.<tag>` node with its
+  attributes as written; the CommandAGI music app reads them as a score, performs it and renders it.
+- The sound kernel's instruments on a track (an instrument with a `kind`) and its 21 effect kinds by tag (`gain`,
+  `pan`, `width`, `eq`, `filter`, `compressor`, `multiband`, `limiter`, `gate`, `transient`, `deesser`, `saturate`,
+  `exciter`, `delay`, `chorus`, `flanger`, `phaser`, `tremolo`, `vibrato`, `reverb`, `convolve`); a track's `place`,
+  `out` and sends.
+
 Added
 
 - `commandagi.design.company_profile`: `Company(website=...)`, `Address`, `Stock` and `Owner`, the company's legal
