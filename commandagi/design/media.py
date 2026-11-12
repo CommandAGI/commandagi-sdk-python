@@ -1128,7 +1128,7 @@ def declare_song(root: Element) -> Dict[str, Any]:
                 if instrument:
                     raise ValueError(f"{_where(tr)}: a track plays one instrument")
                 if not _str(el, "kind") and not _str(el, "preset"):
-                    raise ValueError(f'{_where(el)}: an instrument names its kind (kind="string", "modal", "wind", "additive", "fm", "subtractive", "sampler", "drums") or a preset (preset="violin")')
+                    raise ValueError(f'{_where(el)}: an instrument names its kind (kind="string", "modal", "wind", "additive", "fm", "subtractive", "sampler", "drums", "wavetable", "granular", "stack", "fx") or a preset (preset="violin")')
                 instrument = new_id(f"inst_{track_name}")
                 nodes[instrument] = _node(instrument, "instrument", {"name": _or(_str(el, "name"), track_name), "spec": _written(el, ("name",))}, meta=_meta_of(el))
                 upstream = instrument
