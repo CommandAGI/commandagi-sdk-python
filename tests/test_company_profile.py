@@ -1,12 +1,12 @@
-"""A company's legal profile (website, email, phone, Address, Stock, Owner), read as the same document as the TypeScript
+"""A company's legal profile (website, email, phone, Address, Listing, Stock, Owner), read as the same document as the TypeScript
 SDK's JSX. company_profile.json is the golden of the three SDKs. Run: python -m unittest discover -s tests"""
 import json
 import pathlib
 import unittest
 
-from commandagi.design.business import Address, Company, Entity, Owner, Stock, document_of
+from commandagi.design.business import Address, Company, Entity, Listing, Owner, Stock, document_of
 
-_TAGS = {"Entity": Entity, "Address": Address, "Stock": Stock, "Owner": Owner}
+_TAGS = {"Entity": Entity, "Address": Address, "Listing": Listing, "Stock": Stock, "Owner": Owner}
 
 
 def _company(props, children):

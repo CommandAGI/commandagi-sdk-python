@@ -6,6 +6,8 @@
         {"tag": "Entity", "attrs": {"jurisdiction": "US-DE", "form": "corporation", "name": "Acme Robotics, Inc.", "formed": "2026-01-05", "ids": {"ein": "12-3456789"}}},
         {"tag": "Address", "attrs": {"kind": "legal", "line1": "1 Main St", "city": "Austin", "region": "TX", "postal": "78701", "country": "US", "source": "the certificate of incorporation"}},
         {"tag": "Address", "attrs": {"kind": "office", "line1": "2 Market St", "line2": "Ste 3", "city": "San Francisco", "region": "CA", "postal": "94105", "country": "US"}},
+        {"tag": "Listing", "attrs": {"venue": "XNAS", "symbol": "ACME", "since": "2026-06-01", "source": "the exchange's listing notice"}},
+        {"tag": "Listing", "attrs": {"venue": {"unknown": "EDGAR names no exchange"}, "symbol": "ACME-W"}},
         {"tag": "Stock", "attrs": {"kind": "common", "authorized": 10000000, "issued": 8000000, "reserved": 2000000, "par": "0.00001"}},
         {"tag": "Stock", "attrs": {"kind": "preferred", "authorized": 1000000, "par": "none"}},
         {"tag": "Owner", "attrs": {"name": "Ada Founder", "holder": "people/ada-founder/", "percent": "100", "since": "2026-01-05", "source": "the stock ledger"}}
@@ -15,6 +17,10 @@
         "addresses": [
           {"kind": "legal", "line1": "1 Main St", "city": "Austin", "region": "TX", "postal": "78701", "country": "US", "source": "the certificate of incorporation"},
           {"kind": "office", "line1": "2 Market St", "line2": "Ste 3", "city": "San Francisco", "region": "CA", "postal": "94105", "country": "US"}
+        ],
+        "listings": [
+          {"venue": "XNAS", "symbol": "ACME", "since": "2026-06-01", "source": "the exchange's listing notice"},
+          {"venue": {"unknown": "EDGAR names no exchange"}, "symbol": "ACME-W"}
         ],
         "stock": [
           {"kind": "common", "authorized": 10000000, "issued": 8000000, "reserved": 2000000, "par": "0.00001"},
@@ -28,12 +34,15 @@
     {
       "company": {"name": "Acme"},
       "children": [{"tag": "Entity", "attrs": {"jurisdiction": "US-DE"}}],
-      "document": {"website": null, "addresses": null, "stock": null, "owners": null}
+      "document": {"website": null, "addresses": null, "listings": null, "stock": null, "owners": null}
     }
   ],
   "invalid": [
     {"tag": "Address", "attrs": {"kind": "legal", "line1": "1 Main St"}, "error": "needs country"},
     {"tag": "Address", "attrs": {"line1": "1 Main St", "country": "US"}, "error": "needs kind"},
+    {"tag": "Listing", "attrs": {"venue": "XNAS"}, "error": "needs symbol"},
+    {"tag": "Listing", "attrs": {"symbol": "ACME"}, "error": "needs venue"},
+    {"tag": "Listing", "attrs": {"venue": "XNAS", "symbol": "ACME", "ticker": "ACME"}, "error": "has no attribute ticker"},
     {"tag": "Stock", "attrs": {"kind": "common"}, "error": "needs authorized"},
     {"tag": "Owner", "attrs": {"name": "Ada Founder"}, "error": "needs percent"},
     {"tag": "Owner", "attrs": {"name": "Ada Founder", "percent": "100", "email": "a@acme.example"}, "error": "has no attribute email"},
