@@ -25,6 +25,9 @@ Added (media)
 - A song's structure and performance: its `key`, `style`, `seed`, `form`, `rules` and `tuningHz`, and `player`, `instrument(kind=..., preset=...)`, `motif`, `section(harmony=...)`, `voice` with `notes`, `use(motif=..., transform=...)`, `counterpoint`, `accompany`, `harmonize`, `drums` and `rest`, `phrase`, `tempo`, `ending`, `groove`, `room`, `bus`, `send` and `master`.
   `SONG_STRUCTURE` names every tag, its attributes and what it holds. Each element is one `score.<tag>` node with its
   attributes as written; the CommandAGI music app reads them as a score, performs it and renders it.
+- An effect's `sidechain`: the name of a track, a player or a bus whose sound the effect listens to (a pad ducked
+  by the kick). The sound kernel's `duck` (down by its amount while the key sounds) and `vocoder` (its sound played at
+  the key's level in each band).
 - The sound kernel's instruments on a track (an instrument with a `kind`) and its 21 effect kinds by tag (`gain`,
   `pan`, `width`, `eq`, `filter`, `compressor`, `multiband`, `limiter`, `gate`, `transient`, `deesser`, `saturate`,
   `exciter`, `delay`, `chorus`, `flanger`, `phaser`, `tremolo`, `vibrato`, `reverb`, `convolve`); a track's `place`,

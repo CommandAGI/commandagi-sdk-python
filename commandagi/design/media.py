@@ -77,7 +77,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "instrument": {}, "send": {}, "motif": {}, "groove": {}, "tempo": {}, "phrase": {}, "notes": {}, "use": {}, "rest": {}, "harmonize": {},
     "accompany": {}, "counterpoint": {}, "drums": {}, "room": {},
     "pan": {}, "width": {}, "multiband": {}, "limiter": {}, "gate": {}, "transient": {}, "deesser": {}, "saturate": {}, "exciter": {}, "chorus": {},
-    "flanger": {}, "phaser": {}, "tremolo": {}, "vibrato": {}, "convolve": {},
+    "flanger": {}, "phaser": {}, "tremolo": {}, "vibrato": {}, "convolve": {}, "duck": {}, "vocoder": {},
 }
 
 __all__ = ["MEDIA_ROOTS", "SIGNATURES", "declare_video", "declare_song", "media_kind", "pitch_of", "pitch_name", "tempo_of",
@@ -1004,7 +1004,7 @@ def _stem(src: str) -> str:
 
 #: The sound kernel's effect kinds: each is a tag of a song (``compressor(threshold_db=-18)``).
 SONG_EFFECT_KINDS = ("gain", "pan", "width", "eq", "filter", "compressor", "multiband", "limiter", "gate", "transient", "deesser", "saturate", "exciter",
-                     "delay", "chorus", "flanger", "phaser", "tremolo", "vibrato", "reverb", "convolve")
+                     "delay", "chorus", "flanger", "phaser", "tremolo", "vibrato", "reverb", "convolve", "duck", "vocoder")
 _VOICE_ITEMS = ("notes", "use", "rest", "harmonize", "accompany", "counterpoint", "drums")
 #: A song's structure and performance, by tag: the attributes each takes (``None``: its own kind's, passed to the sound
 #: kernel as they are) and the tags it holds. Each element is one node ``score.<tag>`` whose inputs are its attributes
