@@ -139,7 +139,7 @@ class SongTests(unittest.TestCase):
     def test_a_song_declares_its_structure_as_score_nodes(self):
         from commandagi.design.media import (bus, compressor, instrument, master, motif, notes, phrase, player, room, section, send, use, voice)
         g = declare_song(song(
-            player(instrument(kind="string", preset="violin"), reverb(preset="hall", mix=0.2), send(bus="hall", gain_db=-12),
+            player(instrument(kind="measured", preset="violin"), reverb(preset="hall", mix=0.2), send(bus="hall", gain_db=-12),
                    name="violin", family="strings", place={"azimuth": -20, "distance": 3}),
             motif(name="head", notes="1:8 2 3 5:4."),
             section(phrase(bars="1-4", dynamics="p < f"),
@@ -148,7 +148,7 @@ class SongTests(unittest.TestCase):
             bus(reverb(preset="hall", mix=1), name="hall"),
             room(size=[8, 12, 5], rt60={"low": 1.2, "mid": 1, "high": 0.7}),
             master(compressor(ratio=2), target_lufs=-16),
-            track(instrument(kind="modal", preset="glockenspiel"), compressor(threshold_db=-20), reverb(mix=0.4, predelay=0.02), send(bus="hall", gain_db=-6),
+            track(instrument(kind="measured", preset="glockenspiel"), compressor(threshold_db=-20), reverb(mix=0.4, predelay=0.02), send(bus="hall", gain_db=-6),
                   clip(note(pitch="D5")), name="Bell", place={"azimuth": 30, "distance": 4}, out="hall"),
             name="Air", key="D minor", meter="2+2+3/8", tempo=72, style="baroque", seed=7))
         n = g["nodes"]
@@ -158,14 +158,14 @@ class SongTests(unittest.TestCase):
         self.assertEqual(m["score"], ["player_violin", "motif_head", "section_A", "bus_hall", "room", "master_2"])
         self.assertEqual(n["player_violin"]["type"], "score.player")
         self.assertEqual(n["player_violin"]["inputs"], {"name": "violin", "family": "strings", "place": {"azimuth": -20, "distance": 3}, "children": ["instrument", "reverb", "send"]})
-        self.assertEqual(n["instrument"]["inputs"], {"kind": "string", "preset": "violin"})
+        self.assertEqual(n["instrument"]["inputs"], {"kind": "measured", "preset": "violin"})
         self.assertEqual(n["send"]["inputs"], {"bus": "hall", "gainDb": -12})
         self.assertEqual(n["section_A"]["inputs"]["children"], ["phrase", "voice_violin"])
         self.assertEqual(n["section_A"]["inputs"]["key"], "F")
         self.assertEqual(n["voice_violin"]["inputs"], {"player": "violin", "role": "melody", "children": ["use_head", "notes"]})
         self.assertEqual(n["use_head"]["inputs"], {"motif": "head", "transform": [{"op": "transpose", "steps": 2}]})
         self.assertEqual(n["master_2"]["inputs"], {"targetLufs": -16, "children": ["compressor"]})
-        self.assertEqual(n["inst_Bell"]["inputs"]["spec"], {"kind": "modal", "preset": "glockenspiel"})
+        self.assertEqual(n["inst_Bell"]["inputs"]["spec"], {"kind": "measured", "preset": "glockenspiel"})
         self.assertEqual(n["fx_Bell_compressor"]["inputs"]["spec"], {"kind": "compressor", "thresholdDb": -20})
         self.assertEqual(n["fx_Bell_reverb"]["inputs"]["spec"], {"kind": "reverb", "mix": 0.4, "predelay": 0.02})
         t = n["track_Bell"]["inputs"]

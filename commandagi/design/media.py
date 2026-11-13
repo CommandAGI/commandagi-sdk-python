@@ -28,7 +28,7 @@ score and performs it. A track's chain and a player, a bus or the master hold th
 (``SONG_EFFECT_KINDS``: ``compressor(threshold_db=-18)``)::
 
     result = song(
-        player(instrument(kind="string", preset="violin"), name="violin", family="strings"),
+        player(instrument(kind="measured", preset="violin"), name="violin", family="strings"),
         motif(name="head", notes="1:8 2 3 5:4."),
         section(voice(use(motif="head"), notes(line="5:4 4 3 2"), player="violin"), name="A", bars=2, harmony="i | V7"),
         name="Air", key="D minor", meter="3/4", tempo=84,
@@ -1128,7 +1128,7 @@ def declare_song(root: Element) -> Dict[str, Any]:
                 if instrument:
                     raise ValueError(f"{_where(tr)}: a track plays one instrument")
                 if not _str(el, "kind") and not _str(el, "preset"):
-                    raise ValueError(f'{_where(el)}: an instrument names its kind (kind="string", "modal", "wind", "additive", "fm", "subtractive", "sampler", "drums", "wavetable", "granular", "stack", "fx") or a preset (preset="violin")')
+                    raise ValueError(f'{_where(el)}: an instrument names its kind (kind="string", "modal", "wind", "additive", "measured", "fm", "subtractive", "sampler", "drums", "wavetable", "granular", "stack", "fx") or a preset (preset="violin")')
                 instrument = new_id(f"inst_{track_name}")
                 nodes[instrument] = _node(instrument, "instrument", {"name": _or(_str(el, "name"), track_name), "spec": _written(el, ("name",))}, meta=_meta_of(el))
                 upstream = instrument
