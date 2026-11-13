@@ -8,6 +8,9 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Changed (a song written before this needs an edit)
 
+- `voiceRemove()` and `voiceIsolate()` take `method` `"model"` (the default: a trained separation model, where the place that runs the song has
+  it) or `"classical"` (it was `"combined"`); `"center"`, `"melody"` and `"repet"` stay. Where no model runs, `"model"`
+  is the classical method.
 - A song's meter is `song(meter=...)` (it was `song(time_signature=...)`); `time_signature_of` is `meter_of`. A meter may be written in groups (`"2+2+3/8"`).
 - A track's instrument is `instrument(kind=..., preset=...)` of the sound kernel, and an effect's fields are the
   kernel's. `synth` and `sampler` are removed: write `instrument(kind="subtractive", oscillators=[{"shape":
