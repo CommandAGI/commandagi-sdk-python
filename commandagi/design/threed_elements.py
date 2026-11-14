@@ -687,9 +687,15 @@ _ParamRectOptional = TypedDict("_ParamRectOptional", {}, total=False)
 class ParamRect(_ParamRectRequired, _ParamRectOptional):
     pass
 
+#: THE CELLS OF A BATTERY OR A HOLDER: how many, in series, of which chemistry and size.
+_PartCellsRequired = TypedDict("_PartCellsRequired", {"count": int, "chemistry": 'CellChemistry'})
+_PartCellsOptional = TypedDict("_PartCellsOptional", {"size": str}, total=False)
+class PartCells(_PartCellsRequired, _PartCellsOptional):
+    pass
+
 #: A part's engineering data: its material grade and finish, how it is made or who sells it, and the logistics a declared check may require (docs/formats.md § logistics).
 _PartEngineeringRequired = TypedDict("_PartEngineeringRequired", {})
-_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "processName": str, "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "need": 'PartNeed', "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle', "chemical": 'ProcessChemical', "envelope": bool, "mountingHoles": List['MountingHole']}, total=False)
+_PartEngineeringOptional = TypedDict("_PartEngineeringOptional", {"partNumber": str, "description": str, "designation": str, "material": str, "process": 'ManufacturingProcess', "processName": str, "finish": str, "mass": 'PartMass', "manufacturer": str, "mpn": str, "datasheet": str, "suppliers": List['SupplierOffer'], "alternates": List['Alternate'], "need": 'PartNeed', "make": 'MakeSpec', "inspection": 'Inspection', "compliance": 'Compliance', "shipping": 'Shipping', "lifecycle": 'Lifecycle', "chemical": 'ProcessChemical', "envelope": bool, "mountingHoles": List['MountingHole'], "lead": bool, "view": 'PartView', "cells": 'PartCells', "clear": bool}, total=False)
 class PartEngineering(_PartEngineeringRequired, _PartEngineeringOptional):
     pass
 
@@ -703,6 +709,12 @@ class PartMass(_PartMassRequired, _PartMassOptional):
 _PartNeedRequired = TypedDict("_PartNeedRequired", {})
 _PartNeedOptional = TypedDict("_PartNeedOptional", {"spares": float, "attrition": float, "attritionMin": float, "multiple": float}, total=False)
 class PartNeed(_PartNeedRequired, _PartNeedOptional):
+    pass
+
+#: WHAT IS SEEN OF A PART: a display's active area (`diameter`, or `size` across its frame's other two axes, for a window at least that large), or a lens or a window that sees within a cone (`coneDeg`, its half angle).
+_PartViewRequired = TypedDict("_PartViewRequired", {"at": 'Vec3', "facing": 'Vec3'})
+_PartViewOptional = TypedDict("_PartViewOptional", {"diameter": float, "size": Tuple[float, float], "coneDeg": float}, total=False)
+class PartView(_PartViewRequired, _PartViewOptional):
     pass
 
 _PathPatternFeatureRequired = TypedDict("_PathPatternFeatureRequired", {"type": Literal["pathPattern"], "seedFeature": str, "path": 'SweepPath', "id": str, "name": str})
@@ -1651,6 +1663,9 @@ AxisRef = Union['_AxisRef4', '_AxisRef5', '_AxisRef6', '_AxisRef7']
 
 #: How a solid feature combines with existing bodies.
 BooleanMode = Literal["new", "add", "cut", "intersect"]
+
+#: A cell's chemistry: alkaline 1.5 V, lithium (Li-FeS2) 1.5 V, NiMH 1.2 V, Li-ion and Li-polymer 3.7 V, LiFePO4 3.2 V nominal.
+CellChemistry = Literal["alkaline", "lithium", "nimh", "li-ion", "li-polymer", "lifepo4"]
 
 ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", "angle", "horizontal", "vertical", "tangent", "equal", "pointOnLine", "midpoint", "pointOnCircle", "symmetric", "horizontalDistance", "verticalDistance", "radius"]
 
