@@ -23,7 +23,7 @@ from .classification import PRODUCT_SCHEMES, classification_problem
 from .documents import DocTree, Vocabulary, _json, register_vocabulary
 from .element import define
 
-STOREFRONT_FIELDS = ["name", "venue", "seller", "sellerRecord", "sellerId", "url", "source", "checkout", "hold"]
+STOREFRONT_FIELDS = ["name", "venue", "seller", "sellerRecord", "sellerId", "url", "source", "banner", "checkout", "hold"]
 STOREFRONT_MIRROR_FIELDS = ["listings", "read"]
 STOREFRONT_OFFER_FIELDS = ["name", "kind", "price", "unit", "codes", "tags"]
 STOREFRONT_OFFER_KINDS = ["service", "good"]
@@ -97,6 +97,7 @@ def storefront_of(t: DocTree) -> Dict[str, Any]:
             raise ValueError(f"{at} url is an https:// address (at most 500), not {_json(a['url'])}")
         out["url"] = a["url"]
     _optional(a, "source", 500, at, out)
+    _optional(a, "banner", 500, at, out)
     if a.get("checkout") is not None:
         if a["checkout"] not in STOREFRONT_CHECKOUTS:
             raise ValueError(f"{at} checkout is agent or seller, not {_json(a['checkout'])}")

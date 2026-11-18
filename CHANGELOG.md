@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `Storefront(banner=…)` and `Company(banner=…)`: the banner of the profile, a ref to a picture (relative to the file, or
+  an address) or a colour (`#1f6feb`). A file that names none keeps the colour its name gives.
 - `Storefront(checkout=…)`: who completes a relisted purchase, `agent` (the holder buys or books it for the person, and its price holds)
   or `seller` (the person is sent to the seller's own checkout; no hold). Any other value is refused.
 

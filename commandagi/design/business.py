@@ -47,7 +47,7 @@ from .people_ops import PEOPLE_OPS_TAGS, team_of
 _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
 
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
-    "Company": {"props": {"name": _TEXT, "about": _TEXT, "codes": _TEXTS, "tags": _TEXTS, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT, **PROFILE_COMPANY_PROPS}, "required": ["name"],
+    "Company": {"props": {"name": _TEXT, "about": _TEXT, "codes": _TEXTS, "tags": _TEXTS, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT, "banner": _TEXT, **PROFILE_COMPANY_PROPS}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
                         **COMPANY_FINANCE_ONE, "team": "Team", **COMPANY_GOVERNANCE_ONE, "relationships": "Relationships", **COMPANY_DEALS_ONE},
                 "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, **PROFILE_LISTS, "brands": "Brand", **COMPANY_GOVERNANCE_MANY, "products": "Product", **COMPANY_DEALS_MANY}},
@@ -244,7 +244,7 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
     # Each area's field is absent when the file names none of it (docs/company-substrate.md § how an area joins).
     return {"format": "commandagi-company", "name": p["name"], "about": p.get("about", ""), **_classified_fields(node, None, "<Company>"),
             **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
-            "dashboard": p.get("dashboard"), "entity": entity, "standard": standard,
+            "dashboard": p.get("dashboard"), **({"banner": p["banner"]} if "banner" in p else {}), "entity": entity, "standard": standard,
             **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {}),
             **({"finance": finance} if finance else {}), **formation_of(node), **profile_of(node), **({"rounds": rounds} if rounds else {}),
             **({"team": team_of(one["team"])} if one["team"] else {}),

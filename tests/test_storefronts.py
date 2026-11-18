@@ -39,6 +39,11 @@ class StorefrontTests(unittest.TestCase):
             seller_record="cloud://home/user-commandagi/records/companies/uber-technologies-inc-de/"))
         self.assertEqual(d["document"], UBER)
 
+    def test_a_banner_is_carried_as_written(self):
+        for banner in ("brand/banner.png", "#1f6feb"):
+            d = declare_document(Storefront(name="Rides", venue="uber", seller="Uber", banner=banner))
+            self.assertEqual(d["document"]["banner"], banner)
+
     def test_a_bad_storefront_is_refused(self):
         at = {"name": "Shop", "venue": "ebay", "seller": "A seller"}
         bad = {
