@@ -8,7 +8,7 @@ from commandagi.design.documents import declare_document
 from commandagi.design.storefronts import Offer, Offers, Storefront
 
 DIGIKEY = {
-    "name": "DigiKey", "venue": "digikey", "seller": "DigiKey", "url": "https://www.digikey.com", "hold": "10 minutes",
+    "name": "DigiKey", "venue": "digikey", "seller": "DigiKey", "url": "https://www.digikey.com", "checkout": "agent", "hold": "10 minutes",
     "mirror": {"listings": "Inventory/listings.csv", "read": "Inventory/read.mjs"}, "offers": [],
 }
 UBER = {
@@ -25,7 +25,7 @@ class StorefrontTests(unittest.TestCase):
     def test_a_relisted_store_is_its_document(self):
         out = run_module(
             "from commandagi.design.storefronts import Offers, Storefront\n"
-            "result = Storefront(Offers(listings=\"Inventory/listings.csv\", read=\"Inventory/read.mjs\"), name=\"DigiKey\", venue=\"digikey\", seller=\"DigiKey\", url=\"https://www.digikey.com\", hold=\"10 minutes\")\n",
+            "result = Storefront(Offers(listings=\"Inventory/listings.csv\", read=\"Inventory/read.mjs\"), name=\"DigiKey\", venue=\"digikey\", seller=\"DigiKey\", url=\"https://www.digikey.com\", checkout=\"agent\", hold=\"10 minutes\")\n",
             "relisting/digikey/digikey.storefront.py")
         self.assertEqual(out["document"]["format"], "storefront")
         self.assertEqual(out["document"]["document"], DIGIKEY)
@@ -44,6 +44,7 @@ class StorefrontTests(unittest.TestCase):
         bad = {
             "holder is not read": lambda: Storefront(**at, holder="acct:org:org-commandagi"),
             "venue is the platform's word": lambda: Storefront(**{**at, "venue": "eBay"}),
+            "checkout is agent or seller": lambda: Storefront(**at, checkout="cart"),
             'hold is a term like "10 minutes"': lambda: Storefront(**at, hold="ten minutes"),
             "url is an https:// address": lambda: Storefront(**at, url="http://x"),
             "price is an amount and an ISO currency": lambda: Storefront(Offer(name="A", kind="service", price="25 dollars"), **at),

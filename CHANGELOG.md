@@ -6,6 +6,11 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 ## Unreleased
 
+Added
+
+- `Storefront(checkout=…)`: who completes a relisted purchase, `agent` (the holder buys or books it for the person, and its price holds)
+  or `seller` (the person is sent to the seller's own checkout; no hold). Any other value is refused.
+
 Changed (a company file that wrote `Compliance(industries=…)` needs an edit)
 
 - Classification (`classification.py`; CommandAGI's docs/formats.md § classification): `Company`, a company's `Product`

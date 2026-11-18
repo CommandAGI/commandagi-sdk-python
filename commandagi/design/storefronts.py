@@ -6,10 +6,12 @@
 
     result = Storefront(
         Offers(listings="Inventory/listings.csv", read="Inventory/read.mjs"),
-        name="DigiKey", venue="digikey", seller="DigiKey", url="https://www.digikey.com", hold="10 minutes",
+        name="DigiKey", venue="digikey", seller="DigiKey", url="https://www.digikey.com", checkout="agent", hold="10 minutes",
     )
 
-The holder is the account whose Drive holds the file, never an attribute. ``Offer(name=…, kind="service"|"good",
+The holder is the account whose Drive holds the file, never an attribute. ``checkout`` says who completes a relisted
+purchase: ``"agent"`` (the holder buys or books it for the person) or ``"seller"`` (the person is sent to the seller's
+own checkout). ``Offer(name=…, kind="service"|"good",
 price="25.00 USD", unit=…, codes=["unspsc:…"], tags=[…])`` is one offer, by its name.
 """
 from __future__ import annotations
@@ -21,10 +23,11 @@ from .classification import PRODUCT_SCHEMES, classification_problem
 from .documents import DocTree, Vocabulary, _json, register_vocabulary
 from .element import define
 
-STOREFRONT_FIELDS = ["name", "venue", "seller", "sellerRecord", "sellerId", "url", "source", "hold"]
+STOREFRONT_FIELDS = ["name", "venue", "seller", "sellerRecord", "sellerId", "url", "source", "checkout", "hold"]
 STOREFRONT_MIRROR_FIELDS = ["listings", "read"]
 STOREFRONT_OFFER_FIELDS = ["name", "kind", "price", "unit", "codes", "tags"]
 STOREFRONT_OFFER_KINDS = ["service", "good"]
+STOREFRONT_CHECKOUTS = ["agent", "seller"]
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
 SIGNATURES: Dict[str, Dict[str, Any]] = {
@@ -33,7 +36,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "Offer": {},
 }
 
-__all__ = ["STOREFRONT_FIELDS", "STOREFRONT_MIRROR_FIELDS", "STOREFRONT_OFFER_FIELDS", "STOREFRONT_OFFER_KINDS", "SIGNATURES",
+__all__ = ["STOREFRONT_FIELDS", "STOREFRONT_MIRROR_FIELDS", "STOREFRONT_OFFER_FIELDS", "STOREFRONT_OFFER_KINDS", "STOREFRONT_CHECKOUTS", "SIGNATURES",
            "storefront_of", "STOREFRONT_VOCABULARY", *define(globals(), "storefronts", SIGNATURES)]
 
 _VENUE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
@@ -94,6 +97,10 @@ def storefront_of(t: DocTree) -> Dict[str, Any]:
             raise ValueError(f"{at} url is an https:// address (at most 500), not {_json(a['url'])}")
         out["url"] = a["url"]
     _optional(a, "source", 500, at, out)
+    if a.get("checkout") is not None:
+        if a["checkout"] not in STOREFRONT_CHECKOUTS:
+            raise ValueError(f"{at} checkout is agent or seller, not {_json(a['checkout'])}")
+        out["checkout"] = a["checkout"]
     if a.get("hold") is not None:
         if not isinstance(a["hold"], str) or not _HOLD.match(a["hold"]):
             raise ValueError(f'{at} hold is a term like "10 minutes" (seconds, minutes, hours or days), not {_json(a["hold"])}')
