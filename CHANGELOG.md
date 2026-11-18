@@ -57,6 +57,10 @@ Added (media)
 
 Added
 
+- `commandagi.design.storefronts`: `Storefront(name=..., venue=..., seller=..., seller_record=..., seller_id=..., url=...,
+  source=..., hold=...)` with at most one `Offers(listings=..., read=...)` and any `Offer(name=..., kind="service"|"good",
+  price="25.00 USD", unit=..., codes=[...], tags=[...])`: the storefront document of `<name>.storefront.py` (CommandAGI's
+  docs/formats.md § a storefront in code). The holder is the account whose Drive holds the file, never an attribute.
 - `commandagi.design.company_profile`: `Company(website=...)`, `Address`, `Stock` and `Owner`, the company's legal
   profile, read as the document's `website`, `addresses`, `stock` and `owners`.
 - `commandagi.design.scripts`: `publish(rule=..., when=...)`, the script's own records folded into plain files by a
