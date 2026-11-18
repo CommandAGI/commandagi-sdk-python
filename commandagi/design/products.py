@@ -8,10 +8,11 @@ is ``priceCents``)::
     result = product(
         variant(sku="helmet-stl", name="STL pack", price_cents=1500, file="./helmet.zip"),
         discount(code="LAUNCH10", percent=10, ends_at="2026-12-01"),
-        name="Helmet files", kind="digital", status="active",
+        name="Helmet files", kind="digital", status="active", codes=["unspsc:43232100"], tags=["3d printing", "helmet"],
     )
 
-``kind`` is ``physical`` (``shipping`` is its policy, required) or ``digital`` (each variant names the ``file`` it sells;
+``codes`` (product schemes: unspsc, gs1, hs) and ``tags`` say what kind of product it is (``./classification.py``;
+docs/formats.md § classification). ``kind`` is ``physical`` (``shipping`` is its policy, required) or ``digital`` (each variant names the ``file`` it sells;
 no shipping, weight, stock or deposit). A physical variant with no ``stock`` is made to order. A ``deposit``
 (``{"percent": 1..99}`` or ``{"cents": n}``, at least 50 and less than the price) makes a variant a pre-order. A
 ``discount`` takes ``percent`` or ``amount_cents`` off, between ``starts_at`` and ``ends_at`` (ISO 8601; a date-time with
@@ -24,12 +25,13 @@ import calendar
 import re
 from typing import Any, Dict, Optional
 
+from .classification import PRODUCT_SCHEMES, classification_problem
 from .documents import DocTree, Vocabulary, _json, register_vocabulary
 from .element import define
 
 PRODUCT_KINDS = ["physical", "digital"]
 PRODUCT_STATUSES = ["draft", "active", "archived"]
-PRODUCT_FIELDS = ["name", "kind", "slug", "subtitle", "description", "images", "status", "shipping", "fulfilment", "quantityTerms", "embodimentKind", "taxCode"]
+PRODUCT_FIELDS = ["name", "kind", "slug", "subtitle", "description", "images", "status", "shipping", "fulfilment", "quantityTerms", "embodimentKind", "taxCode", "codes", "tags"]
 VARIANT_FIELDS = ["sku", "name", "priceCents", "compareAtCents", "stock", "options", "weightGrams", "file", "deposit"]
 DISCOUNT_FIELDS = ["code", "percent", "amountCents", "startsAt", "endsAt", "usageLimit"]
 
@@ -230,6 +232,12 @@ def product_of(t: DocTree) -> Dict[str, Any]:
         if not (isinstance(a["taxCode"], str) and re.fullmatch(r"txcd_[0-9]{8}", a["taxCode"])):
             raise ValueError(f"{at} taxCode is a Stripe product tax code like txcd_99999999, not {_said(a['taxCode'])}")
         out["taxCode"] = a["taxCode"]
+    classification = classification_problem(a.get("codes"), a.get("tags"), PRODUCT_SCHEMES)
+    if classification:
+        raise ValueError(f"{at} {classification}")
+    for k in ("codes", "tags"):
+        if a.get(k) is not None:
+            out[k] = list(a[k])
     variants = [c for c in t["children"] if c["tag"] == "variant"]
     # A file not finished yet may hold none; the checkout refuses a product that sells nothing.
     if len(variants) > 50:

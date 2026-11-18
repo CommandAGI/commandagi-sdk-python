@@ -4,7 +4,13 @@
       "tree": {
         "tag": "Company",
         "attrs": {
-          "name": "Northwind"
+          "name": "Northwind",
+          "codes": [
+            "naics:541370"
+          ],
+          "tags": [
+            "land survey"
+          ]
         },
         "children": [
           {
@@ -27,11 +33,7 @@
           },
           {
             "tag": "Compliance",
-            "attrs": {
-              "industries": [
-                "naics:541370"
-              ]
-            }
+            "attrs": {}
           },
           {
             "tag": "Obligation",
@@ -163,9 +165,6 @@
           ]
         },
         "compliance": {
-          "industries": [
-            "naics:541370"
-          ],
           "obligations": [
             {
               "id": "soc2-report",
@@ -217,7 +216,13 @@
               "currency": "USD"
             }
           ]
-        }
+        },
+        "codes": [
+          "naics:541370"
+        ],
+        "tags": [
+          "land survey"
+        ]
       }
     },
     {
@@ -366,7 +371,6 @@
         ],
         "relationships": "relationships/relationships.csv",
         "compliance": {
-          "industries": [],
           "horizon": "14 months",
           "obligations": [
             {
@@ -441,16 +445,10 @@
       "tree": {
         "tag": "Company",
         "attrs": {
-          "name": "X"
+          "name": "X",
+          "codes": "naics:11"
         },
-        "children": [
-          {
-            "tag": "Compliance",
-            "attrs": {
-              "industries": "naics:11"
-            }
-          }
-        ]
+        "children": []
       },
       "error": "is a list of text"
     },
@@ -592,6 +590,81 @@
         ]
       },
       "error": "needs name"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Compliance",
+            "attrs": {
+              "industries": [
+                "naics:11"
+              ]
+            }
+          }
+        ]
+      },
+      "error": "has no attribute industries"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X",
+          "codes": [
+            "naic:11"
+          ]
+        }
+      },
+      "error": "\"naic\" is not a known scheme"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X",
+          "codes": [
+            "naics:1"
+          ]
+        }
+      },
+      "error": "a NAICS code is 2 to 6 digits"
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X",
+          "tags": [
+            "Robotics"
+          ]
+        }
+      },
+      "error": "write the tag as \"robotics\""
+    },
+    {
+      "tree": {
+        "tag": "Company",
+        "attrs": {
+          "name": "X"
+        },
+        "children": [
+          {
+            "tag": "Product",
+            "attrs": {
+              "name": "P",
+              "codes": [
+                "naics:54"
+              ]
+            }
+          }
+        ]
+      },
+      "error": "is a business code; here a code is of unspsc, gs1, hs"
     }
   ]
 }

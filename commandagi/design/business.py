@@ -10,8 +10,14 @@ open as ``<Name>.company.py``, ``<name>.rfc.py`` and ``<name>.case.py``, and the
         CapTable(ocf="Northwind/captable/"),
         Registration(kind="tax-id", jurisdiction="US", id="12-3456789"),
         name="Northwind",
+        codes=["naics:541370"],
+        tags=["land survey"],
         files=["Northwind/"],
     )
+
+``codes`` and ``tags`` say what kind of business it is (``./classification.py``): standard codes as scheme:code and free
+words; a ``Product`` child takes product schemes only (unspsc, gs1, hs). The compliance register matches an industry's
+obligations against its business codes (naics, nace …).
 
 Each call is one element (``./element.py``): its children positional, its attributes as snake_case keywords
 (``fiscal_year_end=`` is ``fiscalYearEnd``). A group names its subsidiaries
@@ -28,6 +34,7 @@ import math
 from typing import Any, Dict, List, Optional
 
 from .business_equity import EQUITY_TAGS, rounds_of
+from .classification import PRODUCT_SCHEMES, classification_problem
 from .business_finance import COMPANY_FINANCE_MANY, COMPANY_FINANCE_ONE, FINANCE_TAGS, finance_of
 from .company_formation import FILING_PAPER_PROPS, FORMATION_LISTS, FORMATION_TAGS, formation_of
 from .company_profile import PROFILE_COMPANY_PROPS, PROFILE_LISTS, PROFILE_TAGS, profile_of
@@ -40,7 +47,7 @@ from .people_ops import PEOPLE_OPS_TAGS, team_of
 _TEXT, _TEXTS, _BOOL, _RECORD, _DATA, _AMOUNT = "text", "texts", "bool", "record", "data", "amount"
 
 BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
-    "Company": {"props": {"name": _TEXT, "about": _TEXT, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT, **PROFILE_COMPANY_PROPS}, "required": ["name"],
+    "Company": {"props": {"name": _TEXT, "about": _TEXT, "codes": _TEXTS, "tags": _TEXTS, "postalAddress": _TEXT, "files": _TEXTS, "dashboard": _TEXT, **PROFILE_COMPANY_PROPS}, "required": ["name"],
                 "one": {"entity": "Entity", "books": "Books", "captable": "CapTable", "people": "People", "calendar": "Calendar", "matters": "Matters",
                         **COMPANY_FINANCE_ONE, "team": "Team", **COMPANY_GOVERNANCE_ONE, "relationships": "Relationships", **COMPANY_DEALS_ONE},
                 "many": {"registrations": "Registration", "subsidiaries": "Subsidiary", "papers": "Paper", "rounds": "Round", **COMPANY_FINANCE_MANY, **FORMATION_LISTS, **PROFILE_LISTS, "brands": "Brand", **COMPANY_GOVERNANCE_MANY, "products": "Product", **COMPANY_DEALS_MANY}},
@@ -68,7 +75,7 @@ BUSINESS_TAGS: Dict[str, Dict[str, Any]] = {
     # A brand of the company: its own ``.brand.py``, by ref (docs/company-substrate.md § the brand surface).
     "Brand": {"props": {"file": _TEXT}, "required": ["file"]},
     # What the company sells or makes: who makes it and who sells it (the merchant of record), when they differ.
-    "Product": {"props": {"id": _TEXT, "name": _TEXT, "about": _TEXT, "maker": _TEXT, "seller": _TEXT, "status": _TEXT, "file": _TEXT}, "required": ["name"]},
+    "Product": {"props": {"id": _TEXT, "name": _TEXT, "about": _TEXT, "codes": _TEXTS, "tags": _TEXTS, "maker": _TEXT, "seller": _TEXT, "status": _TEXT, "file": _TEXT}, "required": ["name"]},
     # The company's relationships (suppliers, manufacturers, funders, channels): one relationships.csv, by ref.
     "Relationships": {"props": {"file": _TEXT}, "required": ["file"]},
     # Seats, the compliance register, IP, insurance and votes (company_governance.py).
@@ -189,6 +196,15 @@ def sources_of(node: Dict[str, Any], at: str = "", out: Optional[Dict[str, Any]]
     return out
 
 
+def _classified_fields(node: Dict[str, Any], schemes: Optional[List[str]], at: str) -> Dict[str, Any]:
+    """A node's ``codes`` and ``tags``, checked (docs/formats.md § classification): only what it writes."""
+    p = node["props"]
+    problem = classification_problem(p.get("codes"), p.get("tags"), schemes)
+    if problem:
+        raise ValueError(f"{at} {problem}")
+    return {k: p[k] for k in ("codes", "tags") if k in p}
+
+
 def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
     """A company document from a <Company> (docs/formats.md § companies)."""
     p, one = node["props"], node["one"]
@@ -224,9 +240,9 @@ def company_of(node: Dict[str, Any]) -> Dict[str, Any]:
     finance = finance_of(node)
     rounds = rounds_of(node)
     brands = [dict(x["props"]) for x in node["many"]["brands"]]
-    products = [dict(x["props"]) for x in node["many"]["products"]]
+    products = [{**x["props"], **_classified_fields(x, PRODUCT_SCHEMES, f'<Product name="{x["props"]["name"]}">')} for x in node["many"]["products"]]
     # Each area's field is absent when the file names none of it (docs/company-substrate.md § how an area joins).
-    return {"format": "commandagi-company", "name": p["name"], "about": p.get("about", ""),
+    return {"format": "commandagi-company", "name": p["name"], "about": p.get("about", ""), **_classified_fields(node, None, "<Company>"),
             **({"postalAddress": p["postalAddress"]} if "postalAddress" in p else {}), "files": p.get("files", []),
             "dashboard": p.get("dashboard"), "entity": entity, "standard": standard,
             **({"subsidiaries": subsidiaries} if subsidiaries else {}), **({"papers": papers} if papers else {}),

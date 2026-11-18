@@ -17,6 +17,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List
 
+from .classification import PRODUCT_SCHEMES, classification_problem
 from .documents import DocTree, Vocabulary, _json, register_vocabulary
 from .element import define
 
@@ -38,7 +39,6 @@ __all__ = ["STOREFRONT_FIELDS", "STOREFRONT_MIRROR_FIELDS", "STOREFRONT_OFFER_FI
 _VENUE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 _HOLD = re.compile(r"^[1-9]\d{0,3} (second|minute|hour|day)s?$")
 _PRICE = re.compile(r"^\d+(\.\d+)? [A-Z]{3}$")
-_CODE = re.compile(r"^[a-z0-9-]+:[A-Za-z0-9.\-]+$")
 
 
 def _text(v: Any, mx: int) -> bool:
@@ -65,16 +65,14 @@ def _offer_of(a: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError(f'{at} price is an amount and an ISO currency ("25.00 USD"), not {_json(a["price"])}')
         out["price"] = a["price"]
     _optional(a, "unit", 40, at, out)
+    # What kind of offer it is (classification.py): product schemes and free tags, by the one grammar.
+    problem = classification_problem(a.get("codes"), a.get("tags"), PRODUCT_SCHEMES)
+    if problem:
+        raise ValueError(f"{at} {problem}")
     if a.get("codes") is not None:
-        c = a["codes"]
-        if not isinstance(c, list) or len(c) > 20 or not all(isinstance(x, str) and _CODE.match(x) for x in c):
-            raise ValueError(f'{at} codes is a list of at most 20 classification codes, each <scheme>:<code> ("unspsc:43211500"), not {_json(c)}')
-        out["codes"] = list(c)
+        out["codes"] = list(a["codes"])
     if a.get("tags") is not None:
-        t = a["tags"]
-        if not isinstance(t, list) or len(t) > 20 or not all(_text(x, 40) for x in t):
-            raise ValueError(f"{at} tags is a list of at most 20 short texts (at most 40 each), not {_json(t)}")
-        out["tags"] = list(t)
+        out["tags"] = list(a["tags"])
     return out
 
 

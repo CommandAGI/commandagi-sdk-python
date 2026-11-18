@@ -6,6 +6,14 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 ## Unreleased
 
+Changed (a company file that wrote `Compliance(industries=…)` needs an edit)
+
+- Classification (`classification.py`; CommandAGI's docs/formats.md § classification): `Company`, a company's `Product`
+  and a `product` take `codes` (standard codes as `scheme:code`: business schemes naics, nace, isic, sic, anzsic, jsic;
+  product schemes unspsc, gs1, hs) and `tags` (free words, lower case, trimmed). A code of an unknown scheme or out of its
+  scheme's grammar is refused by name; a product takes product schemes only. `Compliance(industries=…)` is removed: write the
+  codes on the company (`Company(..., codes=["naics:541370"])`); the register reads the company's business codes.
+
 Changed (a song written before this needs an edit)
 
 - The sound kernel's presets `nylonGuitar`, `steelGuitar`, `electricBass`, `harp`, `grandPiano`, `pianoFelt`, `violin`, `viola`, `cello`, `doubleBass`, `marimba`, `vibraphone`, `glockenspiel`, `flute`, `clarinet`, `saxophone`, `trumpet`, `electricPiano` and `pipeOrgan` are tones measured on real instruments, of the kind `measured`. A song that names

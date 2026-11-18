@@ -57,10 +57,16 @@ class ProductTests(unittest.TestCase):
             "fulfilment is an object": ({**phys, "fulfilment": "ship"}, v),
             "colour": ({**phys, "colour": "red"}, v),
             "taxCode is a Stripe product tax code like txcd_99999999": ({**phys, "tax_code": "txcd_1"}, v),
+            # Classification (docs/formats.md § classification): product schemes only, tags as they are kept.
+            '"naics:541511" is a business code; here a code is of unspsc, gs1, hs': ({**phys, "codes": ["naics:541511"]}, v),
+            "a UNSPSC code is 2, 4, 6 or 8 digits": ({**phys, "codes": ["unspsc:432"]}, v),
+            'write the tag as "3d printing"': ({**phys, "tags": ["3D Printing"]}, v),
         }
         for why, (attrs, var) in bad.items():
             with self.assertRaisesRegex(ValueError, why, msg=why):
                 declare_document(product(variant(**kw(var)), **attrs))
+        classified = declare_document(product(variant(**kw(v)), **phys, codes=["unspsc:43232100", "hs:847989"], tags=["robotics"]))["document"]
+        self.assertEqual([classified["codes"], classified["tags"]], [["unspsc:43232100", "hs:847989"], ["robotics"]])
         with self.assertRaisesRegex(ValueError, 'two <variant> in <product> have sku "a"'):
             declare_document(product(variant(**kw(v)), variant(**kw(v)), **phys))
         discounts = {

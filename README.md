@@ -106,6 +106,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.media` | a video (clips, `composition(src="Intro.vid.py")`: another video drawn live from its own code, `artboard(src="Poster.draw.py")`: a drawing's page drawn live), a song |
 | `commandagi.design.ontology` | a world, a device definition, a dashboard, a geo project (and its shocks, scenarios, models, parameter sets, layers, formulas, views, reports and graphs), a node graph |
 | `commandagi.design.business` | a company, an RFC, a case |
+| `commandagi.design.classification` | what kind of business or product a thing is: `codes` (`scheme:code`) and `tags`, `classification_problem`, `matches_prefix` |
 | `commandagi.design.tasks` | a task, a project |
 | `commandagi.design.mounts` | a thread's mounted tasks (`mounts.py`, in the thread's run folder) |
 | `commandagi.design.products` | a product a seller sells (`name.product.py`): `product`, `variant`, `discount` |

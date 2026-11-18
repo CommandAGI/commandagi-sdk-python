@@ -48,7 +48,7 @@ class StorefrontTests(unittest.TestCase):
             "url is an https:// address": lambda: Storefront(**at, url="http://x"),
             "price is an amount and an ISO currency": lambda: Storefront(Offer(name="A", kind="service", price="25 dollars"), **at),
             "kind is service or good": lambda: Storefront(Offer(name="A", kind="thing"), **at),
-            "codes is a list of at most 20 classification codes": lambda: Storefront(Offer(name="A", kind="good", codes=["43211500"]), **at),
+            'codes: "43211500" is not a code: write it as scheme:code': lambda: Storefront(Offer(name="A", kind="good", codes=["43211500"]), **at),
             'two <Offer> in <Storefront> have name "A"': lambda: Storefront(Offer(name="A", kind="good"), Offer(name="A", kind="good"), **at),
             "<Storefront> has one <Offers>": lambda: Storefront(Offers(listings="a.csv"), Offers(listings="b.csv"), **at),
             "needs seller": lambda: Storefront(name="Shop", venue="ebay"),

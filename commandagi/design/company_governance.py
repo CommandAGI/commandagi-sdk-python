@@ -5,7 +5,7 @@ insurance). The same elements as the TypeScript SDK's ``company-governance.ts``;
 
     Company(
         Seat(body="board", title="director", holder="Northwind/people/Lin Chen.vcf", start="2024-01-31"),
-        Compliance(industries=["naics:541370"]),
+        Compliance(horizon="18 months"),  # how far ahead the register looks (the company's industry is its Company codes)
         Evidence(obligation="US-DE:de-llc-lp-annual-tax", due="2026-06-01", done="2026-05-20", file="Northwind/filings/2026.pdf"),
         IpAsset(kind="trademark", stage="registered", title="NORTHWIND", jurisdiction="US", registered="2025-02-11"),
         Policy(kind="aviation", carrier="Skyward Mutual", start="2025-07-01", end="2026-07-01"),
@@ -24,7 +24,7 @@ _TEXT, _TEXTS, _AMOUNT = "text", "texts", "amount"
 
 GOVERNANCE_TAGS: Dict[str, Dict[str, Any]] = {
     "Seat": {"props": {"body": _TEXT, "title": _TEXT, "holder": _TEXT, "start": _TEXT, "end": _TEXT, "appointedBy": _TEXT}, "required": ["body", "title", "holder"]},
-    "Compliance": {"props": {"industries": _TEXTS, "horizon": _TEXT}},
+    "Compliance": {"props": {"horizon": _TEXT}},
     "Obligation": {"props": {"id": _TEXT, "name": _TEXT, "authority": _TEXT, "url": _TEXT, "due": _TEXT, "every": _TEXT, "note": _TEXT}, "required": ["id", "name", "due"]},
     "Evidence": {"props": {"obligation": _TEXT, "due": _TEXT, "done": _TEXT, "file": _TEXT, "note": _TEXT}, "required": ["obligation", "due"]},
     "IpAsset": {"props": {"kind": _TEXT, "stage": _TEXT, "title": _TEXT, "jurisdiction": _TEXT, "number": _TEXT, "filed": _TEXT, "registered": _TEXT,
@@ -51,7 +51,7 @@ def governance_of(node: Dict[str, Any]) -> Dict[str, Any]:
         out["governance"] = {"seats": props("seats")}
     if one.get("compliance") or many.get("obligations") or many.get("evidence"):
         c = one["compliance"]["props"] if one.get("compliance") else {}
-        out["compliance"] = {"industries": c.get("industries", []), **({"horizon": c["horizon"]} if "horizon" in c else {}),
+        out["compliance"] = {**({"horizon": c["horizon"]} if "horizon" in c else {}),
                              "obligations": props("obligations"), "evidence": props("evidence")}
     if many.get("ipAssets") or many.get("assignments"):
         out["ip"] = {"assets": props("ipAssets"), "assignments": props("assignments")}
