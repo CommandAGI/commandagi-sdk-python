@@ -248,7 +248,7 @@ class DatumFeature(_DatumFeatureRequired, _DatumFeatureOptional):
     pass
 
 _DatumPlaneFeatureRequired = TypedDict("_DatumPlaneFeatureRequired", {"type": Literal["datumPlane"], "base": str, "id": str, "name": str})
-_DatumPlaneFeatureOptional = TypedDict("_DatumPlaneFeatureOptional", {"offset": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_DatumPlaneFeatureOptional = TypedDict("_DatumPlaneFeatureOptional", {"offset": float, "angle": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class DatumPlaneFeature(_DatumPlaneFeatureRequired, _DatumPlaneFeatureOptional):
     pass
 
@@ -1425,7 +1425,7 @@ class MirrorProps(_MirrorPropsRequired, _MirrorPropsOptional):
 
 #: The keywords of datumPlane(…): the DatumPlaneFeature fields, in snake_case.
 _DatumPlanePropsRequired = TypedDict("_DatumPlanePropsRequired", {"base": str, "id": str})
-_DatumPlanePropsOptional = TypedDict("_DatumPlanePropsOptional", {"offset": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_DatumPlanePropsOptional = TypedDict("_DatumPlanePropsOptional", {"offset": float, "angle": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class DatumPlaneProps(_DatumPlanePropsRequired, _DatumPlanePropsOptional):
     pass
 
