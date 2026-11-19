@@ -1,0 +1,28 @@
+{
+  "note": "The golden of the three SDKs' factory module (factory-flow.golden.json here, factory_flow.json in the Python and Rust SDKs' tests). Each refusal's words are the engine's own (CommandAGI's packages/domain/world/sim-flow.js), so an SDK and the engine refuse a factory alike.",
+  "valid": {
+    "id": "line", "kind": "flow", "seed": 11, "time_scale": 60, "window_s": 3600,
+    "shifts": { "period_s": 86400, "windows": [[0, 28800], [28800, 57600]] },
+    "products": [{ "id": "motor", "label": "Hub motor", "route": ["wind", { "station": "test", "cycle_s": 40 }], "sink": "dock", "demand_per_period": 2000, "color": [0.86, 0.55, 0.22] }],
+    "sources": [{ "id": "kits", "product": "motor", "per_hour": 150, "arrivals": "steady" }],
+    "sinks": [{ "id": "dock" }],
+    "stations": [
+      { "id": "wind", "machines": "$winders", "cycle_s": 75, "buffer": 12, "availability": 0.92, "mttr_s": 600, "yield": 0.985, "at": [0, 0] },
+      { "id": "test", "machines": 2, "cycle_s": 44, "cycle_cv": 0.1, "batch": 1, "setup_s": 0, "buffer": 8, "mtbf_s": 14000, "mttr_s": 480 }
+    ]
+  },
+  "refusals": [
+    { "change": ["stations", 0, "speed", 2], "says": "station wind: unknown field speed" },
+    { "change": ["products", 0, "route", ["wind", "zz"]], "says": "product motor: route names \"zz\", which is not a station" },
+    { "change": ["products", 0, "sink", "zz"], "says": "product motor: sink \"zz\" is not one of the sinks" },
+    { "change": ["sources", 0, "product", "zz"], "says": "source kits: product \"zz\" is not one of the products" },
+    { "change": ["stations", 1, "machines", "two"], "says": "station test: machines is a whole number from 1 to 256" },
+    { "change": ["shifts", "length", 2], "says": "shifts: unknown field length" }
+  ],
+  "machines": [
+    { "rate": 0.034722222222222224, "cycle_s": 90, "availability": 0.9, "machines": 5 },
+    { "rate": 0.1, "cycle_s": 60, "batch": 4, "machines": 2 },
+    { "rate": 0.85, "cycle_s": 1, "machines": 1 },
+    { "rate": 0, "cycle_s": 5, "machines": 0 }
+  ]
+}
