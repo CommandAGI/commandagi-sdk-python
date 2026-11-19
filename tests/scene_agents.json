@@ -4,7 +4,7 @@
     "robots": [{ "id": "left" }, { "id": "right" }],
     "policies": [{ "id": "tender" }],
     "agents": [
-      { "id": "pilot", "units": ["left"], "label": "Pilot", "instructions": "Keep the left arm clear of the cube.", "model": "openrouter/anthropic/claude-opus-5.5" },
+      { "id": "pilot", "units": ["left"], "label": "Pilot", "instructions": "Keep the left arm clear of the cube.", "model": "deepinfra/zai-org/GLM-5.3" },
       { "id": "wrist", "units": ["right.wrist_flex", "right.wrist_roll"] }
     ]
   },
