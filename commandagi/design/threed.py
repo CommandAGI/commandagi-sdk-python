@@ -137,7 +137,7 @@ BUILTIN_PLANES: Dict[str, Dict[str, Any]] = {
 }
 #: The document's view fields a root element may hold (the graph's ``meta``), beside ``name``.
 _VIEW_ATTRS = ["semanticVisibility"]
-_PARAM_FIELDS = ["value", "unit", "comment", "min", "max", "step", "tolerance"]
+_PARAM_FIELDS = ["value", "expression", "unit", "comment", "min", "max", "step", "tolerance"]
 #: Document fields a slot may not hold: they have elements of their own, or are the graph itself.
 _NOT_SLOTS = {"id", "name", "units", "planes", "features", "parameters", "presentation", "isAssembly", "bodyMeta", "semanticVisibility",
               "drawings", "checks", "accepted", "permitted", "fasteners", "tactile", "ports", "items", "assemblySteps", "library", "products", "placements", "captures", "views",

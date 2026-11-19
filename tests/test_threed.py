@@ -33,6 +33,8 @@ class ThreeDTests(unittest.TestCase):
         self.assertEqual(g["meta"], {"name": "Plate", "units": "mm", "presentation": {"order": ["sketch1", "extrude1", "fillet1"]}})
         n = g["nodes"]
         self.assertEqual(n["depth"], {"id": "depth", "type": "input", "label": "depth", "inputs": {"value": 6, "unit": "mm", "drives": [{"target": "extrude1", "field": "distance"}]}})
+        e = declare_threed(part(parameter(name="d2", value=9, expression="depth * 1.5"), name="P"))["nodes"]["d2"]
+        self.assertEqual(e["inputs"], {"value": 9, "expression": "depth * 1.5"})
         self.assertEqual(n["extrude1"], {"id": "extrude1", "type": "extrude", "label": "Extrude1", "inputs": {"profile": {"sketch": "sketch1"}, "distance": 6, "operation": "new"}})
         self.assertEqual(n["fillet1"], {"id": "fillet1", "type": "fillet", "label": "Fillet1", "disabled": True, "inputs": {"radius": 1, "edges": [{"kind": "edge", "signature": {"point": [20, 0, 6]}}], "consumes": ["extrude1"]}})
         sk = n["sketch1"]["inputs"]["sketch"]
