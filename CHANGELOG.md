@@ -8,6 +8,7 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.factory`: a station's `energy_j` and `cell`, as the TypeScript SDK's.
 - `commandagi.design.factory`: a factory in a design's scene, the `flow` system: `check_flow_system` and `machines_for`,
   the same as the TypeScript SDK's `factory-flow.ts`.
 - `Storefront(banner=…)` and `Company(banner=…)`: the banner of the profile, a ref to a picture (relative to the file, or

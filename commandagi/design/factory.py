@@ -27,7 +27,7 @@ from typing import Any, Dict
 #: Each part's fields: the ones it needs, then the ones it may have. One table, the same in the three SDKs.
 FACTORY_FIELDS: Dict[str, Dict[str, list]] = {
     "system": {"needs": ["id", "kind", "products", "stations", "sources", "sinks"], "may": ["seed", "time_scale", "window_s", "shifts", "record"]},
-    "station": {"needs": ["id", "machines", "cycle_s", "buffer"], "may": ["label", "at", "cycle_cv", "batch", "setup_s", "availability", "mtbf_s", "mttr_s", "yield"]},
+    "station": {"needs": ["id", "machines", "cycle_s", "buffer"], "may": ["label", "at", "cycle_cv", "batch", "setup_s", "availability", "mtbf_s", "mttr_s", "yield", "energy_j", "cell"]},
     "product": {"needs": ["id", "route", "sink"], "may": ["label", "demand_per_period", "color"]},
     "source": {"needs": ["id", "product"], "may": ["label", "at", "per_hour", "arrivals"]},
     "sink": {"needs": ["id"], "may": ["label", "at"]},
@@ -39,7 +39,7 @@ _NUMBERS = {
     "setup_s": "the seconds a change of product takes, 0 or more", "yield": "the share of parts that survive, above 0 and at most 1",
     "availability": "the share of time it is not under repair, above 0 and at most 1", "mtbf_s": "the mean operating seconds between failures, more than 0",
     "mttr_s": "the mean seconds a repair takes, more than 0", "per_hour": "the parts it releases in a working hour, more than 0",
-    "demand_per_period": "the parts wanted in one shift period, more than 0",
+    "demand_per_period": "the parts wanted in one shift period, more than 0", "energy_j": "the joules one batch takes, 0 or more",
 }
 _PARAM = re.compile(r"^\$[A-Za-z_]\w*$")
 
