@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `commandagi.design.scene_agents`: the agents a design's scene attaches to its robots or their joints:
+  `check_scene_agents`, the same as the TypeScript SDK's `scene-agents.ts`.
 - `commandagi.design.factory`: a station's `energy_j` and `cell`, as the TypeScript SDK's.
 - `commandagi.design.factory`: a factory in a design's scene, the `flow` system: `check_flow_system` and `machines_for`,
   the same as the TypeScript SDK's `factory-flow.ts`.

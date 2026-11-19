@@ -1,0 +1,21 @@
+{
+  "note": "The golden of the three SDKs' scene agents (scene-agents.golden.json in the TypeScript SDK, scene_agents.json here and in the Rust SDK's tests). Each refusal's words are the engine's own (CommandAGI's packages/domain/world/sim-agents.js), so an SDK and the engine refuse an agent alike. The scene holds only what the check reads: its robots' and its policies' ids.",
+  "valid": {
+    "robots": [{ "id": "left" }, { "id": "right" }],
+    "policies": [{ "id": "tender" }],
+    "agents": [
+      { "id": "pilot", "units": ["left"], "label": "Pilot", "instructions": "Keep the left arm clear of the cube.", "model": "openrouter/anthropic/claude-opus-5.5" },
+      { "id": "wrist", "units": ["right.wrist_flex", "right.wrist_roll"] }
+    ]
+  },
+  "refusals": [
+    { "change": ["agents", 0, "speed", 2], "says": "agent pilot: unknown field speed" },
+    { "change": ["agents", 1, "units", ["cube"]], "says": "agent wrist: unit \"cube\" is not a robot of this scene or a joint of one" },
+    { "change": ["agents", 1, "units", ["right."]], "says": "agent wrist: unit \"right.\" is not a robot of this scene or a joint of one" },
+    { "change": ["agents", 1, "units", []], "says": "agent wrist: units is a list of the robots it drives" },
+    { "change": ["agents", 1, "id", "pilot"], "says": "agent pilot: missing, malformed or duplicate id" },
+    { "change": ["agents", 0, "id", "Pilot"], "says": "agent Pilot: missing, malformed or duplicate id" },
+    { "change": ["agents", 0, "id", "policy-tender"], "says": "agent policy-tender: agent:policy-tender is the principal of a policy of this scene" },
+    { "change": ["agents", 0, "model", ""], "says": "agent pilot: model is a text" }
+  ]
+}
