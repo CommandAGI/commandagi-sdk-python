@@ -372,8 +372,8 @@ class DynamicsJoint(_DynamicsJointRequired, _DynamicsJointOptional):
     pass
 
 #: AN END CAP: a plate that closes the open end of a frame member, on its end face.
-_EndCapFeatureRequired = TypedDict("_EndCapFeatureRequired", {"type": Literal["endCap"], "face": 'TopoTarget', "id": str, "name": str})
-_EndCapFeatureOptional = TypedDict("_EndCapFeatureOptional", {"thickness": float, "inside": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_EndCapFeatureRequired = TypedDict("_EndCapFeatureRequired", {"type": Literal["endCap"], "id": str, "name": str})
+_EndCapFeatureOptional = TypedDict("_EndCapFeatureOptional", {"face": 'TopoTarget', "member": str, "segment": str, "end": Literal["start", "end", "both"], "thickness": float, "inside": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class EndCapFeature(_EndCapFeatureRequired, _EndCapFeatureOptional):
     pass
 
@@ -450,7 +450,7 @@ class FootprintPad(_FootprintPadRequired, _FootprintPadOptional):
 
 #: FRAME MEMBERS: a structural section swept along lines of a sketch, one body per line, trimmed where two meet.
 _FrameMemberFeatureRequired = TypedDict("_FrameMemberFeatureRequired", {"type": Literal["frameMember"], "sketch": str, "id": str, "name": str})
-_FrameMemberFeatureOptional = TypedDict("_FrameMemberFeatureOptional", {"segments": List[str], "section": 'FrameProfile', "size": str, "corner": 'FrameCorner', "rotate": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_FrameMemberFeatureOptional = TypedDict("_FrameMemberFeatureOptional", {"segments": List[str], "section": 'FrameProfile', "size": str, "corner": 'FrameCorner', "joint": 'FrameJoint', "rotate": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class FrameMemberFeature(_FrameMemberFeatureRequired, _FrameMemberFeatureOptional):
     pass
 
@@ -950,6 +950,18 @@ _SheetBaseFeatureOptional = TypedDict("_SheetBaseFeatureOptional", {"thickness":
 class SheetBaseFeature(_SheetBaseFeatureRequired, _SheetBaseFeatureOptional):
     pass
 
+#: CONVERT TO SHEET METAL: a thin-walled part (a shelled box, a bent solid) made a sheet-metal part. From the face picked, its wall is the base; each wall joined to the base along a straight edge, by a sharp edge or a cylindrical bend, becomes an edge flange; where two walls meet at a sharp corner, the corner is ripped. The walls must be planar and of one thickness.
+_SheetConvertFeatureRequired = TypedDict("_SheetConvertFeatureRequired", {"type": Literal["sheetConvert"], "face": 'TopoTarget', "id": str, "name": str})
+_SheetConvertFeatureOptional = TypedDict("_SheetConvertFeatureOptional", {"bendRadius": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+class SheetConvertFeature(_SheetConvertFeatureRequired, _SheetConvertFeatureOptional):
+    pass
+
+#: A CORNER'S RELIEF, set on one corner: where the bends of two flanges (by their features' ids) meet, this relief in place of the rules'. It makes no geometry of its own.
+_SheetCornerFeatureRequired = TypedDict("_SheetCornerFeatureRequired", {"type": Literal["sheetCorner"], "flanges": Tuple[str, str], "id": str, "name": str})
+_SheetCornerFeatureOptional = TypedDict("_SheetCornerFeatureOptional", {"relief": 'CornerRelief', "size": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+class SheetCornerFeature(_SheetCornerFeatureRequired, _SheetCornerFeatureOptional):
+    pass
+
 _SheetFlangeFeatureRequired = TypedDict("_SheetFlangeFeatureRequired", {"type": Literal["sheetFlange"], "edge": 'TopoTarget', "id": str, "name": str})
 _SheetFlangeFeatureOptional = TypedDict("_SheetFlangeFeatureOptional", {"length": float, "angle": float, "thickness": float, "bendRadius": float, "position": 'FlangePosition', "startOffset": float, "endOffset": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SheetFlangeFeature(_SheetFlangeFeatureRequired, _SheetFlangeFeatureOptional):
@@ -961,6 +973,12 @@ _SheetFoldFeatureOptional = TypedDict("_SheetFoldFeatureOptional", {"line": str,
 class SheetFoldFeature(_SheetFoldFeatureRequired, _SheetFoldFeatureOptional):
     pass
 
+#: One gauge of a custom table.
+_SheetGaugeRequired = TypedDict("_SheetGaugeRequired", {"gauge": str, "thickness": float})
+_SheetGaugeOptional = TypedDict("_SheetGaugeOptional", {"bendRadius": float, "kFactor": float}, total=False)
+class SheetGauge(_SheetGaugeRequired, _SheetGaugeOptional):
+    pass
+
 #: A HEM: the sheet's edge bent right back on itself (180°), leaving `gap` between the two layers.
 _SheetHemFeatureRequired = TypedDict("_SheetHemFeatureRequired", {"type": Literal["sheetHem"], "edge": 'TopoTarget', "id": str, "name": str})
 _SheetHemFeatureOptional = TypedDict("_SheetHemFeatureOptional", {"length": float, "gap": float, "thickness": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
@@ -969,8 +987,14 @@ class SheetHemFeature(_SheetHemFeatureRequired, _SheetHemFeatureOptional):
 
 #: SHEET-METAL RULES: the sheet's thickness, bend radius, K-factor and bend relief, one element of the part (`<sheetMetal>`). Every sheet-metal feature of the part reads them where it states no value of its own; a part holds at most one. It makes no geometry.
 _SheetMetalFeatureRequired = TypedDict("_SheetMetalFeatureRequired", {"type": Literal["sheetMetal"], "id": str, "name": str})
-_SheetMetalFeatureOptional = TypedDict("_SheetMetalFeatureOptional", {"thickness": float, "bendRadius": float, "kFactor": float, "relief": 'SheetRelief', "reliefWidth": float, "reliefDepth": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_SheetMetalFeatureOptional = TypedDict("_SheetMetalFeatureOptional", {"thickness": float, "bendRadius": float, "kFactor": float, "relief": 'SheetRelief', "reliefWidth": float, "reliefDepth": float, "cornerRelief": 'CornerRelief', "cornerReliefSize": float, "gaugeTable": 'GaugeTable', "gauge": str, "gauges": List['SheetGauge'], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class SheetMetalFeature(_SheetMetalFeatureRequired, _SheetMetalFeatureOptional):
+    pass
+
+#: REFOLD: the bends an unfold flattened, bent again, with what was cut across them while they were flat.
+_SheetRefoldFeatureRequired = TypedDict("_SheetRefoldFeatureRequired", {"type": Literal["sheetRefold"], "unfold": str, "id": str, "name": str})
+_SheetRefoldFeatureOptional = TypedDict("_SheetRefoldFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+class SheetRefoldFeature(_SheetRefoldFeatureRequired, _SheetRefoldFeatureOptional):
     pass
 
 _ShellFeatureRequired = TypedDict("_ShellFeatureRequired", {"type": Literal["shell"], "faces": List['TopoTarget'], "id": str, "name": str})
@@ -1311,7 +1335,7 @@ class TrimSurfaceFeature(_TrimSurfaceFeatureRequired, _TrimSurfaceFeatureOptiona
 
 #: THE FLAT PATTERN: every base flange, edge flange, hem and fold of the part developed flat (each bend becomes its bend allowance). Suppressed, the part is folded again.
 _UnfoldFeatureRequired = TypedDict("_UnfoldFeatureRequired", {"type": Literal["unfold"], "id": str, "name": str})
-_UnfoldFeatureOptional = TypedDict("_UnfoldFeatureOptional", {"kFactor": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_UnfoldFeatureOptional = TypedDict("_UnfoldFeatureOptional", {"kFactor": float, "bends": List[str], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class UnfoldFeature(_UnfoldFeatureRequired, _UnfoldFeatureOptional):
     pass
 
@@ -1572,8 +1596,20 @@ class TransformProps(_TransformPropsRequired, _TransformPropsOptional):
 
 #: The keywords of sheetMetal(…): the SheetMetalFeature fields, in snake_case.
 _SheetMetalPropsRequired = TypedDict("_SheetMetalPropsRequired", {"id": str})
-_SheetMetalPropsOptional = TypedDict("_SheetMetalPropsOptional", {"thickness": float, "bend_radius": float, "k_factor": float, "relief": 'SheetRelief', "relief_width": float, "relief_depth": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_SheetMetalPropsOptional = TypedDict("_SheetMetalPropsOptional", {"thickness": float, "bend_radius": float, "k_factor": float, "relief": 'SheetRelief', "relief_width": float, "relief_depth": float, "corner_relief": 'CornerRelief', "corner_relief_size": float, "gauge_table": 'GaugeTable', "gauge": str, "gauges": List['SheetGauge'], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class SheetMetalProps(_SheetMetalPropsRequired, _SheetMetalPropsOptional):
+    pass
+
+#: The keywords of sheetCorner(…): the SheetCornerFeature fields, in snake_case.
+_SheetCornerPropsRequired = TypedDict("_SheetCornerPropsRequired", {"flanges": Tuple[str, str], "id": str})
+_SheetCornerPropsOptional = TypedDict("_SheetCornerPropsOptional", {"relief": 'CornerRelief', "size": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+class SheetCornerProps(_SheetCornerPropsRequired, _SheetCornerPropsOptional):
+    pass
+
+#: The keywords of sheetConvert(…): the SheetConvertFeature fields, in snake_case.
+_SheetConvertPropsRequired = TypedDict("_SheetConvertPropsRequired", {"face": 'TopoTarget', "id": str})
+_SheetConvertPropsOptional = TypedDict("_SheetConvertPropsOptional", {"bend_radius": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+class SheetConvertProps(_SheetConvertPropsRequired, _SheetConvertPropsOptional):
     pass
 
 #: The keywords of sheetBase(…): the SheetBaseFeature fields, in snake_case.
@@ -1602,19 +1638,25 @@ class SheetFoldProps(_SheetFoldPropsRequired, _SheetFoldPropsOptional):
 
 #: The keywords of unfold(…): the UnfoldFeature fields, in snake_case.
 _UnfoldPropsRequired = TypedDict("_UnfoldPropsRequired", {"id": str})
-_UnfoldPropsOptional = TypedDict("_UnfoldPropsOptional", {"k_factor": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_UnfoldPropsOptional = TypedDict("_UnfoldPropsOptional", {"k_factor": float, "bends": List[str], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class UnfoldProps(_UnfoldPropsRequired, _UnfoldPropsOptional):
+    pass
+
+#: The keywords of sheetRefold(…): the SheetRefoldFeature fields, in snake_case.
+_SheetRefoldPropsRequired = TypedDict("_SheetRefoldPropsRequired", {"unfold": str, "id": str})
+_SheetRefoldPropsOptional = TypedDict("_SheetRefoldPropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+class SheetRefoldProps(_SheetRefoldPropsRequired, _SheetRefoldPropsOptional):
     pass
 
 #: The keywords of frameMember(…): the FrameMemberFeature fields, in snake_case.
 _FrameMemberPropsRequired = TypedDict("_FrameMemberPropsRequired", {"sketch": str, "id": str})
-_FrameMemberPropsOptional = TypedDict("_FrameMemberPropsOptional", {"segments": List[str], "section": 'FrameProfile', "size": str, "corner": 'FrameCorner', "rotate": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_FrameMemberPropsOptional = TypedDict("_FrameMemberPropsOptional", {"segments": List[str], "section": 'FrameProfile', "size": str, "corner": 'FrameCorner', "joint": 'FrameJoint', "rotate": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class FrameMemberProps(_FrameMemberPropsRequired, _FrameMemberPropsOptional):
     pass
 
 #: The keywords of endCap(…): the EndCapFeature fields, in snake_case.
-_EndCapPropsRequired = TypedDict("_EndCapPropsRequired", {"face": 'TopoTarget', "id": str})
-_EndCapPropsOptional = TypedDict("_EndCapPropsOptional", {"thickness": float, "inside": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_EndCapPropsRequired = TypedDict("_EndCapPropsRequired", {"id": str})
+_EndCapPropsOptional = TypedDict("_EndCapPropsOptional", {"face": 'TopoTarget', "member": str, "segment": str, "end": Literal["start", "end", "both"], "thickness": float, "inside": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class EndCapProps(_EndCapPropsRequired, _EndCapPropsOptional):
     pass
 
@@ -1861,6 +1903,9 @@ ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", 
 #: What a run records of a contact pair at each frame: how many points touch, the normal force on `a` (N), how fast `a` slides over `b` there (m/s; 0 while it sticks), and where it is touched (the force-weighted centre of the points).
 ContactReport = Literal["count", "normal", "slip", "point"]
 
+#: A corner relief: none, a square, a round hole, or a tear (a narrow round).
+CornerRelief = Literal["none", "square", "round", "tear"]
+
 #: How a construction axis is placed: cylinder the axis of a cylinder, cone or torus (`face`) perpendicular at right angles to a flat face (`face`), through a point (`point`) twoPlanes where two planes meet (`plane`, `plane2`) twoPoints through two points (`point`, `point2`) edge along a straight edge (`edge`)
 DatumAxisMethod = Literal["edge", "cylinder", "perpendicular", "twoPlanes", "twoPoints"]
 
@@ -1880,10 +1925,15 @@ FastenerFit = Literal["normal", "close", "loose"]
 FlangePosition = Literal["outside", "materialInside", "materialOutside"]
 
 #: How two frame members meet at a corner of the sketch: cut at the bisector, one butting on the other, or untrimmed.
-FrameCorner = Literal["none", "miter", "butt"]
+FrameCorner = Literal["none", "butt", "miter"]
+
+#: How a member's end meets another member's side.
+FrameJoint = Literal["none", "trim", "cope", "butt"]
 
 #: A weldment's structural section (`@commandagi/3d-core/weldment` PROFILES holds the standard sizes).
 FrameProfile = Literal["angle", "squareTube", "rectTube", "channel", "roundTube"]
+
+GaugeTable = Literal["steel", "stainless", "aluminium", "custom"]
 
 #: The 14 geometric characteristics (ASME Y14.5 / ISO 1101) a feature-control frame can specify.
 GdtCharacteristic = Literal["position", "straightness", "flatness", "circularity", "cylindricity", "profileLine", "profileSurface", "angularity", "perpendicularity", "parallelism", "concentricity", "symmetry", "circularRunout", "totalRunout"]
@@ -1902,13 +1952,13 @@ MateKind = Literal["coincident", "offset", "parallel", "perpendicular", "distanc
 #: Material-condition modifier applied to a tolerance value or a datum reference.
 MaterialModifier = Literal["M", "L", "S"]
 
-MaterialPreset = Literal["aluminum", "anodized-aluminum", "steel", "stainless-steel", "plastic", "abs", "pbt", "pc", "petg", "pla", "brass", "copper", "chrome", "rubber", "glass", "pcb", "custom"]
+MaterialPreset = Literal["steel", "custom", "aluminum", "anodized-aluminum", "stainless-steel", "plastic", "abs", "pbt", "pc", "petg", "pla", "brass", "copper", "chrome", "rubber", "glass", "pcb"]
 
 MeshModifierSpec = Union['_MeshModifierSpec22', '_MeshModifierSpec23', '_MeshModifierSpec24', '_MeshModifierSpec25', '_MeshModifierSpec26']
 
-OffsetCap = Literal["butt", "round", "square"]
+OffsetCap = Literal["square", "round", "butt"]
 
-OffsetJoin = Literal["miter", "round", "bevel"]
+OffsetJoin = Literal["round", "miter", "bevel"]
 
 #: WHERE A SKETCH LIVES. Three kinds, and the third is not a plane at all.
 PlaneRef = Union['_PlaneRef28', '_PlaneRef29', '_PlaneRef30']
@@ -2002,11 +2052,14 @@ THREED_ELEMENTS: Dict[str, type] = {
     "hole": HoleProps,
     "transform": TransformProps,
     "sheetMetal": SheetMetalProps,
+    "sheetCorner": SheetCornerProps,
+    "sheetConvert": SheetConvertProps,
     "sheetBase": SheetBaseProps,
     "sheetFlange": SheetFlangeProps,
     "sheetHem": SheetHemProps,
     "sheetFold": SheetFoldProps,
     "unfold": UnfoldProps,
+    "sheetRefold": SheetRefoldProps,
     "frameMember": FrameMemberProps,
     "endCap": EndCapProps,
     "wrapText": WrapTextProps,
