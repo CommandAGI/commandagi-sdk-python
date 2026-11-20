@@ -1058,8 +1058,8 @@ class SketchPoint(_SketchPointRequired, _SketchPointOptional):
     pass
 
 #: A LIVE PROJECTION of one model edge onto this sketch's plane — "use that hole's circle here".
-_SketchProjectionRequired = TypedDict("_SketchProjectionRequired", {"id": str, "ref": 'TopoRef'})
-_SketchProjectionOptional = TypedDict("_SketchProjectionOptional", {"feature": str, "construction": bool, "label": str}, total=False)
+_SketchProjectionRequired = TypedDict("_SketchProjectionRequired", {"id": str})
+_SketchProjectionOptional = TypedDict("_SketchProjectionOptional", {"ref": 'TopoRef', "feature": str, "section": bool, "construction": bool, "label": str}, total=False)
 class SketchProjection(_SketchProjectionRequired, _SketchProjectionOptional):
     pass
 
@@ -1844,7 +1844,7 @@ BooleanMode = Literal["new", "add", "cut", "intersect"]
 #: A cell's chemistry: alkaline 1.5 V, lithium (Li-FeS2) 1.5 V, NiMH 1.2 V, Li-ion and Li-polymer 3.7 V, LiFePO4 3.2 V nominal.
 CellChemistry = Literal["alkaline", "lithium", "nimh", "li-ion", "li-polymer", "lifepo4"]
 
-ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", "angle", "concentric", "tangent", "horizontal", "vertical", "equal", "pointOnLine", "midpoint", "pointOnCircle", "symmetric", "horizontalDistance", "verticalDistance", "radius", "collinear", "diameter"]
+ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", "angle", "concentric", "tangent", "horizontal", "vertical", "equal", "pointOnLine", "midpoint", "pointOnCircle", "symmetric", "horizontalDistance", "verticalDistance", "radius", "collinear", "diameter", "pointLineDistance", "arcLength"]
 
 #: What a run records of a contact pair at each frame: how many points touch, the normal force on `a` (N), how fast `a` slides over `b` there (m/s; 0 while it sticks), and where it is touched (the force-weighted centre of the points).
 ContactReport = Literal["count", "normal", "slip", "point"]
