@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- 3D documents: `<replaceFace face surface>`; `<trimSurface toolBody>` (trim by another surface; `tool` is now
+  optional); `<untrimSurface edges>` (fill the opening an open edge bounds).
 - 3D documents: surfaces (`surface` on `<extrude>`, `<revolve>`, `<sweep>`, `<loft>`; `<trimSurface>`,
   `<untrimSurface>`, `<extendSurface>`, `<stitch>`, `<offsetSurface>`; `<thicken bodies>`), construction geometry
   (`<datumPlane method>` with midplane, two edges, axis and point, three points, tangent, along an edge and

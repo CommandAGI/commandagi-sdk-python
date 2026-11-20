@@ -377,7 +377,7 @@ _EndCapFeatureOptional = TypedDict("_EndCapFeatureOptional", {"face": 'TopoTarge
 class EndCapFeature(_EndCapFeatureRequired, _EndCapFeatureOptional):
     pass
 
-#: EXTEND A SURFACE: grow a surface body past its open edges, each tangent to the surface where the edge is (a ruled strip along the face's own direction, joined to the body).
+#: EXTEND A SURFACE: grow a surface body past its open edges, each face continued along its own surface (the natural extension: a plane stays the plane, a cylinder goes on round, a B-spline goes on as its last span), joined to the body. An edge is a side of its face's parameter rectangle.
 _ExtendSurfaceFeatureRequired = TypedDict("_ExtendSurfaceFeatureRequired", {"type": Literal["extendSurface"], "edges": List['TopoRef'], "id": str, "name": str})
 _ExtendSurfaceFeatureOptional = TypedDict("_ExtendSurfaceFeatureOptional", {"distance": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class ExtendSurfaceFeature(_ExtendSurfaceFeatureRequired, _ExtendSurfaceFeatureOptional):
@@ -899,6 +899,12 @@ _RadialDimensionOptional = TypedDict("_RadialDimensionOptional", {"spherical": b
 class RadialDimension(_RadialDimensionRequired, _RadialDimensionOptional):
     pass
 
+#: REPLACE A FACE of a solid by a surface: the faces next to it are continued along their own surfaces to the surface, and the surface closes the body there. The body grows to it or is cut back to it.
+_ReplaceFaceFeatureRequired = TypedDict("_ReplaceFaceFeatureRequired", {"type": Literal["replaceFace"], "face": 'TopoTarget', "surface": str, "id": str, "name": str})
+_ReplaceFaceFeatureOptional = TypedDict("_ReplaceFaceFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+class ReplaceFaceFeature(_ReplaceFaceFeatureRequired, _ReplaceFaceFeatureOptional):
+    pass
+
 _RevolveFeatureRequired = TypedDict("_RevolveFeatureRequired", {"type": Literal["revolve"], "profile": 'ProfileRef', "axis": 'AxisRef', "id": str, "name": str})
 _RevolveFeatureOptional = TypedDict("_RevolveFeatureOptional", {"angle": float, "reverse": bool, "surface": bool, "operation": 'BooleanMode', "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class RevolveFeature(_RevolveFeatureRequired, _RevolveFeatureOptional):
@@ -1327,9 +1333,9 @@ _TransformFeatureOptional = TypedDict("_TransformFeatureOptional", {"translate":
 class TransformFeature(_TransformFeatureRequired, _TransformFeatureOptional):
     pass
 
-#: TRIM A SURFACE: cut a surface body by a plane or a face and keep one side.
-_TrimSurfaceFeatureRequired = TypedDict("_TrimSurfaceFeatureRequired", {"type": Literal["trimSurface"], "body": str, "tool": 'PlaneRef', "id": str, "name": str})
-_TrimSurfaceFeatureOptional = TypedDict("_TrimSurfaceFeatureOptional", {"keepFront": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+#: TRIM A SURFACE: cut a surface body by a plane, a flat face or another surface, and keep one side.
+_TrimSurfaceFeatureRequired = TypedDict("_TrimSurfaceFeatureRequired", {"type": Literal["trimSurface"], "body": str, "id": str, "name": str})
+_TrimSurfaceFeatureOptional = TypedDict("_TrimSurfaceFeatureOptional", {"tool": 'PlaneRef', "toolBody": str, "keepFront": bool, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class TrimSurfaceFeature(_TrimSurfaceFeatureRequired, _TrimSurfaceFeatureOptional):
     pass
 
@@ -1339,9 +1345,9 @@ _UnfoldFeatureOptional = TypedDict("_UnfoldFeatureOptional", {"kFactor": float, 
 class UnfoldFeature(_UnfoldFeatureRequired, _UnfoldFeatureOptional):
     pass
 
-#: UNTRIM A SURFACE: fill the openings cut into a surface body's faces (each face's holes are taken away).
+#: UNTRIM A SURFACE: fill its openings. With no `edges`, each face's own holes are taken away; with `edges`, each opening whose boundary holds one of them (a loop of open edges, which may run along several faces: a box with no lid) is closed by a face, flat when the loop is, else a filling surface through it.
 _UntrimSurfaceFeatureRequired = TypedDict("_UntrimSurfaceFeatureRequired", {"type": Literal["untrimSurface"], "body": str, "id": str, "name": str})
-_UntrimSurfaceFeatureOptional = TypedDict("_UntrimSurfaceFeatureOptional", {"suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_UntrimSurfaceFeatureOptional = TypedDict("_UntrimSurfaceFeatureOptional", {"edges": List['TopoRef'], "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class UntrimSurfaceFeature(_UntrimSurfaceFeatureRequired, _UntrimSurfaceFeatureOptional):
     pass
 
@@ -1721,14 +1727,14 @@ class ThickenProps(_ThickenPropsRequired, _ThickenPropsOptional):
     pass
 
 #: The keywords of trimSurface(…): the TrimSurfaceFeature fields, in snake_case.
-_TrimSurfacePropsRequired = TypedDict("_TrimSurfacePropsRequired", {"body": str, "tool": 'PlaneRef', "id": str})
-_TrimSurfacePropsOptional = TypedDict("_TrimSurfacePropsOptional", {"keep_front": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_TrimSurfacePropsRequired = TypedDict("_TrimSurfacePropsRequired", {"body": str, "id": str})
+_TrimSurfacePropsOptional = TypedDict("_TrimSurfacePropsOptional", {"tool": 'PlaneRef', "tool_body": str, "keep_front": bool, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class TrimSurfaceProps(_TrimSurfacePropsRequired, _TrimSurfacePropsOptional):
     pass
 
 #: The keywords of untrimSurface(…): the UntrimSurfaceFeature fields, in snake_case.
 _UntrimSurfacePropsRequired = TypedDict("_UntrimSurfacePropsRequired", {"body": str, "id": str})
-_UntrimSurfacePropsOptional = TypedDict("_UntrimSurfacePropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_UntrimSurfacePropsOptional = TypedDict("_UntrimSurfacePropsOptional", {"edges": List['TopoRef'], "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class UntrimSurfaceProps(_UntrimSurfacePropsRequired, _UntrimSurfacePropsOptional):
     pass
 
@@ -1742,6 +1748,12 @@ class ExtendSurfaceProps(_ExtendSurfacePropsRequired, _ExtendSurfacePropsOptiona
 _StitchPropsRequired = TypedDict("_StitchPropsRequired", {"bodies": List[str], "id": str})
 _StitchPropsOptional = TypedDict("_StitchPropsOptional", {"tolerance": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class StitchProps(_StitchPropsRequired, _StitchPropsOptional):
+    pass
+
+#: The keywords of replaceFace(…): the ReplaceFaceFeature fields, in snake_case.
+_ReplaceFacePropsRequired = TypedDict("_ReplaceFacePropsRequired", {"face": 'TopoTarget', "surface": str, "id": str})
+_ReplaceFacePropsOptional = TypedDict("_ReplaceFacePropsOptional", {"suppressed": bool, "consumes": List[str], "name": str}, total=False)
+class ReplaceFaceProps(_ReplaceFacePropsRequired, _ReplaceFacePropsOptional):
     pass
 
 #: The keywords of offsetSurface(…): the OffsetSurfaceFeature fields, in snake_case.
@@ -2076,6 +2088,7 @@ THREED_ELEMENTS: Dict[str, type] = {
     "untrimSurface": UntrimSurfaceProps,
     "extendSurface": ExtendSurfaceProps,
     "stitch": StitchProps,
+    "replaceFace": ReplaceFaceProps,
     "offsetSurface": OffsetSurfaceProps,
     "split": SplitProps,
     "scale": ScaleProps,
