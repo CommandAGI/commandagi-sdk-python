@@ -450,7 +450,7 @@ class FootprintPad(_FootprintPadRequired, _FootprintPadOptional):
 
 #: FRAME MEMBERS: a structural section swept along lines of a sketch, one body per line, trimmed where two meet.
 _FrameMemberFeatureRequired = TypedDict("_FrameMemberFeatureRequired", {"type": Literal["frameMember"], "sketch": str, "id": str, "name": str})
-_FrameMemberFeatureOptional = TypedDict("_FrameMemberFeatureOptional", {"segments": List[str], "profile": 'FrameProfile', "size": str, "corner": 'FrameCorner', "rotate": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
+_FrameMemberFeatureOptional = TypedDict("_FrameMemberFeatureOptional", {"segments": List[str], "section": 'FrameProfile', "size": str, "corner": 'FrameCorner', "rotate": float, "suppressed": bool, "error": str, "consumes": List[str], "declaredBy": 'CodeFeature'}, total=False)
 class FrameMemberFeature(_FrameMemberFeatureRequired, _FrameMemberFeatureOptional):
     pass
 
@@ -1596,7 +1596,7 @@ class UnfoldProps(_UnfoldPropsRequired, _UnfoldPropsOptional):
 
 #: The keywords of frameMember(…): the FrameMemberFeature fields, in snake_case.
 _FrameMemberPropsRequired = TypedDict("_FrameMemberPropsRequired", {"sketch": str, "id": str})
-_FrameMemberPropsOptional = TypedDict("_FrameMemberPropsOptional", {"segments": List[str], "profile": 'FrameProfile', "size": str, "corner": 'FrameCorner', "rotate": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
+_FrameMemberPropsOptional = TypedDict("_FrameMemberPropsOptional", {"segments": List[str], "section": 'FrameProfile', "size": str, "corner": 'FrameCorner', "rotate": float, "suppressed": bool, "consumes": List[str], "name": str}, total=False)
 class FrameMemberProps(_FrameMemberPropsRequired, _FrameMemberPropsOptional):
     pass
 
