@@ -555,3 +555,15 @@ class ThreeDTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PresentationTests(unittest.TestCase):
+    def test_groups_and_rollback_are_the_left_hand_lists(self):
+        def root(**props):
+            return declare_threed(part(box(id="a"), box(id="b"), box(id="c"), name="P", **props))
+        g = root(groups=[{"id": "g1", "name": "Blocks", "members": ["a", "b"], "collapsed": True}], rollback="b")
+        self.assertEqual(g["meta"]["presentation"], {"order": ["a", "b", "c"], "groups": [{"id": "g1", "name": "Blocks", "members": ["a", "b"], "collapsed": True}], "rollback": "b"})
+        with self.assertRaisesRegex(ValueError, 'rollback: "z" is not a feature of this document'):
+            root(rollback="z")
+        with self.assertRaisesRegex(ValueError, 'member "z" is not a feature of this document'):
+            root(groups=[{"id": "g", "name": "G", "members": ["z"]}])

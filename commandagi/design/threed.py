@@ -107,6 +107,7 @@ without ``placement`` sits at the identity placement), and the node's inputs hol
 from __future__ import annotations
 
 import copy as _copy
+import json
 import math
 import re
 from typing import Any, Dict, List, Optional, Set
@@ -366,7 +367,7 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
     if not is_threed(root):
         raise ValueError("a 3D document is one part() or assembly() element")
     for k in root.props:
-        if k not in ("key", "name", "id", "builtinPlanes") and k not in _VIEW_ATTRS:
+        if k not in ("key", "name", "id", "builtinPlanes", "groups", "rollback") and k not in _VIEW_ATTRS:
             raise ValueError(f"{_where(root)}: prop {k} is not read on a 3D document")
     builtins = _builtin_planes_of(root)
     name = root.props["name"] if isinstance(root.props.get("name"), str) and root.props["name"] else fallback_name
@@ -567,10 +568,41 @@ def declare_threed(root: Element, fallback_name: str = "Part") -> Dict[str, Any]
             view[k] = _plain(root.props[k], f"{_where(root)} {k}")
     if root.tag == "assembly":
         view["isAssembly"] = True
-    if order:
-        view["presentation"] = {"order": order}
+    presentation = _presentation_of(root, order)
+    if presentation:
+        view["presentation"] = presentation
     gid = root.props["id"] if isinstance(root.props.get("id"), str) and root.props["id"] else f"3d-{slug(name).lower()}"
     return {"id": gid, "nodes": nodes, "meta": view}
+
+
+def _presentation_of(root: Element, order: List[str]) -> Optional[Dict[str, Any]]:
+    """The left-hand list: the order of the feature elements, the root's ``groups`` (named bands of features, each
+    ``{ id, name, members, collapsed? }``) and its ``rollback`` (the feature the history is rolled back to). A member or
+    a rollback that names no feature is refused by name."""
+    out: Dict[str, Any] = {}
+    if order:
+        out["order"] = order
+    features = set(order)
+    groups = root.props.get("groups")
+    if groups is not None:
+        if not isinstance(groups, list):
+            raise ValueError(f"{_where(root)} groups: a list of {{ id, name, members, collapsed? }}")
+        made = []
+        for i, g in enumerate(groups):
+            at = f"{_where(root)} groups[{i}]"
+            if not isinstance(g, dict) or not isinstance(g.get("id"), str) or not g["id"] or not isinstance(g.get("name"), str) or not isinstance(g.get("members"), list):
+                raise ValueError(f"{at}: a group is {{ id, name, members, collapsed? }}")
+            for m in g["members"]:
+                if not isinstance(m, str) or m not in features:
+                    raise ValueError(f"{at}: member {json.dumps(m)} is not a feature of this document")
+            made.append({"id": g["id"], "name": g["name"], "members": list(g["members"]), **({"collapsed": True} if g.get("collapsed") is True else {})})
+        out["groups"] = made
+    rollback = root.props.get("rollback")
+    if rollback is not None:
+        if not isinstance(rollback, str) or rollback not in features:
+            raise ValueError(f"{_where(root)} rollback: {json.dumps(rollback)} is not a feature of this document")
+        out["rollback"] = rollback
+    return out or None
 
 
 for _root in ("part", "assembly"):
