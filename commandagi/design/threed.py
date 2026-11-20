@@ -124,7 +124,7 @@ from .threed_schema import SCHEMA
 THREED_FEATURES: List[str] = list(SCHEMA["roots"])
 _FEATURES = set(THREED_FEATURES)
 #: Tags with a meaning of their own: never a ``feature(type_=…)``.
-_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "contact", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "port", "item", "assemble", "library", "product", "unit", "capture", "view", "point", "constraint", "projection", "line", "circle",
+_NOT_FEATURES = {"feature", "part", "assembly", "parameter", "plane", "body", "slot", "joint", "contact", "mate", "sheet", "check", "accept", "permitted", "fastener", "tactile", "port", "item", "assemble", "library", "product", "unit", "capture", "view", "point", "constraint", "projection", "equation", "text", "line", "circle",
                  "arc", "spline", "ellipse", "ellipseArc", "input", "linearDimension", "radialDimension", "sizeDimension", "angularDimension", "note",
                  "datumFeature", "datumTarget", "featureControlFrame", "surfaceFinish"}
 #: A sketch's segment kinds, by tag.
@@ -185,7 +185,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "joint": {}, "contact": {}, "mate": {}, "sheet": {}, "check": {}, "accept": {}, "permitted": {}, "fastener": {}, "tactile": {}, "port": {}, "item": {}, "assemble": {}, "library": {}, "product": {}, "unit": {}, "capture": {}, "view": {},
     **{t: {} for t in THREED_ANNOTATIONS},
     **{t: (_HOLDS if t == "sketch" else {}) for t in THREED_FEATURES},
-    "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {},
+    "point": {}, **{t: {} for t in SKETCH_SEGMENTS}, "constraint": {}, "projection": {}, "equation": {}, "text": {},
 }
 
 __all__ = ["THREED_FEATURES", "THREED_LISTS", "THREED_ANNOTATIONS", "SKETCH_SEGMENTS", "BUILTIN_PLANES", "SIGNATURES", "declare_threed", "is_threed",
@@ -251,6 +251,8 @@ def _sketch_of(el: Element):
     segments: Dict[str, Any] = {}
     constraints: Dict[str, Any] = {}
     projections: Dict[str, Any] = {}
+    equations: Dict[str, Any] = {}
+    texts: Dict[str, Any] = {}
     sources: Dict[str, Any] = {}
     taken: Set[str] = set()
 
@@ -284,8 +286,20 @@ def _sketch_of(el: Element):
             constraints[i] = f
         elif child.tag == "projection":
             projections[claim(child, "projection")] = _fields(child)
+        elif child.tag == "equation":
+            i = claim(child, "equation")
+            f = _fields(child)
+            if not isinstance(f.get("x"), str) or not isinstance(f.get("y"), str) or not all(_is_number(f.get(k)) for k in ("from", "to", "points")):
+                raise ValueError(f"{_where(el)} {_where(child)}: an equation curve has x and y (arithmetic of t), from, to and points")
+            equations[i] = {"id": i, **f}
+        elif child.tag == "text":
+            i = claim(child, "text")
+            f = _fields(child)
+            if not isinstance(f.get("text"), str) or not isinstance(f.get("anchor"), str) or not isinstance(f.get("along"), str) or not isinstance(f.get("contours"), list):
+                raise ValueError(f"{_where(el)} {_where(child)}: a text has its words, its anchor and along points and its contours")
+            texts[i] = {"id": i, **f}
         else:
-            raise ValueError(f"{_where(el)}: <{child.tag}> is not read in a sketch (point, {', '.join(SKETCH_SEGMENTS)}, constraint, projection)")
+            raise ValueError(f"{_where(el)}: <{child.tag}> is not read in a sketch (point, {', '.join(SKETCH_SEGMENTS)}, constraint, projection, equation, text)")
     for i, s in segments.items():
         for k in ("a", "b", "center", "start", "end", "focus"):
             p = s.get(k)
@@ -296,6 +310,16 @@ def _sketch_of(el: Element):
     if projections:
         sketch["projections"] = projections
         sketch["projectionOrder"] = list(projections)
+    if equations:
+        sketch["equations"] = equations
+        sketch["equationOrder"] = list(equations)
+    if texts:
+        for i, t in texts.items():
+            for k in ("anchor", "along"):
+                if t.get(k) not in points:
+                    raise ValueError(f"{_where(el)}: text {i}'s {k} names no point of the sketch ({t.get(k)!r})")
+        sketch["texts"] = texts
+        sketch["textOrder"] = list(texts)
     return sketch, sources
 
 

@@ -8,6 +8,7 @@ from commandagi.design.threed import (THREED_FEATURES, angularDimension, assembl
                                       radialDimension, sizeDimension, surfaceFinish, body, box, chamfer, circle, constraint, curve, cylinder, declare_threed,
                                       externalPart, extrude, feature, fillet, hole, import_, joint, line, mate, meshBody, parameter, part,
                                       pathPattern, plane, point, pointCloud, sheet, sketch, slot, sphere, sweep)
+from commandagi.design import threed as _threed
 
 
 def plate():
@@ -571,3 +572,18 @@ class PresentationTests(unittest.TestCase):
             root(rollback="z")
         with self.assertRaisesRegex(ValueError, 'member "z" is not a feature of this document'):
             root(groups=[{"id": "g", "name": "G", "members": ["z"]}])
+
+
+class SketchRecordTests(unittest.TestCase):
+    def test_an_equation_curve_and_a_text_are_records_of_the_sketch(self):
+        def doc(anchor):
+            return part(sketch(point(id="a", x=0, y=0), point(id="b", x=8, y=0),
+                               _threed.equation(id="eq", x="5 * cos(t)", y="5 * sin(t)", from_=0, to=6.283185307179586, points=25),
+                               _threed.text(id="t", text="VC", font="liberation-sans", anchor=anchor, along="b", contours=[[0, 0, 0.5, 0, 0.5, 0.7]]),
+                               id="s1", plane={"type": "datum", "plane": "plane_xy"}), name="Marks")
+        sk = declare_threed(doc("a"))["nodes"]["s1"]["inputs"]["sketch"]
+        self.assertEqual(sk["equationOrder"], ["eq"])
+        self.assertEqual(sk["equations"]["eq"], {"id": "eq", "x": "5 * cos(t)", "y": "5 * sin(t)", "from": 0, "to": 6.283185307179586, "points": 25})
+        self.assertEqual(sk["textOrder"], ["t"])
+        with self.assertRaisesRegex(ValueError, "text t's anchor names no point of the sketch"):
+            declare_threed(doc("nowhere"))

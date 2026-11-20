@@ -1007,7 +1007,7 @@ class SkeletonFeature(_SkeletonFeatureRequired, _SkeletonFeatureOptional):
     pass
 
 _SketchRequired = TypedDict("_SketchRequired", {"points": Dict[str, 'SketchPoint'], "segments": Dict[str, 'SketchSegment'], "constraints": Dict[str, 'SketchConstraint'], "pointOrder": List[str], "segmentOrder": List[str], "constraintOrder": List[str]})
-_SketchOptional = TypedDict("_SketchOptional", {"projections": Dict[str, 'SketchProjection'], "projectionOrder": List[str], "solveStatus": 'SketchSolveStatus', "dof": float}, total=False)
+_SketchOptional = TypedDict("_SketchOptional", {"projections": Dict[str, 'SketchProjection'], "projectionOrder": List[str], "equations": Dict[str, 'SketchEquation'], "equationOrder": List[str], "texts": Dict[str, 'SketchText'], "textOrder": List[str], "solveStatus": 'SketchSolveStatus', "dof": float}, total=False)
 class Sketch(_SketchRequired, _SketchOptional):
     pass
 
@@ -1015,6 +1015,12 @@ class Sketch(_SketchRequired, _SketchOptional):
 _SketchConstraintRequired = TypedDict("_SketchConstraintRequired", {"id": str, "kind": 'ConstraintKind', "entities": List[str]})
 _SketchConstraintOptional = TypedDict("_SketchConstraintOptional", {"value": float, "reference": bool}, total=False)
 class SketchConstraint(_SketchConstraintRequired, _SketchConstraintOptional):
+    pass
+
+#: AN EQUATION CURVE: x(t) and y(t), arithmetic of `t` in the document's expression grammar (`../expressions.ts`: + - * / ^, sin, cos, sqrt, pi …), drawn as the spline through `points` even steps of t from `from` to `to`. The record is what the file holds; the spline and its points are made from it on every rebuild (their `from` names it), so editing the equation redraws the curve. A curve whose last point meets its first is closed.
+_SketchEquationRequired = TypedDict("_SketchEquationRequired", {"id": str, "x": str, "y": str, "from": float, "to": float, "points": int})
+_SketchEquationOptional = TypedDict("_SketchEquationOptional", {"construction": bool}, total=False)
+class SketchEquation(_SketchEquationRequired, _SketchEquationOptional):
     pass
 
 _SketchFeatureRequired = TypedDict("_SketchFeatureRequired", {"type": Literal["sketch"], "plane": 'PlaneRef', "sketch": 'Sketch', "id": str, "name": str})
@@ -1091,6 +1097,12 @@ class _SketchSegment47(__SketchSegment47Required, __SketchSegment47Optional):
 __SketchSegment48Required = TypedDict("__SketchSegment48Required", {"id": str, "type": Literal["ellipseArc"], "center": str, "focus": str, "minorRadius": float, "start": str, "end": str})
 __SketchSegment48Optional = TypedDict("__SketchSegment48Optional", {"construction": bool, "from": str, "of": str}, total=False)
 class _SketchSegment48(__SketchSegment48Required, __SketchSegment48Optional):
+    pass
+
+#: A TEXT: the outlines of `text` in the typeface `font`, placed by two of the sketch's own points: `anchor`, the start of its baseline, and `along`, a letter height further along the baseline. The text's place, angle and size are then those points' (a dimension between them is the size; one on the line between them, the angle). `contours` are the outlines at a letter height of 1, baseline from the origin along +x, kept so the outlines are made again from the two points on every rebuild with no font at hand; the outline lines and points are made from them (their `from` names it). Changing the words or the typeface writes new contours.
+_SketchTextRequired = TypedDict("_SketchTextRequired", {"id": str, "text": str, "font": str, "anchor": str, "along": str, "contours": List[List[float]]})
+_SketchTextOptional = TypedDict("_SketchTextOptional", {}, total=False)
+class SketchText(_SketchTextRequired, _SketchTextOptional):
     pass
 
 __SourceCompressedTexture49Required = TypedDict("__SourceCompressedTexture49Required", {"width": float, "height": float, "data": str})
@@ -1844,7 +1856,7 @@ BooleanMode = Literal["new", "add", "cut", "intersect"]
 #: A cell's chemistry: alkaline 1.5 V, lithium (Li-FeS2) 1.5 V, NiMH 1.2 V, Li-ion and Li-polymer 3.7 V, LiFePO4 3.2 V nominal.
 CellChemistry = Literal["alkaline", "lithium", "nimh", "li-ion", "li-polymer", "lifepo4"]
 
-ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", "angle", "concentric", "tangent", "horizontal", "vertical", "equal", "pointOnLine", "midpoint", "pointOnCircle", "symmetric", "horizontalDistance", "verticalDistance", "radius", "collinear", "diameter", "pointLineDistance", "arcLength"]
+ConstraintKind = Literal["coincident", "parallel", "perpendicular", "distance", "angle", "concentric", "tangent", "horizontal", "vertical", "equal", "pointOnLine", "midpoint", "pointOnCircle", "symmetric", "horizontalDistance", "verticalDistance", "radius", "collinear", "diameter", "pointLineDistance", "arcLength", "conicRho"]
 
 #: What a run records of a contact pair at each frame: how many points touch, the normal force on `a` (N), how fast `a` slides over `b` there (m/s; 0 while it sticks), and where it is touched (the force-weighted centre of the points).
 ContactReport = Literal["count", "normal", "slip", "point"]
