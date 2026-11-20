@@ -338,7 +338,7 @@ class DrawingSection(_DrawingSectionRequired, _DrawingSectionOptional):
 
 #: An engineering drawing sheet of the document: views, dimensions and a title block. `<sheet>` in code.
 _DrawingSheetRequired = TypedDict("_DrawingSheetRequired", {"id": str, "views": List['DrawingViewSpec']})
-_DrawingSheetOptional = TypedDict("_DrawingSheetOptional", {"name": str, "size": Literal["A4", "A3", "A2", "A1", "A0"], "scale": float, "projection": Literal["first-angle", "third-angle"], "bodies": List[str], "hiddenLines": bool, "holeCallouts": bool, "overallDimensions": bool, "title": 'DrawingTitle'}, total=False)
+_DrawingSheetOptional = TypedDict("_DrawingSheetOptional", {"name": str, "size": Literal["A4", "A3", "A2", "A1", "A0", "ANSI A", "ANSI B", "ANSI C", "ANSI D", "ANSI E"], "scale": float, "projection": Literal["first-angle", "third-angle"], "bodies": List[str], "hiddenLines": bool, "holeCallouts": bool, "overallDimensions": bool, "partsList": bool, "title": 'DrawingTitle'}, total=False)
 class DrawingSheet(_DrawingSheetRequired, _DrawingSheetOptional):
     pass
 

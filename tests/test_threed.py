@@ -216,6 +216,7 @@ class ThreeDTests(unittest.TestCase):
                   ref_a={"kind": "face", "point": [0, 0, 40], "direction": [0, 0, 1]}),
             joint(id="j2", kind="screw", a="arm", anchor=[0, 0, 0], pitch=2, requires={"j1": [0, 1.5]}),
             sheet(id="sheet1", views=[{"id": "front", "view": "front"}, {"id": "top", "view": "top"}], title={"drawnBy": "JV"}),
+            sheet(id="sheet2", size="ANSI B", parts_list=True, views=[{"id": "iso", "view": "iso"}]),
             name="P"))["nodes"]
         self.assertEqual(n["bodyMeta"]["inputs"], {"base": {"engineering": engineering}})
         # The joints are the `joints` port of the document's dynamics, beside what its slot holds.
@@ -224,7 +225,10 @@ class ThreeDTests(unittest.TestCase):
         # A sheet's fields with a default may be left out.
         self.assertEqual(n["drawings"]["inputs"], {"value": [{
             "id": "sheet1", "views": [{"id": "front", "view": "front"}, {"id": "top", "view": "top"}], "title": {"drawnBy": "JV"},
-            "size": "A3", "scale": 1, "projection": "first-angle", "hiddenLines": True, "holeCallouts": True, "overallDimensions": True}]})
+            "size": "A3", "scale": 1, "projection": "first-angle", "hiddenLines": True, "holeCallouts": True, "overallDimensions": True}, {
+            # An ANSI paper, and a parts list with its balloons.
+            "id": "sheet2", "size": "ANSI B", "partsList": True, "views": [{"id": "iso", "view": "iso"}],
+            "scale": 1, "projection": "first-angle", "hiddenLines": True, "holeCallouts": True, "overallDimensions": True}]})
         m1 = {"id": "m1", "kind": "concentric", "a": "p1", "b": "p2", "axis": "Z"}
         self.assertEqual(declare_threed(assembly(mate(**m1), name="A"))["nodes"]["assembly"], {"id": "assembly", "type": "3d.assembly", "inputs": {"mates": [m1]}})
 
