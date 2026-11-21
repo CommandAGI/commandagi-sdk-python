@@ -789,7 +789,7 @@ class PlacedMove(_PlacedMoveRequired, _PlacedMoveOptional):
 
 #: A device definition placed in a design as a unit: the fields a world's unit has (`packages/domain/world/worlds.js`) less those that name one real machine (serial, revision, release, calibration: a world's). `readDesign` (`packages/domain/world/designs.js`) checks it with the world's own unit rules.
 _PlacedUnitRequired = TypedDict("_PlacedUnitRequired", {"id": str, "name": str, "device": str, "position": Tuple[float, float, float], "rotation": float})
-_PlacedUnitOptional = TypedDict("_PlacedUnitOptional", {"tilt_deg": float, "size_mm": Tuple[float, float, float], "channels": List[Dict[str, Any]], "domain": str, "support": Literal["manual", "uncommissioned"]}, total=False)
+_PlacedUnitOptional = TypedDict("_PlacedUnitOptional", {"tilt_deg": float, "size_mm": Tuple[float, float, float], "channels": List[Dict[str, Any]], "domain": str, "support": Literal["manual", "uncommissioned"], "inputs": Dict[str, Union[bool, str, float]]}, total=False)
 class PlacedUnit(_PlacedUnitRequired, _PlacedUnitOptional):
     pass
 
