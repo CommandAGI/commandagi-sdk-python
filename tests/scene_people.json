@@ -28,8 +28,6 @@
     { "check": "look", "value": [], "says": "look is { body?, height_m?" },
 
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "walk", "route": [[0, 0], [2, 1.5]], "speed": 1.2 } },
-    { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "walk", "route": [[0, 0], [2, 1.5]], "straight": true } },
-    { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "walk", "route": [[0, 0]], "straight": 1 }, "says": "goal: walk straight is true or false" },
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "step", "to": [0.3, 0] } },
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "step", "to": [-0.3, 0], "heading": 1.57 } },
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "turn", "heading": -3.1 } },

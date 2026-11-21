@@ -69,7 +69,7 @@ class Look(TypedDict, total=False):
 #: ``ride`` are a worker's actions on a factory floor, ``drive`` … ``stop`` a vehicle's (CommandAGI's docs/formats.md §
 #: a factory floor).
 GOAL_FIELDS: Dict[str, Tuple[str, ...]] = {
-    "walk": ("route", "speed", "straight"), "step": ("to", "heading"), "turn": ("heading",), "sit": ("seat", "facing"), "stand": (),
+    "walk": ("route", "speed"), "step": ("to", "heading"), "turn": ("heading",), "sit": ("seat", "facing"), "stand": (),
     "idle": ("activity", "seconds", "at", "with"), "reach": ("at", "hand", "seconds"),
     "take": ("body", "hands"), "put": ("at",), "push": ("body", "handle"), "jack": ("body", "handle"), "press": ("at",),
     "inspect": ("body", "seconds"), "hand": ("body", "to"), "ride": ("body",),
@@ -83,7 +83,7 @@ IDLE_ACTIVITIES = ("type", "look", "still", "talk")
 REACH_HANDS = ("left", "right", "both")
 HUMANOID_POLICY_FIELDS = ("id", "kind", "unit", "hz", "lookahead", "routine", "repeat")
 
-#: A goal: ``{"do": "walk", "route": [[x, y], ...], "speed"?, "straight"?}``, ``step`` (``to``, ``heading``?), ``turn`` (``heading``),
+#: A goal: ``{"do": "walk", "route": [[x, y], ...], "speed"?}``, ``step`` (``to``, ``heading``?), ``turn`` (``heading``),
 #: ``sit`` (``seat``, ``facing``), ``stand``, ``idle`` (``activity``?, ``seconds``?, ``at``?, ``with``?), ``reach``
 #: (``at``, ``hand``?, ``seconds``?); any may carry ``plan``: ``{"policy", "step"}``. A routine's step adds ``wait``.
 Goal = Dict[str, Any]
@@ -183,8 +183,6 @@ def goal_problem(g: Any) -> Optional[str]:
         return "walk needs a route: 1 to 64 points [x, y] (metres)"
     if "speed" in g and not (_num(g["speed"]) and 0 < g["speed"] <= 1.6):
         return "walk speed is metres a second, above 0 and at most 1.6"
-    if "straight" in g and not isinstance(g["straight"], bool):
-        return "walk straight is true or false"
     if kind in BODY_GOALS and not _text(g.get("body")):
         return f"{kind} needs a body (what it takes, pushes, steers, inspects, hands over or rides on)"
     if "hands" in g and g["hands"] not in WORK_HANDS:
