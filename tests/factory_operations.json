@@ -27,6 +27,9 @@
     { "change": ["orders", 0, "item", "kit"], "says": "order wo: no routing makes \"kit\"" },
     { "change": ["moves", 0, "to", "dock"], "says": "move kitting: to: location \"dock\" is not one of the locations" },
     { "change": ["locations", 0, "capacity", "lots"], "says": "location kits: capacity is a whole number from 1 to 100000" },
+    { "change": ["routings", 0, "ops", 0, "batch", "many"], "says": "routing 1 op wind: batch is a whole number from 1 to 10000" },
+    { "change": ["routings", 0, "ops", 0, "batch", 4], "says": "routing 1: its first op wind makes its entities one by one; a batch op (batch) comes after it" },
+    { "change": ["routings", 0, "ops", 0, "batch_min", 2], "says": "routing 1 op wind: batch_min and batch_wait_s belong to a batch op (batch)" },
     { "change": ["kind", "flow"], "says": "kind is operations" }
   ],
   "machines": [

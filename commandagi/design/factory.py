@@ -36,7 +36,7 @@ PLANT_FIELDS: Dict[str, Dict[str, list]] = {
     "resource": {"needs": ["id", "kind", "skills"], "may": ["label", "members", "count", "physical"]},
     "station": {"needs": ["id", "in", "out"], "may": ["label", "units", "machines", "mtbf_s", "mttr_s", "repair", "maintenance", "tool", "plc", "zone"]},
     "routing": {"needs": ["item", "to", "ops"], "may": []},
-    "op": {"needs": ["id", "station", "cycle_s"], "may": ["cycle_cv", "ideal_s", "setup_s", "consumes", "needs", "load_s", "inspect", "rework", "then", "body", "energy_j", "cell"]},
+    "op": {"needs": ["id", "station", "cycle_s"], "may": ["cycle_cv", "ideal_s", "setup_s", "consumes", "needs", "load_s", "inspect", "rework", "then", "body", "energy_j", "cell", "batch", "batch_min", "batch_wait_s"]},
     "order": {"needs": ["id", "item", "qty"], "may": ["label", "release_s", "due_s", "priority"]},
     "inbound": {"needs": ["id", "item", "qty", "to"], "may": ["label", "at_s", "every_s", "first_s"]},
     "outbound": {"needs": ["id", "item", "qty", "from"], "may": ["label", "at_s", "every_s", "first_s"]},
@@ -46,7 +46,7 @@ PLANT_FIELDS: Dict[str, Dict[str, list]] = {
 _NUMBERS = {
     "capacity": "a whole number from 1 to 100000", "machines": "a whole number from 1 to 1000", "qty": "a whole number from 1 to 100000",
     "cycle_s": "the seconds one entity takes, more than 0", "setup_s": "seconds, 0 or more", "mtbf_s": "the mean operating seconds between failures, more than 0",
-    "mttr_s": "the mean seconds a repair takes, more than 0", "energy_j": "the joules one entity takes, 0 or more", "lot": "a whole number from 1 to 100000",
+    "mttr_s": "the mean seconds a repair takes, more than 0", "energy_j": "the joules one entity takes, 0 or more", "lot": "a whole number from 1 to 100000", "batch": "a whole number from 1 to 10000", "batch_wait_s": "seconds, 0 or more",
     "reorder_at": "a whole number from 0 to 100000", "travel_s": "seconds, 0 or more", "transit_s": "the seconds an entity rides it, more than 0",
 }
 _PARAM = re.compile(r"^\$[A-Za-z_]\w*$")
@@ -134,11 +134,16 @@ def check_operations_system(spec: Dict[str, Any]) -> Dict[str, Any]:
         for op in r.get("ops", []):
             where = f"{at} op {op.get('id')}"
             fields(op, "op", where)
+            if "batch" not in op and ("batch_min" in op or "batch_wait_s" in op):
+                no(f"{where}: batch_min and batch_wait_s belong to a batch op (batch)")
             if op.get("station") not in station_ids:
                 no(f"{where}: station {json.dumps(op.get('station'))} is not one of the stations")
             lines(op.get("consumes"), f"{where}: consumes")
             if "needs" in op:
                 skill(op["needs"], where)
+        first = next((o for o in r.get("ops", []) if not o.get("rework")), None)
+        if first is not None and first.get("batch", 1) != 1:
+            no(f"{at}: its first op {first.get('id')} makes its entities one by one; a batch op (batch) comes after it")
     for x in orders:
         if x.get("item") not in made:
             no(f"order {x.get('id')}: no routing makes {json.dumps(x.get('item'))}")
