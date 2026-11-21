@@ -14,10 +14,10 @@ folder tree, so a mount can list it and read its files (docs/namespace.md § con
     )
 
 Elements: ``connector`` (``name``, ``base``, ``rate``, ``cache``, ``home``, ``terms``, ``robots``, ``hosts``, and every
-entry's ``title``, ``author``, ``licence``, ``source``, ``credit``), ``credential``, ``licence`` (``value`` -> ``spdx``),
+entry's ``title``, ``author``, ``licence``, ``source``, ``credit``, ``picture``: the source's own picture of it, a url on a declared host), ``credential``, ``licence`` (``value`` -> ``spdx``),
 ``folder`` (``path``, ``get``, ``decode``, ``page``, ``page_size``, ``total``, ``next``), ``request``, ``here``, ``each``
 (``in_``, ``as_``, ``where``, ``is_``, ``not_``: a trailing ``_`` names the JSX attributes ``in``, ``as``, ``is`` and ``not``), ``dir`` and
-``file``. A text attribute is a template (``{a}``, ``{a/name}``, ``{slug}``, ``|keys``, ``|join:<sep>``, ``|base``, ``|stem``, ``|ext``, ``|text``, ``|name``, ``|lower``, ``|first``, ``|unique``; ``{@}`` is the
+``file``. A text attribute is a template (``{a}``, ``{a/name}``, ``{slug}``, ``|keys``, ``|join:<sep>``, ``|base``, ``|stem``, ``|ext``, ``|text``, ``|name``, ``|lower``, ``|first``, ``|unique``, ``|fit:<px>``; ``{@}`` is the
 folder's own entry). The document
 is the TypeScript SDK's ``ConnectorDoc``; a connector that would make an impolite or unreadable request is refused with
 why.
@@ -31,7 +31,7 @@ from urllib.parse import urlparse
 from .documents import DocTree, Vocabulary, _json, _text as _js_string, register_vocabulary
 from .element import define
 
-PROVENANCE_FIELDS = ["title", "author", "licence", "source", "credit"]
+PROVENANCE_FIELDS = ["title", "author", "licence", "source", "credit", "picture"]
 CONNECTOR_DECODES = ["json", "gzip-json"]
 
 CONNECTOR_ATTRS = ["name", "base", "rate", "cache", "home", "terms", "robots", "hosts", *PROVENANCE_FIELDS]

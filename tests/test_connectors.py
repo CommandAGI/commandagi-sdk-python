@@ -16,7 +16,7 @@ EXAMPLE = {
         {"path": "", "produce": [{"kind": "dir", "name": "models"}]},
         {"path": "models", "get": "/assets?type=models", "produce": [
             {"kind": "each", "in": "$", "as": "a", "produce": [
-                {"kind": "dir", "name": "{a}", "title": "{a/name}", "author": "{a/authors|keys|join:, }"}]}]},
+                {"kind": "dir", "name": "{a}", "title": "{a/name}", "author": "{a/authors|keys|join:, }", "picture": "{a/thumbnail_url}"}]}]},
         {"path": "models/{slug}", "get": "/files/{slug}",
          "requests": [{"as": "info", "get": "/info/{slug}"}],
          "here": {"source": "https://polyhaven.com/a/{slug}"},
@@ -34,7 +34,7 @@ def poly_haven():
         credential(service="data-gov", field="API_KEY", query="api_key", optional=True),
         licence(value="CC0", spdx="CC0-1.0"),
         folder(dir(name="models"), path=""),
-        folder(each(dir(name="{a}", title="{a/name}", author="{a/authors|keys|join:, }"), in_="$", as_="a"),
+        folder(each(dir(name="{a}", title="{a/name}", author="{a/authors|keys|join:, }", picture="{a/thumbnail_url}"), in_="$", as_="a"),
                path="models", get="/assets?type=models"),
         folder(
             request(as_="info", get="/info/{slug}"),
