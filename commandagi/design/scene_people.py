@@ -72,11 +72,12 @@ GOAL_FIELDS: Dict[str, Tuple[str, ...]] = {
     "walk": ("route", "speed"), "step": ("to", "heading"), "turn": ("heading",), "sit": ("seat", "facing"), "stand": (),
     "idle": ("activity", "seconds", "at", "with"), "reach": ("at", "hand", "seconds"),
     "take": ("body", "hands"), "put": ("at",), "push": ("body", "handle"), "jack": ("body", "handle"), "press": ("at",),
-    "inspect": ("body", "seconds"), "hand": ("body", "to"), "ride": ("body",),
-    "drive": ("route", "speed", "reverse"), "dock": ("at", "heading", "speed", "reverse"), "lift": ("height", "load"), "stop": (),
+    "inspect": ("body", "seconds"), "hand": ("body", "to"), "ride": ("body", "at", "standing"), "get-off": ("to",),
+    "drive": ("route", "speed", "reverse"), "dock": ("at", "heading", "speed", "reverse"), "lift": ("height", "load"), "mast": ("out",),
+    "couple": ("body", "pin", "axle", "legs"), "uncouple": (), "stop": (),
 }
 BODY_GOALS = ("take", "push", "jack", "inspect", "hand", "ride")
-VEHICLE_GOALS = ("drive", "dock", "lift", "stop")
+VEHICLE_GOALS = ("drive", "dock", "lift", "mast", "couple", "uncouple", "stop")
 WORK_HANDS = ("both", "left", "right")
 GOAL_KINDS = tuple(GOAL_FIELDS)
 IDLE_ACTIVITIES = ("type", "look", "still", "talk")
@@ -195,6 +196,12 @@ def goal_problem(g: Any) -> Optional[str]:
         return "handle is [x, y, z] (metres): where the hands close on it"
     if kind == "hand" and not _text(g.get("to")):
         return "hand needs to (the unit it hands the body to)"
+    if kind == "ride" and "at" in g and not _point(g["at"], 3):
+        return "ride at is [x, y, z] (metres): where its hips go on the seat or above the platform"
+    if "standing" in g and not isinstance(g["standing"], bool):
+        return "ride standing is true or false (on a stand-up platform)"
+    if kind == "get-off" and not _point(g.get("to"), 2):
+        return "get-off needs to [x, y] (metres): where it steps down to, beside its vehicle"
     if kind == "step" and not _point(g.get("to"), 2):
         return "step needs to [x, y] (the point it steps to, metres)"
     if kind == "turn" and not _num(g.get("heading")):
@@ -223,7 +230,7 @@ def goal_problem(g: Any) -> Optional[str]:
 
 
 def _vehicle_goal_problem(g: Dict[str, Any], kind: str) -> Optional[str]:
-    """A vehicle goal's problem (drive, dock, lift, stop), or None."""
+    """A vehicle goal's problem (drive, dock, lift, mast, couple, uncouple, stop), or None."""
     route = g.get("route")
     if kind == "drive" and not (isinstance(route, list) and 1 <= len(route) <= 128 and all(_point(p, 2) for p in route)):
         return "drive needs a route: 1 to 128 points [x, y] (metres)"
@@ -231,6 +238,14 @@ def _vehicle_goal_problem(g: Dict[str, Any], kind: str) -> Optional[str]:
         return "dock needs at [x, y] (metres) and heading (radians)"
     if kind == "lift" and not (_num(g.get("height")) and g["height"] >= 0):
         return "lift needs a height (metres, 0 or more)"
+    if kind == "mast" and not (_num(g.get("out")) and g["out"] >= 0):
+        return "mast needs out (metres, 0 or more: how far the mast reaches out)"
+    if kind == "couple" and not (_text(g.get("body")) and _point(g.get("pin"), 3)):
+        return "couple needs a body (what it tows) and pin [x, y, z] (metres, that body's frame: its drawbar eye or kingpin)"
+    if "axle" in g and not _point(g["axle"], 2):
+        return "axle is [x, y] (metres, the towed body's frame: the middle of its axle)"
+    if "legs" in g and not _text(g["legs"]):
+        return "legs names the towed unit's joint that cranks its landing gear"
     if "speed" in g and not (_num(g["speed"]) and 0 < g["speed"] <= 10):
         return "speed is metres a second, above 0 and at most 10"
     if "reverse" in g and not isinstance(g["reverse"], bool):
