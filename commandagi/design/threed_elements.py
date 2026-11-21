@@ -100,7 +100,7 @@ class _AxisRef8(__AxisRef8Required, __AxisRef8Optional):
 
 #: A `<body material>` as a document writes it: a preset and the fields it changes, or only a colour. What it leaves out is its preset's (`resolveMaterial`).
 _BodyMaterialRequired = TypedDict("_BodyMaterialRequired", {})
-_BodyMaterialOptional = TypedDict("_BodyMaterialOptional", {"preset": 'MaterialPreset', "color": str, "metalness": float, "roughness": float, "envIntensity": float, "opacity": float, "ior": float, "transmission": float, "thickness": float, "clearcoat": float, "clearcoatRoughness": float, "anisotropy": float, "emissive": str, "emissiveIntensity": float, "texture": 'SurfaceTexture'}, total=False)
+_BodyMaterialOptional = TypedDict("_BodyMaterialOptional", {"preset": 'MaterialPreset', "color": str, "metalness": float, "roughness": float, "envIntensity": float, "opacity": float, "ior": float, "transmission": float, "thickness": float, "clearcoat": float, "clearcoatRoughness": float, "anisotropy": float, "emissive": str, "emissiveIntensity": float, "texture": 'SurfaceTexture', "maps": 'SurfaceMaps'}, total=False)
 class BodyMaterial(_BodyMaterialRequired, _BodyMaterialOptional):
     pass
 
@@ -608,7 +608,7 @@ class Mate(_MateRequired, _MateOptional):
     pass
 
 _MaterialDefRequired = TypedDict("_MaterialDefRequired", {"preset": 'MaterialPreset', "color": str, "metalness": float, "roughness": float, "envIntensity": float})
-_MaterialDefOptional = TypedDict("_MaterialDefOptional", {"opacity": float, "ior": float, "transmission": float, "thickness": float, "clearcoat": float, "clearcoatRoughness": float, "anisotropy": float, "emissive": str, "emissiveIntensity": float, "texture": 'SurfaceTexture'}, total=False)
+_MaterialDefOptional = TypedDict("_MaterialDefOptional", {"opacity": float, "ior": float, "transmission": float, "thickness": float, "clearcoat": float, "clearcoatRoughness": float, "anisotropy": float, "emissive": str, "emissiveIntensity": float, "texture": 'SurfaceTexture', "maps": 'SurfaceMaps'}, total=False)
 class MaterialDef(_MaterialDefRequired, _MaterialDefOptional):
     pass
 
@@ -1254,6 +1254,12 @@ class SupplierOffer(_SupplierOfferRequired, _SupplierOfferOptional):
 _SurfaceFinishRequired = TypedDict("_SurfaceFinishRequired", {"type": Literal["surfaceFinish"], "anchor": 'Anchor', "id": str})
 _SurfaceFinishOptional = TypedDict("_SurfaceFinishOptional", {"roughness": float, "requirement": Literal["any", "required", "prohibited"], "process": str, "label": str, "textAt": 'Vec3', "visible": bool}, total=False)
 class SurfaceFinish(_SurfaceFinishRequired, _SurfaceFinishOptional):
+    pass
+
+#: A surface's photographed maps: a physically based texture set (Poly Haven's CC0 textures, `cloud://home/user-commandagi/assets/polyhaven/textures/<name>/1k/textures/…`), each image by its ref, a path from the document's folder or an address. The images repeat over the body: each face takes them along the axis it is most nearly normal to, in the body's own millimetres, so a box, a wall or a floor needs no unwrap and one copy of the image covers `size` of it. A map multiplies its field: `color` tints the colour map (white when the material states none), and `roughness` and `metalness` scale their maps (1 when it states none). A grey roughness map and Poly Haven's packed `arm` map (occlusion, roughness, metalness in its red, green and blue) are read alike: roughness from green, metalness from blue, occlusion from red.
+_SurfaceMapsRequired = TypedDict("_SurfaceMapsRequired", {})
+_SurfaceMapsOptional = TypedDict("_SurfaceMapsOptional", {"color": str, "normal": str, "roughness": str, "metalness": str, "ao": str, "size": Tuple[float, float]}, total=False)
+class SurfaceMaps(_SurfaceMapsRequired, _SurfaceMapsOptional):
     pass
 
 #: A surface's small relief, drawn as a bump and never built as geometry: moulded grain (a VDI 3400 texture), bead blasting, a brushed finish, a printer's layer lines.
