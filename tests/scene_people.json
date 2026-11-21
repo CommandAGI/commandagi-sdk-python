@@ -28,6 +28,8 @@
     { "check": "look", "value": [], "says": "look is { body?, height_m?" },
 
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "walk", "route": [[0, 0], [2, 1.5]], "speed": 1.2 } },
+    { "check": "goal", "value": { "verb": "goal", "unit": "g1", "do": "program", "program": { "steps": [{ "id": "reach", "dur": 1.2 }] }, "task": "carry-1" } },
+    { "check": "goal", "value": { "verb": "goal", "unit": "g1", "do": "program", "program": { "steps": [] } }, "says": "goal: program is a program of steps" },
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "step", "to": [0.3, 0] } },
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "step", "to": [-0.3, 0], "heading": 1.57 } },
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "turn", "heading": -3.1 } },

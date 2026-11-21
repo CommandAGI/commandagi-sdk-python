@@ -74,7 +74,7 @@ GOAL_FIELDS: Dict[str, Tuple[str, ...]] = {
     "take": ("body", "hands"), "put": ("at",), "push": ("body", "handle"), "jack": ("body", "handle"), "press": ("at",),
     "inspect": ("body", "seconds"), "hand": ("body", "to"), "ride": ("body", "at", "standing"), "get-off": ("to",),
     "drive": ("route", "speed", "reverse"), "dock": ("at", "heading", "speed", "reverse"), "lift": ("height", "load"), "mast": ("out",),
-    "couple": ("body", "pin", "axle", "legs"), "uncouple": (), "stop": (),
+    "couple": ("body", "pin", "axle", "legs"), "uncouple": (), "stop": (), "program": ("program",),
 }
 BODY_GOALS = ("take", "push", "jack", "inspect", "hand", "ride")
 VEHICLE_GOALS = ("drive", "dock", "lift", "mast", "couple", "uncouple", "stop")
@@ -179,6 +179,10 @@ def goal_problem(g: Any) -> Optional[str]:
         return "task is a text (the dispatcher's token)"
     if kind in VEHICLE_GOALS:
         return _vehicle_goal_problem(g, kind)
+    if kind == "program":
+        p = g.get("program")
+        ok = isinstance(p, dict) and isinstance(p.get("steps"), list) and len(p["steps"]) > 0 and all(isinstance(s, dict) and _text(s.get("id")) and _num(s.get("dur")) for s in p["steps"])
+        return None if ok else "program is a program of steps ({ id, dur, … }: g1-skills.js compilePlan)"
     route = g.get("route")
     if kind == "walk" and not (isinstance(route, list) and 1 <= len(route) <= 64 and all(_point(p, 2) for p in route)):
         return "walk needs a route: 1 to 64 points [x, y] (metres)"
