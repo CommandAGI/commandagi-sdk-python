@@ -5,11 +5,12 @@ import json
 import pathlib
 import unittest
 
-from commandagi.design.scene_people import (HUMANOID_JOINTS, check_assist, check_goal, check_humanoid_policy, check_look,
-                                            check_motors, humanoid_constraint)
+from commandagi.design.scene_people import (ETHNICITIES, FACE_UNITS, HUMANOID_JOINTS, check_assist, check_face, check_goal,
+                                            check_humanoid_policy, check_look, check_motors, humanoid_constraint)
 
 GOLDEN = json.loads((pathlib.Path(__file__).parent / "scene_people.json").read_text(encoding="utf-8"))
-CHECKS = {"look": check_look, "goal": check_goal, "humanoid": check_humanoid_policy, "motors": check_motors, "assist": check_assist}
+CHECKS = {"look": check_look, "goal": check_goal, "humanoid": check_humanoid_policy, "motors": check_motors, "assist": check_assist,
+          "face": check_face}
 
 
 class ScenePeopleTests(unittest.TestCase):
@@ -26,6 +27,10 @@ class ScenePeopleTests(unittest.TestCase):
     def test_the_joints(self):
         self.assertEqual(len(set(HUMANOID_JOINTS)), 33)
         self.assertEqual(humanoid_constraint("ana", "shoulder_l_abduct"), "ana-shoulder-l-abduct")
+
+    def test_the_face_units_and_ethnicities(self):
+        self.assertEqual(len(set(FACE_UNITS)), 52)
+        self.assertEqual(ETHNICITIES, ("african", "asian", "caucasian"))
 
 
 if __name__ == "__main__":

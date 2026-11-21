@@ -1,5 +1,5 @@
 {
-  "note": "The golden of the three SDKs' people in a scene (scene-people.golden.json here, scene_people.json in the Python and Rust SDKs' tests): the human avatar's look, the humanoid policy and the goal, motors and assist commands (CommandAGI's docs/formats.md § a person in the scene). A case without says passes; a case with says is refused with those words.",
+  "note": "The golden of the three SDKs' people in a scene (scene-people.golden.json here, scene_people.json in the Python and Rust SDKs' tests): the human avatar's look, the humanoid policy and the goal, motors, assist and face commands (CommandAGI's docs/formats.md § a person in the scene). A case without says passes; a case with says is refused with those words.",
   "cases": [
     { "check": "look", "value": {} },
     { "check": "look", "value": { "body": "feminine", "height_m": 1.68, "weight": 0.4, "muscle": 0.5, "proportions": 0.5, "skin": [0.8, 0.62, 0.5], "hair": [0.1, 0.07, 0.05], "top": [0.2, 0.3, 0.6], "bottom": [0.15, 0.15, 0.2], "shoes": [0.9, 0.9, 0.9], "hair_style": "ponytail", "outfit": "blouse_skirt", "footwear": "white_trainers" } },
@@ -15,6 +15,16 @@
     { "check": "look", "value": { "hair_style": "mohawk" }, "says": "look.hair_style is one of none, afro, bob" },
     { "check": "look", "value": { "outfit": "kimono" }, "says": "look.outfit is one of tee_jeans" },
     { "check": "look", "value": { "footwear": "sandals" }, "says": "look.footwear is one of leather_shoes" },
+    { "check": "look", "value": { "age_years": 25, "ethnicity": { "african": 0.6, "asian": 0, "caucasian": 0.4 } } },
+    { "check": "look", "value": { "age_years": 90, "ethnicity": { "asian": 1 } } },
+    { "check": "look", "value": { "age_years": 24 }, "says": "look.age_years is a number from 25 to 90" },
+    { "check": "look", "value": { "age_years": 91 }, "says": "look.age_years is a number from 25 to 90" },
+    { "check": "look", "value": { "age_years": "old" }, "says": "look.age_years is a number from 25 to 90" },
+    { "check": "look", "value": { "ethnicity": { "african": 0, "asian": 0, "caucasian": 0 } }, "says": "look.ethnicity is { african?, asian?, caucasian? }, each a number 0 or more, not all 0" },
+    { "check": "look", "value": { "ethnicity": {} }, "says": "look.ethnicity is { african?, asian?, caucasian? }, each a number 0 or more, not all 0" },
+    { "check": "look", "value": { "ethnicity": { "african": -0.5, "asian": 1 } }, "says": "look.ethnicity is { african?, asian?, caucasian? }, each a number 0 or more, not all 0" },
+    { "check": "look", "value": { "ethnicity": { "hispanic": 1 } }, "says": "look.ethnicity is { african?, asian?, caucasian? }, each a number 0 or more, not all 0" },
+    { "check": "look", "value": { "ethnicity": [1, 0, 0] }, "says": "look.ethnicity is { african?, asian?, caucasian? }, each a number 0 or more, not all 0" },
     { "check": "look", "value": [], "says": "look is { body?, height_m?" },
 
     { "check": "goal", "value": { "verb": "goal", "unit": "ana", "do": "walk", "route": [[0, 0], [2, 1.5]], "speed": 1.2 } },
@@ -73,6 +83,25 @@
     { "check": "assist", "value": { "verb": "assist", "body": "ana-pelvis", "heading": null } },
     { "check": "assist", "value": { "verb": "assist", "body": "ana-pelvis" }, "says": "assist needs a heading (radians) or null" },
     { "check": "assist", "value": { "verb": "assist", "heading": 0 }, "says": "assist needs a body (the body whose balance aid it turns)" },
-    { "check": "assist", "value": { "verb": "assist", "body": "ana-pelvis", "heading": 0, "torque": 3 }, "says": "assist has no field torque (it has verb, body, heading)" }
+    { "check": "assist", "value": { "verb": "assist", "body": "ana-pelvis", "heading": 0, "torque": 3 }, "says": "assist has no field torque (it has verb, body, heading)" },
+
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": { "jawOpen": 0.4, "mouthSmileLeft": 1, "mouthSmileRight": 1, "browInnerUp": 0 } } },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "path": [{ "at": 0, "set": { "eyeBlinkLeft": 0, "eyeBlinkRight": 0 } }, { "at": 0.1, "set": { "eyeBlinkLeft": 1, "eyeBlinkRight": 1 } }, { "at": 10, "set": { "tongueOut": 0.2 } }], "since": 12.5 } },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": { "browDownLeft": 0.3 }, "path": [{ "at": 1, "set": { "noseSneerRight": 0.5 } }] } },
+    { "check": "face", "value": { "verb": "face", "unit": "ana" }, "says": "face needs set { <face unit>: 0 to 1 } or path [{ at, set: { <face unit>: 0 to 1 } }]" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": {} }, "says": "face needs set { <face unit>: 0 to 1 } or path" },
+    { "check": "face", "value": { "verb": "face", "set": { "jawOpen": 1 } }, "says": "face needs a unit (the person whose face it moves)" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": { "smile": 1 } }, "says": "face set: smile is not one of ARKit's 52 face units" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": { "JawOpen": 1 } }, "says": "face set: JawOpen is not one of ARKit's 52 face units" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": { "jawOpen": 1.2 } }, "says": "face set: jawOpen is a number from 0 to 1" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": { "jawOpen": -0.1 } }, "says": "face set: jawOpen is a number from 0 to 1" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "path": [{ "at": 1, "set": { "eyeBlink": 1 } }] }, "says": "face path: eyeBlink is not one of ARKit's 52 face units" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "path": [{ "at": 1, "set": { "eyeBlinkLeft": "shut" } }] }, "says": "face path: eyeBlinkLeft is a number from 0 to 1" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "path": [{ "at": 1, "set": {} }, { "at": 1, "set": {} }] }, "says": "face path: each point is { at (seconds from now, increasing, at most 10), set: { <face unit>: 0 to 1 } }" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "path": [{ "at": 10.5, "set": { "jawOpen": 0 } }] }, "says": "face path: each point is { at" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "path": [{ "at": -1, "set": { "jawOpen": 0 } }] }, "says": "face path: each point is { at" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": { "jawOpen": 1 }, "since": "now" }, "says": "face since is the scene time its path starts at, not later than now" },
+    { "check": "face", "value": { "verb": "face", "unit": "ana", "set": { "jawOpen": 1 }, "speed": 2 }, "says": "face has no field speed (it has verb, unit, set, path, since)" },
+    { "check": "face", "value": { "verb": "motors", "unit": "ana", "set": { "jawOpen": 1 } }, "says": "face is { verb: \"face\", unit, set?, path?, since? }" }
   ]
 }

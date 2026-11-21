@@ -1,6 +1,6 @@
 """A PERSON IN A SCENE — the human avatar (``cloud://global/devices/human-avatar/definition.tsx``) placed in a design's
 ``slot(name="scene")`` as a ``robots`` entry with a ``look``, the ``humanoid`` policy that drives it, and the ``goal``,
-``motors`` and ``assist`` commands an agent sends it (docs/formats.md § a person in the scene, in the CommandAGI
+``motors``, ``assist`` and ``face`` commands an agent sends it (docs/formats.md § a person in the scene, in the CommandAGI
 repository). The same as the TypeScript SDK's ``scene-people.ts``; the scene stays a plain dict, so the editor writes
 into it::
 
@@ -11,7 +11,7 @@ into it::
         {"do": "walk", "route": [[0, 0], [1, 2]]}, {"do": "sit", "seat": [1, 2.4, 0.45], "facing": 1.57},
         {"do": "idle", "activity": "type", "seconds": 60}, {"do": "stand"}]})
 
-``check_look``, ``check_goal``, ``check_humanoid_policy``, ``check_motors`` and ``check_assist`` refuse what the engine
+``check_look``, ``check_goal``, ``check_humanoid_policy``, ``check_motors``, ``check_assist`` and ``check_face`` refuse what the engine
 refuses (``ValueError``), in its words. They check the shape only: whether a unit, a body or a constraint is in the
 scene is the engine's to say.
 """
@@ -31,10 +31,13 @@ HAIR_STYLES = ("none", "afro", "bob", "bob_sleek", "braid", "long", "ponytail", 
 OUTFITS = ("tee_jeans", "crew_tee_jeans", "longsleeve_jeans", "shirt_jeans", "denim_shirt_jeans", "jacket_jeans", "suit_tie",
            "overalls", "fitted_tee_jeans", "tee_shorts", "blouse_skirt", "sport_top_leggings")
 FOOTWEAR = ("leather_shoes", "hiking_shoes", "boots", "black_shoes", "white_trainers", "blue_trainers")
+#: MakeHuman's ethnic macros. A look's ``ethnicity`` weighs them; absent, an even blend.
+ETHNICITIES = ("african", "asian", "caucasian")
 #: A look's numbers and their bounds, and its colours. One table, the same in the three SDKs.
-LOOK_BOUNDS: Dict[str, Tuple[float, float]] = {"height_m": (1.2, 2.2), "weight": (0, 1), "muscle": (0, 1), "proportions": (0, 1)}
+LOOK_BOUNDS: Dict[str, Tuple[float, float]] = {"height_m": (1.2, 2.2), "weight": (0, 1), "muscle": (0, 1), "proportions": (0, 1),
+                                             "age_years": (25, 90)}
 LOOK_COLOURS = ("skin", "hair", "top", "bottom", "shoes")
-LOOK_FIELDS = ("body", "height_m", "weight", "muscle", "proportions") + LOOK_COLOURS + ("hair_style", "outfit", "footwear")
+LOOK_FIELDS = ("body", "height_m", "weight", "muscle", "proportions", "age_years", "ethnicity") + LOOK_COLOURS + ("hair_style", "outfit", "footwear")
 
 Rgb = Tuple[float, float, float]
 """sRGB, each from 0 to 1."""
@@ -42,12 +45,16 @@ Rgb = Tuple[float, float, float]
 
 class Look(TypedDict, total=False):
     """A robots entry's ``look``. ``weight``, ``muscle`` and ``proportions`` are MakeHuman's macros (0 to 1, 0.5
-    average or neutral); ``top``, ``bottom`` and ``shoes`` tint the outfit's and the footwear's own colours."""
+    average or neutral); ``age_years`` is 25 to 90 (MakeHuman's adult ages; absent, 25); ``ethnicity`` weighs
+    ``ETHNICITIES`` (each 0 or more, not all 0; absent, an even blend); ``top``, ``bottom`` and ``shoes`` tint the
+    outfit's and the footwear's own colours."""
     body: Literal["masculine", "feminine"]
     height_m: float
     weight: float
     muscle: float
     proportions: float
+    age_years: float
+    ethnicity: Dict[str, float]
     skin: Rgb
     hair: Rgb
     top: Rgb
@@ -136,6 +143,12 @@ def check_look(look: Any, where: str = "robot") -> Any:
     for k in LOOK_COLOURS:
         if k in look and not (_point(look[k], 3) and all(0 <= c <= 1 for c in look[k])):
             no(f"look.{k} is [r, g, b], sRGB from 0 to 1")
+    if "ethnicity" in look:
+        e = look["ethnicity"]
+        ok = (isinstance(e, dict) and not _unknown(e, ETHNICITIES, "") and all(_num(w) and w >= 0 for w in e.values())
+              and any(w > 0 for w in e.values()))
+        if not ok:
+            no("look.ethnicity is { " + ", ".join(f"{k}?" for k in ETHNICITIES) + " }, each a number 0 or more, not all 0")
     for k, options in (("hair_style", HAIR_STYLES), ("outfit", OUTFITS), ("footwear", FOOTWEAR)):
         if k in look and look[k] not in options:
             no(f"look.{k} is one of {', '.join(options)}")
@@ -264,6 +277,56 @@ def check_motors(cmd: Any) -> Any:
     return cmd
 
 
+#: ARKit's 52 face units (blendshapes), each from 0 (rest) to 1. A ``face`` command names them.
+FACE_UNITS: Tuple[str, ...] = (
+    "browDownLeft", "browDownRight", "browInnerUp", "browOuterUpLeft", "browOuterUpRight", "cheekPuff", "cheekSquintLeft",
+    "cheekSquintRight", "eyeBlinkLeft", "eyeBlinkRight", "eyeLookDownLeft", "eyeLookDownRight", "eyeLookInLeft", "eyeLookInRight",
+    "eyeLookOutLeft", "eyeLookOutRight", "eyeLookUpLeft", "eyeLookUpRight", "eyeSquintLeft", "eyeSquintRight", "eyeWideLeft",
+    "eyeWideRight", "jawForward", "jawLeft", "jawOpen", "jawRight", "mouthClose", "mouthDimpleLeft", "mouthDimpleRight",
+    "mouthFrownLeft", "mouthFrownRight", "mouthFunnel", "mouthLeft", "mouthLowerDownLeft", "mouthLowerDownRight", "mouthPressLeft",
+    "mouthPressRight", "mouthPucker", "mouthRight", "mouthRollLower", "mouthRollUpper", "mouthShrugLower", "mouthShrugUpper",
+    "mouthSmileLeft", "mouthSmileRight", "mouthStretchLeft", "mouthStretchRight", "mouthUpperUpLeft", "mouthUpperUpRight",
+    "noseSneerLeft", "noseSneerRight", "tongueOut",
+)
+
+#: A ``face`` command: ``{"verb": "face", "unit", "set"?: {<face unit>: 0..1}, "path"?: [{"at", "set"}], "since"?}``,
+#: ``at`` seconds from ``since`` (increasing, at most 10).
+FaceCommand = Dict[str, Any]
+
+
+def check_face(cmd: Any) -> Any:
+    """Refuses what the engine would refuse of a ``face`` command's shape; returns it."""
+    def no(why: str):
+        raise ValueError(f"face {why}")
+    if not isinstance(cmd, dict) or cmd.get("verb") != "face":
+        no('is { verb: "face", unit, set?, path?, since? }')
+    bad = _unknown(cmd, ("verb", "unit", "set", "path", "since"), "face")
+    if bad:
+        raise ValueError(bad)
+    if not _text(cmd.get("unit")):
+        no("needs a unit (the person whose face it moves)")
+    weights, path = cmd.get("set", {}), cmd.get("path", [])
+    if not isinstance(weights, dict) or not isinstance(path, list) or (not weights and not path):
+        no("needs set { <face unit>: 0 to 1 } or path [{ at, set: { <face unit>: 0 to 1 } }]")
+
+    def check(where: str, w: Dict[str, Any]):
+        for name, v in w.items():
+            if name not in FACE_UNITS:
+                no(f"{where}: {name} is not one of ARKit's 52 face units (browDownLeft … tongueOut)")
+            if not (_num(v) and 0 <= v <= 1):
+                no(f"{where}: {name} is a number from 0 to 1")
+    check("set", weights)
+    before = -math.inf
+    for pt in path:
+        if not isinstance(pt, dict) or not (_num(pt.get("at")) and before < pt["at"] <= 10 and pt["at"] >= 0) or not isinstance(pt.get("set"), dict):
+            no("path: each point is { at (seconds from now, increasing, at most 10), set: { <face unit>: 0 to 1 } }")
+        before = pt["at"]
+        check("path", pt["set"])
+    if "since" in cmd and not _num(cmd["since"]):
+        no("since is the scene time its path starts at, not later than now")
+    return cmd
+
+
 def check_assist(cmd: Any) -> Any:
     """Refuses what the engine would refuse of an ``assist`` command's shape; returns it."""
     if not isinstance(cmd, dict) or cmd.get("verb") != "assist":
@@ -280,8 +343,8 @@ def check_assist(cmd: Any) -> Any:
 
 
 __all__ = [
-    "LOOK_BODIES", "HAIR_STYLES", "OUTFITS", "FOOTWEAR", "LOOK_BOUNDS", "LOOK_COLOURS", "LOOK_FIELDS", "Rgb", "Look",
+    "LOOK_BODIES", "HAIR_STYLES", "OUTFITS", "FOOTWEAR", "ETHNICITIES", "LOOK_BOUNDS", "LOOK_COLOURS", "LOOK_FIELDS", "Rgb", "Look",
     "GOAL_FIELDS", "GOAL_KINDS", "IDLE_ACTIVITIES", "REACH_HANDS", "HUMANOID_POLICY_FIELDS", "Goal", "HumanoidPolicy",
     "HUMANOID_JOINTS", "humanoid_constraint", "check_look", "goal_problem", "check_goal", "check_humanoid_policy",
-    "check_motors", "check_assist",
+    "check_motors", "check_assist", "FACE_UNITS", "FaceCommand", "check_face",
 ]
