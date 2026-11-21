@@ -65,11 +65,19 @@ class Look(TypedDict, total=False):
     footwear: str
 
 
-#: Each goal's own fields, beside ``do`` and ``plan``. One table, the same in the three SDKs.
+#: Each goal's own fields, beside ``do``, ``plan`` and ``task``. One table, the same in the three SDKs. ``take`` …
+#: ``ride`` are a worker's actions on a factory floor, ``drive`` … ``stop`` a vehicle's (CommandAGI's docs/formats.md §
+#: a factory floor).
 GOAL_FIELDS: Dict[str, Tuple[str, ...]] = {
     "walk": ("route", "speed"), "step": ("to", "heading"), "turn": ("heading",), "sit": ("seat", "facing"), "stand": (),
     "idle": ("activity", "seconds", "at", "with"), "reach": ("at", "hand", "seconds"),
+    "take": ("body", "hands"), "put": ("at",), "push": ("body", "handle"), "jack": ("body", "handle"), "press": ("at",),
+    "inspect": ("body", "seconds"), "hand": ("body", "to"), "ride": ("body",),
+    "drive": ("route", "speed", "reverse"), "dock": ("at", "heading", "speed", "reverse"), "lift": ("height", "load"), "stop": (),
 }
+BODY_GOALS = ("take", "push", "jack", "inspect", "hand", "ride")
+VEHICLE_GOALS = ("drive", "dock", "lift", "stop")
+WORK_HANDS = ("both", "left", "right")
 GOAL_KINDS = tuple(GOAL_FIELDS)
 IDLE_ACTIVITIES = ("type", "look", "still", "talk")
 REACH_HANDS = ("left", "right", "both")
@@ -164,13 +172,29 @@ def goal_problem(g: Any) -> Optional[str]:
         return f"do is one of {', '.join(GOAL_KINDS)}"
     own = GOAL_FIELDS[kind]
     for k in g:
-        if k not in ("do", "plan") and k not in own:
-            return f"{kind} has no field {k} (it has {', '.join(own + ('plan',))})"
+        if k not in ("do", "plan", "task") and k not in own:
+            return f"{kind} has no field {k} (it has {', '.join(own + ('plan', 'task'))})"
+    if "task" in g and not _text(g["task"]):
+        return "task is a text (the dispatcher's token)"
+    if kind in VEHICLE_GOALS:
+        return _vehicle_goal_problem(g, kind)
     route = g.get("route")
     if kind == "walk" and not (isinstance(route, list) and 1 <= len(route) <= 64 and all(_point(p, 2) for p in route)):
         return "walk needs a route: 1 to 64 points [x, y] (metres)"
     if "speed" in g and not (_num(g["speed"]) and 0 < g["speed"] <= 1.6):
         return "walk speed is metres a second, above 0 and at most 1.6"
+    if kind in BODY_GOALS and not _text(g.get("body")):
+        return f"{kind} needs a body (what it takes, pushes, steers, inspects, hands over or rides on)"
+    if "hands" in g and g["hands"] not in WORK_HANDS:
+        return "hands is both, left or right"
+    if kind == "press" and not _point(g.get("at"), 3):
+        return "press needs at [x, y, z] (metres): the button"
+    if kind == "put" and "at" in g and not _point(g["at"], 3):
+        return "at is [x, y, z] (metres)"
+    if "handle" in g and not _point(g["handle"], 3):
+        return "handle is [x, y, z] (metres): where the hands close on it"
+    if kind == "hand" and not _text(g.get("to")):
+        return "hand needs to (the unit it hands the body to)"
     if kind == "step" and not _point(g.get("to"), 2):
         return "step needs to [x, y] (the point it steps to, metres)"
     if kind == "turn" and not _num(g.get("heading")):
@@ -191,6 +215,28 @@ def goal_problem(g: Any) -> Optional[str]:
         return "reach hand is left, right or both"
     if "seconds" in g and not (_num(g["seconds"]) and g["seconds"] > 0):
         return "seconds is a positive number"
+    plan = g.get("plan")
+    if "plan" in g and not (isinstance(plan, dict) and isinstance(plan.get("policy"), str)
+                            and isinstance(plan.get("step"), int) and not isinstance(plan.get("step"), bool)):
+        return "plan is { policy, step }"
+    return None
+
+
+def _vehicle_goal_problem(g: Dict[str, Any], kind: str) -> Optional[str]:
+    """A vehicle goal's problem (drive, dock, lift, stop), or None."""
+    route = g.get("route")
+    if kind == "drive" and not (isinstance(route, list) and 1 <= len(route) <= 128 and all(_point(p, 2) for p in route)):
+        return "drive needs a route: 1 to 128 points [x, y] (metres)"
+    if kind == "dock" and not (_point(g.get("at"), 2) and _num(g.get("heading"))):
+        return "dock needs at [x, y] (metres) and heading (radians)"
+    if kind == "lift" and not (_num(g.get("height")) and g["height"] >= 0):
+        return "lift needs a height (metres, 0 or more)"
+    if "speed" in g and not (_num(g["speed"]) and 0 < g["speed"] <= 10):
+        return "speed is metres a second, above 0 and at most 10"
+    if "reverse" in g and not isinstance(g["reverse"], bool):
+        return "reverse is true or false"
+    if "load" in g and not isinstance(g["load"], str):
+        return "load names a body"
     plan = g.get("plan")
     if "plan" in g and not (isinstance(plan, dict) and isinstance(plan.get("policy"), str)
                             and isinstance(plan.get("step"), int) and not isinstance(plan.get("step"), bool)):
@@ -344,7 +390,7 @@ def check_assist(cmd: Any) -> Any:
 
 __all__ = [
     "LOOK_BODIES", "HAIR_STYLES", "OUTFITS", "FOOTWEAR", "ETHNICITIES", "LOOK_BOUNDS", "LOOK_COLOURS", "LOOK_FIELDS", "Rgb", "Look",
-    "GOAL_FIELDS", "GOAL_KINDS", "IDLE_ACTIVITIES", "REACH_HANDS", "HUMANOID_POLICY_FIELDS", "Goal", "HumanoidPolicy",
+    "GOAL_FIELDS", "GOAL_KINDS", "BODY_GOALS", "VEHICLE_GOALS", "WORK_HANDS", "IDLE_ACTIVITIES", "REACH_HANDS", "HUMANOID_POLICY_FIELDS", "Goal", "HumanoidPolicy",
     "HUMANOID_JOINTS", "humanoid_constraint", "check_look", "goal_problem", "check_goal", "check_humanoid_policy",
     "check_motors", "check_assist", "FACE_UNITS", "FaceCommand", "check_face",
 ]
