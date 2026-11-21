@@ -1,5 +1,5 @@
-"""The factory module against factory_flow.json, the golden of the three SDKs (factory-flow.golden.json in the
-TypeScript SDK): a factory the engine runs passes, each refusal is the engine's own words, and the sizing gives the
+"""The plant module against factory_operations.json, the golden of the three SDKs (factory-operations.golden.json in the
+TypeScript SDK): a plant the engine runs passes, each refusal is the engine's own words, and the sizing gives the
 machines the engine's sizing gives.
 Run: python -m unittest discover -s tests"""
 import copy
@@ -7,9 +7,9 @@ import json
 import pathlib
 import unittest
 
-from commandagi.design.factory import check_flow_system, machines_for
+from commandagi.design.factory import check_operations_system, machines_for
 
-GOLDEN = json.loads((pathlib.Path(__file__).parent / "factory_flow.json").read_text(encoding="utf-8"))
+GOLDEN = json.loads((pathlib.Path(__file__).parent / "factory_operations.json").read_text(encoding="utf-8"))
 
 
 def changed(path):
@@ -23,10 +23,10 @@ def changed(path):
 
 class FactoryTests(unittest.TestCase):
     def test_the_engines_refusals(self):
-        self.assertIs(check_flow_system(GOLDEN["valid"]), GOLDEN["valid"])
+        self.assertIs(check_operations_system(GOLDEN["valid"]), GOLDEN["valid"])
         for r in GOLDEN["refusals"]:
             with self.assertRaises(ValueError) as said:
-                check_flow_system(changed(r["change"]))
+                check_operations_system(changed(r["change"]))
             self.assertIn(r["says"], str(said.exception))
 
     def test_machines_for(self):

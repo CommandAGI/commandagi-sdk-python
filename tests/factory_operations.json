@@ -1,0 +1,39 @@
+{
+  "note": "The golden of the three SDKs' plant module (factory-operations.golden.json in the TypeScript SDK, factory_operations.json in the Python and Rust SDKs' tests). Each refusal's words are the engine's own (CommandAGI's packages/domain/world/sim-ops.js), so an SDK and the engine refuse a plant alike.",
+  "valid": {
+    "id": "line", "kind": "operations", "seed": 11, "time_scale": 60, "window_s": 3600,
+    "shifts": { "period_s": 86400, "windows": [[0, 28800], [28800, 57600]] },
+    "items": [{ "id": "kit", "label": "Stator and rotor kit" }, { "id": "motor", "bom": [{ "item": "kit", "qty": 1 }], "body": { "shape": { "type": "box", "hx": 0.1, "hy": 0.1, "hz": 0.05 }, "mass": 2.4 } }],
+    "locations": [
+      { "id": "kits", "kind": "store", "capacity": 500, "stock": [{ "item": "kit", "qty": 400, "lot": "K-1" }] },
+      { "id": "belt", "kind": "conveyor", "capacity": 6, "transit_s": 12, "to": "fg", "zone": { "center": [0, 0, 0.85], "size": [2, 0.4, 0.12] } },
+      { "id": "fg", "kind": "store", "capacity": 500 }
+    ],
+    "resources": [{ "id": "ops", "kind": "person", "skills": ["wind", "kitting"], "members": ["ana", "ben"] }],
+    "stations": [{ "id": "wind", "label": "Stator winding", "machines": "$winders", "in": "kits", "out": "belt", "mtbf_s": 6900, "mttr_s": 600, "repair": "wind" }],
+    "routings": [{ "item": "motor", "to": "fg", "ops": [{ "id": "wind", "station": "wind", "cycle_s": 75, "needs": "wind", "consumes": [{ "item": "kit", "qty": 1 }], "inspect": { "yield": 0.985 },
+      "cell": { "design": "../stator-winding-cell/stator-winding-cell.3d.tsx", "seconds": 9600, "cycles": "winder.cycles" } }] }],
+    "orders": [{ "id": "wo", "item": "motor", "qty": 400, "release_s": 0, "due_s": 57600, "priority": 1 }],
+    "inbound": [{ "id": "po", "item": "kit", "qty": 100, "to": "kits", "every_s": 14400 }],
+    "outbound": [{ "id": "truck", "item": "motor", "qty": 100, "from": "fg", "at_s": [28800] }],
+    "moves": [{ "id": "kitting", "item": "kit", "from": "kits", "to": "fg", "lot": 10, "reorder_at": 2, "by": "kitting", "travel_s": 40 }]
+  },
+  "refusals": [
+    { "change": ["stations", 0, "speed", 2], "says": "station wind: unknown field speed" },
+    { "change": ["stations", 0, "in", "nowhere"], "says": "station wind: in: location \"nowhere\" is not one of the locations" },
+    { "change": ["routings", 0, "ops", 0, "station", "zz"], "says": "routing 1 op wind: station \"zz\" is not one of the stations" },
+    { "change": ["routings", 0, "ops", 0, "consumes", [{ "item": "lens", "qty": 1 }]], "says": "routing 1 op wind: consumes 1: item \"lens\" is not one of the items" },
+    { "change": ["routings", 0, "ops", 0, "needs", "fly"], "says": "routing 1 op wind: skill \"fly\" is no resource's" },
+    { "change": ["orders", 0, "item", "kit"], "says": "order wo: no routing makes \"kit\"" },
+    { "change": ["moves", 0, "to", "dock"], "says": "move kitting: to: location \"dock\" is not one of the locations" },
+    { "change": ["locations", 0, "capacity", "lots"], "says": "location kits: capacity is a whole number from 1 to 100000" },
+    { "change": ["kind", "flow"], "says": "kind is operations" }
+  ],
+  "machines": [
+    { "rate": 0.1, "cycle_s": 25, "machines": 3 },
+    { "rate": 0.1, "cycle_s": 25, "availability": 0.5, "machines": 6 },
+    { "rate": 0.034722222222222224, "cycle_s": 1500, "availability": 0.97, "machines": 64 },
+    { "rate": 0.2, "cycle_s": 30, "batch": 2, "machines": 4 },
+    { "rate": 0, "cycle_s": 30, "machines": 0 }
+  ]
+}

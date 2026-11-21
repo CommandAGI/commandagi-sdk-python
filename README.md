@@ -100,7 +100,7 @@ vocabulary, one function per tag, named by the tag:
 | `commandagi.design.fab` | a machining setup (`cam`), a slicing setup (`slicing`) |
 | `commandagi.design.study` | a study (`study`: `structural`, `flow` or `step-response`; material, fixtures, load cases, mesh, steps, gains, criteria, revise; docs/formats.md § studies) |
 | `commandagi.design.testplans` | a test plan (`testplan`: conditions, fixtures, steps) |
-| `commandagi.design.factory` | a factory in a scene (`check_flow_system`, `machines_for`: the `flow` system a `.3d.py`'s scene holds) |
+| `commandagi.design.factory` | a plant in a scene (`check_operations_system`, `machines_for`: the `operations` system a `.3d.py`'s scene holds) |
 | `commandagi.design.scene_agents` | the agents of a scene (`check_scene_agents`: model agents attached to its robots or their joints) |
 | `commandagi.design.scene_people` | a person in a scene (`check_look`, `check_goal`, `check_humanoid_policy`, `check_motors`, `check_assist`, `HUMANOID_JOINTS`) |
 | `commandagi.design.firmware` | a firmware release (`firmware`: supported revisions), a rollout (`rollout`: health checks, targets) |
