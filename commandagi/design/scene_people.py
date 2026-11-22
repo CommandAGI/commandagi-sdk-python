@@ -1,4 +1,4 @@
-"""A PERSON IN A SCENE — the human avatar (``cloud://global/devices/human-avatar/definition.tsx``) placed in a design's
+"""A PERSON IN A SCENE — the human avatar (``cloud://home/user-commandagi/global/devices/human-avatar/definition.tsx``) placed in a design's
 ``slot(name="scene")`` as a ``robots`` entry with a ``look``, the ``humanoid`` policy that drives it, and the ``goal``,
 ``motors``, ``assist`` and ``face`` commands an agent sends it (docs/formats.md § a person in the scene, in the CommandAGI
 repository). The same as the TypeScript SDK's ``scene-people.ts``; the scene stays a plain dict, so the editor writes

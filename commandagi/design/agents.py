@@ -4,24 +4,24 @@ call::
 
     from commandagi.design.agents import agent, harness
 
-    # cloud://global/agents/harnesses/claude-code/harness.py — a CLI agent program
+    # cloud://home/user-commandagi/global/agents/harnesses/claude-code/harness.py — a CLI agent program
     result = harness(kind="cli", label="Claude Code", provider="anthropic", cli="claude", runs=["host", "vm"])
 
-    # cloud://global/agents/harnesses/openai-realtime/harness.py — a model that converses live
+    # cloud://home/user-commandagi/global/agents/harnesses/openai-realtime/harness.py — a model that converses live
     result = harness(kind="api", label="OpenAI Realtime API", provider="openai", runs=["worker", "host"], realtime={
         "in": ["audio", "video", "text"], "out": ["audio", "text", "tools"],
         "audio": {"in": ["g711-ulaw@8000", "pcm16@24000"], "out": ["g711-ulaw@8000", "pcm16@24000"]},
         "fps": 1, "hz": 2, "minutes": 60})
 
     # agents/secretary/agent.py in an account's Drive — a fork
-    result = agent(parent="cloud://global/agents/claude-code", name="Joe's secretary", instructions="Keep Joe's calendar.")
+    result = agent(parent="cloud://home/user-commandagi/global/agents/claude-code", name="Joe's secretary", instructions="Keep Joe's calendar.")
 
     # agents/a2/agent.py — a fork on another model, at a reasoning effort its CLI takes
-    result = agent(parent="cloud://global/agents/claude-code", name="A2", model="anthropic/claude-sonnet-5-5", effort="medium")
+    result = agent(parent="cloud://home/user-commandagi/global/agents/claude-code", name="A2", model="anthropic/claude-sonnet-5-5", effort="medium")
 
     # agents/researcher/agent.py — and its runtime configuration: its picture beside it, its equipped skills, its
     # cognition, its routing weights, its wiring, its reach into its owner's account, and that it asks before it spends
-    result = agent(parent="cloud://global/agents/commandagi", name="Researcher", avatar="avatar.png",
+    result = agent(parent="cloud://home/user-commandagi/global/agents/commandagi", name="Researcher", avatar="avatar.png",
                    skills=["../../skills/review/SKILL.md"], routing={"quality": 2, "cost": 1},
                    access={"scopes": ["threads:read"], "reach": "own"}, confirm_spend=True)
 
@@ -169,7 +169,7 @@ def _agent(t: DocTree) -> Dict[str, Any]:
     base, fork = "harness" in a, "parent" in a
     if base == fork:
         raise ValueError("<agent> names a harness (a base instance) or a parent (a fork), not both: a fork keeps its parent's harness" if base
-                         else '<agent> names its harness (a base instance: harness="claude-code") or its parent (a fork: parent="cloud://global/agents/claude-code")')
+                         else '<agent> names its harness (a base instance: harness="claude-code") or its parent (a fork: parent="cloud://home/user-commandagi/global/agents/claude-code")')
     if base and not AGENT_ID.match(a["harness"]):
         raise ValueError(f'<agent> harness is a harness\'s id ("claude-code"), not {a["harness"]!r}')
     tools = a.get("tools")

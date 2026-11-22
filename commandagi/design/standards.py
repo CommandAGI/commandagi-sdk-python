@@ -10,7 +10,7 @@ data and the same calls as the TypeScript SDK's ``commandagi/design`` ``standard
     mass_grams(1200, "6061-T6")                 # 3.24: 1200 mm³ × 2.7 g/cm³
 
 The numbers are data (``standards_data.py``), generated from the shipped tables
-(``cloud://global/standards/<table>.csv``, ``cloud://global/materials/engineering.csv``). Each row of a table names its
+(``cloud://home/user-commandagi/global/standards/<table>.csv``, ``cloud://home/user-commandagi/global/materials/engineering.csv``). Each row of a table names its
 source, how it was read, by whom and when; ``STANDARD_SOURCES[table]`` and a material's ``source`` carry the source's
 name here.
 

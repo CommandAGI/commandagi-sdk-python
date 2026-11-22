@@ -17,7 +17,7 @@ class FabTests(unittest.TestCase):
             fixture(name="clamp", x_mm=-14, y_mm=25, w_mm=20, d_mm=20, z_mm=4),
             operation(id="op-2", op="mill_contour", profile="contour_wood", tabs={"count": 4, "lengthMm": 5, "heightMm": 1.5}),
             operation(id="op-1", op="mill_pocket", profile="pocket_wood", enabled=False),
-            runsOn(unit="cloud://global/worlds/fab-cell/world.tsx#cnc-1", channel="gcode", name="cnc"),
+            runsOn(unit="cloud://home/user-commandagi/global/worlds/fab-cell/world.tsx#cnc-1", channel="gcode", name="cnc"),
         ))
         self.assertEqual(d["format"], "cam")
         self.assertEqual(d["document"], {
@@ -28,7 +28,7 @@ class FabTests(unittest.TestCase):
                 {"id": "op-2", "op": "mill_contour", "profile": "contour_wood", "tabs": {"count": 4, "lengthMm": 5, "heightMm": 1.5}},
                 {"id": "op-1", "op": "mill_pocket", "profile": "pocket_wood", "enabled": False},
             ],
-            "runsOn": {"unit": "cloud://global/worlds/fab-cell/world.tsx#cnc-1", "channel": "gcode", "name": "cnc"},
+            "runsOn": {"unit": "cloud://home/user-commandagi/global/worlds/fab-cell/world.tsx#cnc-1", "channel": "gcode", "name": "cnc"},
         })
         with self.assertRaisesRegex(ValueError, r'<operation id="a"> needs profile'):
             declare_document(cam(operation(id="a", op="face")))
@@ -62,7 +62,7 @@ class FabTests(unittest.TestCase):
                          {"": ("slice", 2), "source": ("source", 3), "spool": ("spool", 4), "machine": ("machine", 5)})
         self.assertEqual(d["sources"]["spool"]["props"]["diameter_mm"]["value"], 1.75)
         # A setup that runs on no unit names its printer by its definition.
-        saturn = "cloud://global/devices/elegoo-saturn-4-ultra/definition.tsx"
+        saturn = "cloud://home/user-commandagi/global/devices/elegoo-saturn-4-ultra/definition.tsx"
         out = run_module(
             'from commandagi.design.fab import slice, source\n'
             f'result = slice(source(file_id="node.stl", name="node.stl"), profile="sla_resin_0.05", device="{saturn}")\n',

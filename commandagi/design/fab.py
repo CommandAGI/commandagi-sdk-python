@@ -9,7 +9,7 @@ the 3D app's CAM and slicing modes edit: the same elements as the TypeScript SDK
         machine(post="grbl", max_spindle_rpm=10000, max_feed_mm_per_min=1000, spindle_power_kw=0.3, travel_mm=[300, 180, 45]),
         fixture(name="left clamp", x_mm=-14, y_mm=25, w_mm=20, d_mm=20, z_mm=4),
         operation(id="op-1", op="mill_adaptive", profile="adaptive_wood", params={"toolDiameterMm": 3.175}),
-        runsOn(unit="cloud://global/worlds/fab-cell/world.tsx#cnc-1", channel="gcode", name="cnc 3018 / 01"),
+        runsOn(unit="cloud://home/user-commandagi/global/worlds/fab-cell/world.tsx#cnc-1", channel="gcode", name="cnc 3018 / 01"),
     )
 
     from commandagi.design.fab import machine, slice, source, spool

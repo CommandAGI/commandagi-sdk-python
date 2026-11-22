@@ -304,13 +304,13 @@ class LinkAndFilterTests(unittest.TestCase):
     def test_a_link_is_a_draw_instance_node_that_names_another_drawing(self):
         g = from_twod(drawing(layer(
             link(label="Badge", src="parts/Badge.draw.py", x=40, y=60, inputs={"size": 48, "tone": "warm", "outlined": True}),
-            link(src="cloud://global/examples/2d/Badge.draw.tsx"),
+            link(src="cloud://home/user-commandagi/examples/2d/Badge.draw.tsx"),
             name="Badge",
         ), width=400, height=300))
         first, second = (g["nodes"][g["nodes"]["group"]["inputs"][port]["wire"]["node"]] for port in ("children.1", "children.2"))
         self.assertEqual({"type": first["type"], "label": first["label"], "inputs": first["inputs"]},
                          {"type": "draw.instance", "label": "Badge", "inputs": {"__instance": {"path": "parts/Badge.draw.py"}, "x": 40, "y": 60, "inputs": {"size": 48, "tone": "warm", "outlined": True}}})
-        self.assertEqual(second["inputs"], {"__instance": {"assetPath": "cloud://global/examples/2d/Badge.draw.tsx"}})
+        self.assertEqual(second["inputs"], {"__instance": {"assetPath": "cloud://home/user-commandagi/examples/2d/Badge.draw.tsx"}})
 
     def test_a_link_is_checked_against_its_schema(self):
         def refused(pattern, **props):

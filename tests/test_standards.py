@@ -1,5 +1,5 @@
 """The engineering tables as the SDK carries them, held to numbers typed here from the standards' own tables (the
-shipped CSVs name the page each row was read from; ``cloud://global/standards/<table>.csv``). The TypeScript SDK's
+shipped CSVs name the page each row was read from; ``cloud://home/user-commandagi/global/standards/<table>.csv``). The TypeScript SDK's
 src/design/standards.test.ts holds the same values: one set of tables makes every SDK's data.
 Run: python -m unittest discover -s tests"""
 import unittest

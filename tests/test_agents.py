@@ -32,17 +32,17 @@ class AgentTests(unittest.TestCase):
         base = declare_document(agent(harness="anthropic", model="anthropic/claude-opus-5-5", effort="medium", name="Claude Opus 5.5"))
         self.assertEqual(base, {"format": "agent", "sources": {}, "document": {
             "harness": "anthropic", "name": "Claude Opus 5.5", "model": "anthropic/claude-opus-5-5", "effort": "medium"}})
-        self.assertEqual(declare_document(agent(parent="cloud://global/agents/claude-code", supervisor="person:me"))["document"]["supervisor"], "person:me")
+        self.assertEqual(declare_document(agent(parent="cloud://home/user-commandagi/global/agents/claude-code", supervisor="person:me"))["document"]["supervisor"], "person:me")
         with self.assertRaisesRegex(ValueError, "supervisor is an agent or a person"):
-            declare_document(agent(parent="cloud://global/agents/claude-code", supervisor="lead"))
-        fork = declare_document(agent(parent="cloud://global/agents/claude-code", name="Joe's secretary",
+            declare_document(agent(parent="cloud://home/user-commandagi/global/agents/claude-code", supervisor="lead"))
+        fork = declare_document(agent(parent="cloud://home/user-commandagi/global/agents/claude-code", name="Joe's secretary",
                                       instructions="Keep Joe's calendar.", tools=["calendar_save_event"], voice_mode="push-to-talk"))
-        self.assertEqual(fork["document"], {"parent": "cloud://global/agents/claude-code", "name": "Joe's secretary",
+        self.assertEqual(fork["document"], {"parent": "cloud://home/user-commandagi/global/agents/claude-code", "name": "Joe's secretary",
                                             "instructions": "Keep Joe's calendar.", "voiceMode": "push-to-talk",
                                             "tools": ["calendar_save_event"]})
 
     def test_a_forks_runtime_configuration(self):
-        doc = declare_document(agent(parent="cloud://global/agents/commandagi", name="Researcher", avatar="avatar.png", sound="chime",
+        doc = declare_document(agent(parent="cloud://home/user-commandagi/global/agents/commandagi", name="Researcher", avatar="avatar.png", sound="chime",
                                      skills=["../../skills/review/SKILL.md"], kernel={"type": "llm"},
                                      cognition={"urgency": 0.8, "faculties": {"working_memory": True}, "models": [], "speculation": True},
                                      routing={"quality": 2, "cost": 1}, fabric={"config": {}, "mindPin": None, "added": [], "gates": {}},
