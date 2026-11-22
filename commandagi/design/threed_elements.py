@@ -1258,7 +1258,7 @@ class SurfaceFinish(_SurfaceFinishRequired, _SurfaceFinishOptional):
 
 #: A surface's photographed maps: a physically based texture set (Poly Haven's CC0 textures, `cloud://home/user-commandagi/assets/polyhaven/textures/<name>/1k/textures/…`), each image by its ref, a path from the document's folder or an address. The images repeat over the body: each face takes them along the axis it is most nearly normal to, in the body's own millimetres, so a box, a wall or a floor needs no unwrap and one copy of the image covers `size` of it. A map multiplies its field: `color` tints the colour map (white when the material states none), and `roughness` and `metalness` scale their maps (1 when it states none). A grey roughness map and Poly Haven's packed `arm` map (occlusion, roughness, metalness in its red, green and blue) are read alike: roughness from green, metalness from blue, occlusion from red.
 _SurfaceMapsRequired = TypedDict("_SurfaceMapsRequired", {})
-_SurfaceMapsOptional = TypedDict("_SurfaceMapsOptional", {"color": str, "normal": str, "roughness": str, "metalness": str, "ao": str, "size": Tuple[float, float]}, total=False)
+_SurfaceMapsOptional = TypedDict("_SurfaceMapsOptional", {"color": str, "normal": str, "roughness": str, "metalness": str, "ao": str, "alpha": str, "size": Tuple[float, float]}, total=False)
 class SurfaceMaps(_SurfaceMapsRequired, _SurfaceMapsOptional):
     pass
 
