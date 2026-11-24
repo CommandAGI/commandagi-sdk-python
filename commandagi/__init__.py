@@ -8,9 +8,10 @@ Drive the whole platform as code: agent threads, memory, integrations — and li
     cagi = CommandAGI()                                   # reads COMMANDAGI_API_KEY
     cagi.threads.create(intent="Summarise this week's robotics news")
 
-    with cagi.launch("simulation/warehouse") as world:    # a world YOU drive (no agent)
-        world.sim.ik(target=[0.3, 0.0, 0.4])
-        jpeg = world.observe(fresh=True)
+    with cagi.launch("simulation/arm-cell") as world:     # a world YOU drive (no agent)
+        world.sim.run()                                   # a launched simulation starts paused
+        world.sim.ik(target=[0.08, -0.12, 0.86])          # the arm's tool point, in metres
+        print(world.describe()["world"]["robots"])        # the world now
 
 The typed surface is generated from the CommandAGI SDK schema (``commandagi-sdk.schema.json``),
 identically for every language; ``call(tool, args)`` reaches any tool.

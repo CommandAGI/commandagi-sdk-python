@@ -10,6 +10,8 @@ export COMMANDAGI_API_KEY=cagi_...     # Settings → API keys
 ```
 
 ```python
+import time
+
 from commandagi import CommandAGI
 
 cagi = CommandAGI()                                   # reads COMMANDAGI_API_KEY
@@ -19,10 +21,12 @@ t = cagi.threads.create(intent="Summarise this week's robotics news in five bull
 cagi.threads.send(t["threadId"], "Add a link for each one.")
 
 # Embodiments: launch a world YOU drive (no agent in it), watch it, control it.
-with cagi.launch("simulation/warehouse") as world:
+with cagi.launch("simulation/arm-cell") as world:
     print(world.controls())                           # what it accepts right now, with payload schemas
-    world.sim.ik(target=[0.3, 0.0, 0.4])              # typed robot/sim control
-    jpeg = world.observe(fresh=True)                  # the next frame, after the move
+    world.sim.run()                                   # a launched simulation starts paused
+    world.sim.ik(target=[0.08, -0.12, 0.86])          # typed robot/sim control: the arm's tool point, in metres
+    time.sleep(2)                                     # an answer is not a state: let it move, then read
+    print(world.describe()["world"]["robots"][0]["sites"])   # where the tool point is now, in mm
 # leaving the block stops the world and releases the machine
 
 # Anything else: every platform tool by name.
@@ -76,7 +80,7 @@ the CommandAGI monorepo.
 | `session.describe()` | the live world a sim or robot runtime reports |
 | `session.close()` / `stop()` | stop watching / also stop a world this session launched |
 
-Snapshot ids come from `cagi.call("list_snapshots")`, e.g. `simulation/warehouse` or
+Snapshot ids come from `cagi.call("list_snapshots")`, e.g. `simulation/arm-cell` or
 `computer/software-engineer`.
 
 ## Design in code: `commandagi.design`

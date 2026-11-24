@@ -10,9 +10,10 @@ Quickstart::
     from commandagi import CommandAGI
 
     cagi = CommandAGI()                                   # reads COMMANDAGI_API_KEY
-    with cagi.launch("simulation/warehouse") as world:    # a world YOU drive (no agent)
-        world.sim.ik(target=[0.3, 0.0, 0.4])
-        jpeg = world.observe(fresh=True)
+    with cagi.launch("simulation/arm-cell") as world:     # a world YOU drive (no agent)
+        world.sim.run()                                   # a launched simulation starts paused
+        world.sim.ik(target=[0.08, -0.12, 0.86])          # the arm's tool point, in metres
+        print(world.describe()["world"]["robots"])        # the world now
     # leaving the block stops the world and releases the machine
 """
 from __future__ import annotations
