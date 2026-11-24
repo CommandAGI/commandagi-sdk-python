@@ -27,6 +27,7 @@ with cagi.launch("simulation/arm-cell") as world:
     world.sim.ik(target=[0.08, -0.12, 0.86])          # typed robot/sim control: the arm's tool point, in metres
     time.sleep(2)                                     # an answer is not a state: let it move, then read
     print(world.describe()["world"]["robots"][0]["sites"])   # where the tool point is now, in mm
+    open("cell.jpg", "wb").write(world.observe(fresh=True))  # what its camera sees now: a 320 x 240 JPEG
 # leaving the block stops the world and releases the machine
 
 # Anything else: every platform tool by name.
@@ -76,7 +77,8 @@ the CommandAGI monorepo.
 | --- | --- |
 | `cagi.launch(snapshot_id, title=, wait=True, timeout=600)` | a new agentless thread running that snapshot; waits until it declares controls |
 | `cagi.session(thread_id, embodiment_id)` | attach to an embodiment that already exists |
-| `session.frame(fresh=False)` / `observe()` / `observe_array()` / `frames()` | the latest frame, as `{url, channel_id, at}`, image bytes, or a numpy array (`pip install "commandagi[vision]"`); `frames()` yields each new one |
+| `session.frame(fresh=False, channel=None)` / `observe()` / `observe_array()` / `frames()` | the latest frame, as `{url, channel_id, at}`, image bytes, or a numpy array (`pip install "commandagi[vision]"`); `frames()` yields each new one. A simulation's camera is `cam-head` (each other camera of its scene is a channel of its id); `channel=None` is the newest picture of any |
+| `session.depth_array()` | a simulation's depth (`depth`): HxW uint16 millimetres, 0 where nothing is |
 | `session.describe()` | the live world a sim or robot runtime reports |
 | `session.close()` / `stop()` | stop watching / also stop a world this session launched |
 

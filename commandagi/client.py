@@ -160,7 +160,9 @@ class Session:
     Control is a tool call: every action is ``embodiments.act(embodiment_id, action, payload)``, resolved
     by the thread against what the embodiment live-declares. ``desktop`` / ``robot`` / ``sim`` are the
     generated typed vocabularies over that one method; :meth:`act` is the untyped form. Frames arrive
-    over the thread's WebSocket as ``frame`` messages; the socket opens on the first frame request.
+    over the thread's WebSocket as ``frame`` messages; the socket opens on the first frame request. Each
+    channel keeps its newest frame: a simulation's first camera is ``cam-head`` (a JPEG), its depth is
+    ``depth`` (a 16-bit PNG of millimetres), and every other camera of its scene is a channel of its id.
     """
 
     def __init__(self, client: CommandAGI, thread_id: str, embodiment_id: str, *, owns_thread: bool) -> None:
@@ -175,7 +177,8 @@ class Session:
         #: Simulated worlds and the robots inside them.
         self.sim = SimControls(self)
         self._lock = threading.Condition()
-        self._latest: Optional[Dict[str, Any]] = None
+        #: The newest frame of each channel, by channel id.
+        self._latest: Dict[str, Dict[str, Any]] = {}
         self._ws: Optional[websocket.WebSocketApp] = None
         self._closed = False
 
@@ -210,45 +213,62 @@ class Session:
         base = self._client.base_url.replace("https://", "wss://").replace("http://", "ws://")
         url = f"{base}/rt/thread/{self.thread_id}?token={self._client.api_key}"
 
-        def on_message(_ws: Any, raw: str) -> None:
-            try:
-                m = json.loads(raw)
-            except (TypeError, ValueError):
-                return
-            if m.get("t") != "frame" or m.get("embodimentId") != self.embodiment_id or not isinstance(m.get("url"), str):
-                return
-            with self._lock:
-                self._latest = {
-                    "embodiment_id": m["embodimentId"],
-                    "channel_id": m.get("channelId", ""),
-                    "url": m["url"],
-                    "at": m.get("at") or int(time.time() * 1000),
-                }
-                self._lock.notify_all()
-
-        self._ws = websocket.WebSocketApp(url, header={"user-agent": USER_AGENT}, on_message=on_message)
+        self._ws = websocket.WebSocketApp(url, header={"user-agent": USER_AGENT}, on_message=lambda _ws, raw: self._take(raw))
         threading.Thread(
             target=lambda: self._ws.run_forever(ping_interval=20, ping_timeout=10, reconnect=3),
             daemon=True,
         ).start()
 
-    def frame(self, *, fresh: bool = False, timeout: float = 30.0) -> Dict[str, Any]:
-        """The latest frame ``{embodiment_id, channel_id, url, at}``. ``fresh=True`` waits for one that
-        arrives AFTER this call — what you want right after acting."""
+    def _take(self, raw: str) -> None:
+        """One message of the thread's socket: a frame of this embodiment is kept as its channel's newest."""
+        try:
+            m = json.loads(raw)
+        except (TypeError, ValueError):
+            return
+        # A picture is a `frame`; a depth image comes as `data` of an image format (it is not a picture to show).
+        picture = m.get("t") == "frame" or (m.get("t") == "data" and str(m.get("format", "")).startswith("image/"))
+        if not picture or m.get("embodimentId") != self.embodiment_id or not isinstance(m.get("url"), str):
+            return
+        channel = m.get("channelId", "")
+        with self._lock:
+            self._latest[channel] = {
+                "embodiment_id": m["embodimentId"],
+                "channel_id": channel,
+                "url": m["url"],
+                "at": m.get("at") or int(time.time() * 1000),
+                "picture": m.get("t") == "frame",
+                # When it arrived here, by this computer's clock: what `fresh` compares, so another clock never decides.
+                "received": time.time(),
+            }
+            self._lock.notify_all()
+
+    def _newest(self, channel: Optional[str]) -> Optional[Dict[str, Any]]:
+        if channel is not None:
+            return self._latest.get(channel)
+        pictures = [f for f in self._latest.values() if f["picture"]]
+        return max(pictures, key=lambda f: f["received"]) if pictures else None
+
+    def frame(self, *, fresh: bool = False, timeout: float = 30.0, channel: Optional[str] = None) -> Dict[str, Any]:
+        """The latest frame ``{embodiment_id, channel_id, url, at}`` of ``channel`` (default: the newest
+        picture of any channel). ``fresh=True`` waits for one that arrives AFTER this call — what you want
+        right after acting."""
         self._open()
-        after = int(time.time() * 1000) if fresh else 0
+        after = time.time() if fresh else 0.0
         deadline = time.time() + timeout
         with self._lock:
-            while not (self._latest and self._latest["at"] > after):
+            while True:
+                f = self._newest(channel)
+                if f and f["received"] > after:
+                    return {k: v for k, v in f.items() if k not in ("picture", "received")}
                 left = deadline - time.time()
                 if left <= 0:
-                    raise CommandAGIError("frame", f"no frame from {self.embodiment_id} within {timeout}s")
+                    on = f" on {channel}" if channel is not None else ""
+                    raise CommandAGIError("frame", f"no frame from {self.embodiment_id}{on} within {timeout}s")
                 self._lock.wait(left)
-            return dict(self._latest)
 
-    def observe(self, *, fresh: bool = False, timeout: float = 30.0) -> bytes:
+    def observe(self, *, fresh: bool = False, timeout: float = 30.0, channel: Optional[str] = None) -> bytes:
         """The latest frame's image bytes (JPEG/PNG), decoding a data: URL or fetching an https one."""
-        url = self.frame(fresh=fresh, timeout=timeout)["url"]
+        url = self.frame(fresh=fresh, timeout=timeout, channel=channel)["url"]
         if url.startswith("data:"):
             return base64.b64decode(url.split(",", 1)[1])
         r = self._client._http.get(url, headers={"authorization": f"Bearer {self._client.api_key}", "user-agent": USER_AGENT}, timeout=60)
@@ -266,10 +286,21 @@ class Session:
             raise CommandAGIError("observe_array", "observe_array needs `pillow` and `numpy` installed") from e
         return np.asarray(Image.open(io.BytesIO(self.observe(**kw))).convert("RGB"))
 
-    def frames(self) -> Iterator[Dict[str, Any]]:
-        """Yield every new frame as it arrives."""
+    def depth_array(self, *, fresh: bool = False, timeout: float = 30.0, channel: str = "depth") -> Any:
+        """A depth channel's newest image as a numpy HxW uint16 array of millimetres (0: nothing there)."""
+        try:
+            import io
+
+            import numpy as np
+            from PIL import Image
+        except ImportError as e:  # pragma: no cover
+            raise CommandAGIError("depth_array", "depth_array needs `pillow` and `numpy` installed") from e
+        return np.asarray(Image.open(io.BytesIO(self.observe(fresh=fresh, timeout=timeout, channel=channel)))).astype(np.uint16)
+
+    def frames(self, *, channel: Optional[str] = None) -> Iterator[Dict[str, Any]]:
+        """Yield every new frame (of ``channel``) as it arrives."""
         while not self._closed:
-            yield self.frame(fresh=True, timeout=3600)
+            yield self.frame(fresh=True, timeout=3600, channel=channel)
 
     # ── lifecycle ────────────────────────────────────────────────────────────────────────────────
     def close(self) -> None:
