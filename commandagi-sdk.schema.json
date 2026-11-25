@@ -3373,6 +3373,54 @@
               },
               "additionalProperties": false
             }
+          },
+          {
+            "name": "goal",
+            "channelId": "ctrl",
+            "label": "Simulation people",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "unit": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "do": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                }
+              },
+              "required": [
+                "unit",
+                "do"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "ghost",
+            "channelId": "ctrl",
+            "label": "Simulation people",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "unit": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1024
+                },
+                "on": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "unit",
+                "on"
+              ],
+              "additionalProperties": false
+            }
           }
         ]
       }
