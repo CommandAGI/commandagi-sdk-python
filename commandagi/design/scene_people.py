@@ -69,7 +69,7 @@ class Look(TypedDict, total=False):
 #: ``ride`` are a worker's actions on a factory floor, ``drive`` … ``stop`` a vehicle's (CommandAGI's docs/formats.md §
 #: a factory floor).
 GOAL_FIELDS: Dict[str, Tuple[str, ...]] = {
-    "walk": ("route", "speed"), "step": ("to", "heading"), "turn": ("heading",), "sit": ("seat", "facing"), "stand": (),
+    "walk": ("route", "speed"), "step": ("to", "heading"), "steer": ("forward", "side", "heading", "pitch", "crouch", "seconds"), "turn": ("heading",), "sit": ("seat", "facing"), "stand": (),
     "idle": ("activity", "seconds", "at", "with"), "reach": ("at", "hand", "seconds"),
     "take": ("body", "hands"), "put": ("at",), "push": ("body", "handle"), "jack": ("body", "handle"), "press": ("at",),
     "inspect": ("body", "seconds"), "hand": ("body", "to"), "ride": ("body", "at", "standing"), "get-off": ("to",),
@@ -82,9 +82,13 @@ WORK_HANDS = ("both", "left", "right")
 GOAL_KINDS = tuple(GOAL_FIELDS)
 IDLE_ACTIVITIES = ("type", "look", "still", "talk")
 REACH_HANDS = ("left", "right", "both")
+#: A steer goal's ranges (the walker, docs/fpv-walker.md): its speeds (m/s) and the most seconds it holds. One table,
+#: the same in the three SDKs.
+STEER_BOUNDS = {"forward": (-0.5, 1.6), "side": (-0.3, 0.3), "seconds": 2}
 HUMANOID_POLICY_FIELDS = ("id", "kind", "unit", "hz", "lookahead", "routine", "repeat")
 
-#: A goal: ``{"do": "walk", "route": [[x, y], ...], "speed"?}``, ``step`` (``to``, ``heading``?), ``turn`` (``heading``),
+#: A goal: ``{"do": "walk", "route": [[x, y], ...], "speed"?}``, ``step`` (``to``, ``heading``?), ``steer``
+#: (``heading``, ``forward``?, ``side``?, ``pitch``?, ``crouch``?, ``seconds``?: walked as a hand steers it), ``turn`` (``heading``),
 #: ``sit`` (``seat``, ``facing``), ``stand``, ``idle`` (``activity``?, ``seconds``?, ``at``?, ``with``?), ``reach``
 #: (``at``, ``hand``?, ``seconds``?); any may carry ``plan``: ``{"policy", "step"}``. A routine's step adds ``wait``.
 Goal = Dict[str, Any]
@@ -210,6 +214,19 @@ def goal_problem(g: Any) -> Optional[str]:
         return "step needs to [x, y] (the point it steps to, metres)"
     if kind == "turn" and not _num(g.get("heading")):
         return "turn needs a heading (radians about z, from +x)"
+    if kind == "steer":
+        if not _num(g.get("heading")):
+            return "steer needs a heading (radians about z, from +x): where the body faces"
+        for k, way in (("forward", "along its heading"), ("side", "to its left")):
+            lo, hi = STEER_BOUNDS[k]
+            if k in g and not (_num(g[k]) and lo <= g[k] <= hi):
+                return f"steer {k} is metres a second {way} from {lo} to {hi}"
+        if "pitch" in g and not _num(g["pitch"]):
+            return "steer pitch is the head's nod (radians, positive down), within its neck's range"
+        if "crouch" in g and not isinstance(g["crouch"], bool):
+            return "steer crouch is true or false (walk and stand with bent knees)"
+        if "seconds" in g and not (_num(g["seconds"]) and 0 < g["seconds"] <= STEER_BOUNDS["seconds"]):
+            return f"steer seconds is how long it holds: over 0, at most {STEER_BOUNDS['seconds']}"
     if kind == "step" and "heading" in g and not _num(g["heading"]):
         return "step heading is radians about z, from +x"
     if kind == "sit" and not (_point(g.get("seat"), 3) and _num(g.get("facing"))):
