@@ -4,6 +4,17 @@ One entry for each release. A release is the tag `v<version>` in this repository
 TypeScript and Rust SDKs carry the same version number. A version promises nothing about the next one (README
 § Versions): read this file before you change the version you pin.
 
+## Unreleased
+
+Added
+
+- `commandagi.design.money`: `MoneyAccount(name=..., kind=..., institution=..., last4=..., currency=..., ledger=...,
+  books=..., statements=..., opened=..., closed=..., holder=...)` with `Connection(id=..., provider=..., account=...,
+  mode=...)`, `Counterparty(At(connection=..., recipient=...), id=..., name=..., kind=..., file=...)` and
+  `Recurring(id=..., to=..., amount=..., rail=..., every=..., day=..., by=..., starts=..., ends=..., memo=...)`: the
+  money account document of `<name>.money.py` (CommandAGI's docs/financial-accounts.md). No bank or card number and
+  no credential: `last4` at most, the provider's own ids.
+
 ## 0.6.9 (2026-11-23)
 
 Added
