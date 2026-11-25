@@ -25,7 +25,6 @@ from .documents import DocTree, Vocabulary, _json, register_vocabulary
 from .element import define
 
 MONEY_KINDS = ["checking", "savings", "money-market", "card", "loan", "credit-line", "brokerage", "payments", "wallet", "other"]
-MONEY_PROVIDER_IDS = ["stripe-financial-connections", "plaid", "stripe-treasury", "increase", "mercury", "brex", "venue"]
 MONEY_RAILS = ["ach", "wire", "book", "rtp", "check"]
 MONEY_EVERY = ["week", "month", "quarter", "year"]
 MONEY_ACCOUNT_FIELDS = ["name", "kind", "institution", "last4", "currency", "ledger", "books", "statements", "opened", "closed", "holder"]
@@ -43,11 +42,13 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "Recurring": {},
 }
 
-__all__ = ["MONEY_KINDS", "MONEY_PROVIDER_IDS", "MONEY_RAILS", "MONEY_EVERY", "MONEY_ACCOUNT_FIELDS", "MONEY_CONNECTION_FIELDS",
+__all__ = ["MONEY_KINDS", "MONEY_RAILS", "MONEY_EVERY", "MONEY_ACCOUNT_FIELDS", "MONEY_CONNECTION_FIELDS",
            "MONEY_COUNTERPARTY_FIELDS", "MONEY_AT_FIELDS", "MONEY_RECURRING_FIELDS", "SIGNATURES", "money_account_of",
            "MONEY_VOCABULARY", *define(globals(), "money", SIGNATURES)]
 
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+# A provider is named by its id; the platform's catalog names the providers (docs/financial-accounts.md), so a new one needs no SDK release.
+_PROVIDER = re.compile(r"^[a-z][a-z0-9-]{0,39}$")
 _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _DECIMAL = re.compile(r"^\d{1,15}(\.\d{1,4})?$")
 _PRINCIPAL = re.compile(r"^(person|agent):[A-Za-z0-9._@-]{1,64}$")
@@ -87,8 +88,8 @@ def _id_of(a: Dict[str, Any], tag: str) -> str:
 
 def _connection_of(a: Dict[str, Any]) -> Dict[str, Any]:
     at = _id_of(a, "Connection")
-    if a.get("provider") not in MONEY_PROVIDER_IDS:
-        raise ValueError(f"{at} provider is {', '.join(MONEY_PROVIDER_IDS)}, not {_said(a.get('provider'))}")
+    if not _is(a.get("provider"), _PROVIDER):
+        raise ValueError(f"{at} provider is a provider's id (lowercase letters, digits and -, as plaid or increase), not {_said(a.get('provider'))}")
     if not _text(a.get("account"), 200):
         raise ValueError(f"{at} account is the provider's own id of the account (not a bank number), not {_said(a.get('account'))}")
     if a.get("mode") is not None and a["mode"] not in ("live", "sandbox"):

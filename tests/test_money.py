@@ -57,7 +57,7 @@ class MoneyTests(unittest.TestCase):
             "kind is checking": lambda: MoneyAccount(name="Operating", kind="piggy-bank"),
             "last4 is the last four digits": lambda: MoneyAccount(name="Operating", kind="checking", last4="123456"),
             "routingNumber is not read": lambda: MoneyAccount(name="Operating", kind="checking", routing_number="000000000"),
-            "provider is stripe-financial-connections": lambda: MoneyAccount(Connection(id="x", provider="acme", account="a"), name="O", kind="checking"),
+            "provider is a provider's id": lambda: MoneyAccount(Connection(id="x", provider="Acme Bank", account="a"), name="O", kind="checking"),
             "accessToken is not read": lambda: MoneyAccount(Connection(id="x", provider="plaid", account="a", access_token="t"), name="O", kind="checking"),
             "needs an <At connection recipient>": lambda: MoneyAccount(Counterparty(id="a", name="A"), name="O", kind="checking"),
             "<At> connection is the id of a <Connection>": lambda: MoneyAccount(Counterparty(At(connection="nowhere", recipient="r"), id="a", name="A"), name="O", kind="checking"),
