@@ -8,6 +8,8 @@ TypeScript and Rust SDKs carry the same version number. A version promises nothi
 
 Added
 
+- `BankAccount(file="money/Operating.money.py")` names a money account that says every other field (`name` is no
+  longer required: a line has a name or a file).
 - `commandagi.design.money`: `MoneyAccount(name=..., kind=..., institution=..., last4=..., currency=..., ledger=...,
   books=..., statements=..., opened=..., closed=..., holder=...)` with `Connection(id=..., provider=..., account=...,
   mode=...)`, `Counterparty(At(connection=..., recipient=...), id=..., name=..., kind=..., file=...)` and

@@ -20,6 +20,8 @@ class FinanceTest(unittest.TestCase):
             "dataRooms": [{"name": "Seed", "expires": "2026-12-31", "include": [{"document": "Harbor/Documents/Charter.pdf", "section": "corporate"}]}],
         })
         self.assertNotIn("finance", document_of(Company(name="Bare"))["document"])
+        by_file = document_of(Company(BankAccount(file="money/Operating.money.py"), name="Harbor"))
+        self.assertEqual(by_file["document"]["finance"]["bankAccounts"], [{"file": "money/Operating.money.py"}])
 
     def test_a_finance_element_says_only_its_own_words(self):
         with self.assertRaisesRegex(ValueError, "<BankAccount> has no attribute accountNumber"):

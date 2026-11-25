@@ -23,8 +23,9 @@ _TEXT = "text"
 
 FINANCE_TAGS: Dict[str, Dict[str, Any]] = {
     "Budget": {"props": {"journal": _TEXT}, "required": ["journal"]},
-    "BankAccount": {"props": {"name": _TEXT, "provider": _TEXT, "last4": _TEXT, "currency": _TEXT, "ledger": _TEXT, "kind": _TEXT,
-                              "statements": _TEXT, "opened": _TEXT, "closed": _TEXT}, "required": ["name"]},
+    # ``file``: a money account (``<name>.money.py``) that says every other field; CommandAGI refuses a second copy by name.
+    "BankAccount": {"props": {"file": _TEXT, "name": _TEXT, "provider": _TEXT, "last4": _TEXT, "currency": _TEXT, "ledger": _TEXT, "kind": _TEXT,
+                              "statements": _TEXT, "opened": _TEXT, "closed": _TEXT}, "required": []},
     "Payroll": {"props": {"provider": _TEXT, "ledger": _TEXT, "register": _TEXT, "schedule": _TEXT, "jurisdiction": _TEXT}, "required": ["provider"]},
     "DataRoom": {"props": {"name": _TEXT, "about": _TEXT, "expires": _TEXT}, "required": ["name"], "many": {"include": "Include"}},
     "Include": {"props": {"document": _TEXT, "section": _TEXT}, "required": ["document"]},
