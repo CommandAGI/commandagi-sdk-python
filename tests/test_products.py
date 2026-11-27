@@ -33,13 +33,24 @@ class ProductTests(unittest.TestCase):
                                      name="Desk assistant", kind="physical", shipping=SHIPPING))
         self.assertEqual(p["document"], PREORDER)
 
+    def test_a_subscription_is_its_document(self):
+        plan = {"name": "Team", "kind": "subscription", "status": "active",
+                "variants": [{"sku": "team-seat-month", "name": "Team, a seat a month", "priceCents": 8900, "interval": "month"}], "discounts": []}
+        d = declare_document(product(variant(sku="team-seat-month", name="Team, a seat a month", price_cents=8900, interval="month"),
+                                     name="Team", kind="subscription", status="active"))
+        self.assertEqual(d["document"], plan)
+
     def test_a_bad_product_is_refused(self):
         v = {"sku": "a", "name": "b", "priceCents": 100}
         d = {"code": "SAVE5", "amountCents": 500}
         dig = {"name": "x", "kind": "digital"}
         phys = {"name": "x", "kind": "physical", "shipping": SHIPPING}
         bad = {
-            "kind is physical or digital": ({"name": "x", "kind": "service"}, v),
+            "kind is physical or digital or subscription": ({"name": "x", "kind": "service"}, v),
+            "is a subscription: interval is month or year": ({"name": "x", "kind": "subscription"}, v),
+            "is a subscription: it has no stock": ({"name": "x", "kind": "subscription"}, {**v, "interval": "month", "stock": 3}),
+            "is subscription: it ships nothing": ({"name": "x", "kind": "subscription", "shipping": SHIPPING}, {**v, "interval": "month"}),
+            "is physical: it is paid once, so it has no interval": (phys, {**v, "interval": "month"}),
             "is digital: it ships nothing": ({**dig, "shipping": SHIPPING}, {**v, "file": "f.zip"}),
             "is digital: file names the file it sells": (dig, v),
             "is digital: it takes no deposit": (dig, {**v, "file": "f.zip", "deposit": {"percent": 10}}),

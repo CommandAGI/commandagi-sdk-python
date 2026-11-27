@@ -12,8 +12,9 @@ is ``priceCents``)::
     )
 
 ``codes`` (product schemes: unspsc, gs1, hs) and ``tags`` say what kind of product it is (``./classification.py``;
-docs/formats.md § classification). ``kind`` is ``physical`` (``shipping`` is its policy, required) or ``digital`` (each variant names the ``file`` it sells;
-no shipping, weight, stock or deposit). A physical variant with no ``stock`` is made to order. A ``deposit``
+docs/formats.md § classification). ``kind`` is ``physical`` (``shipping`` is its policy, required), ``digital`` (each variant names the ``file`` it sells;
+no shipping, weight, stock or deposit) or ``subscription`` (paid again each ``interval``, ``month`` or ``year``; the
+quantity bought is the number of seats; no shipping, file, weight, stock or deposit). A physical variant with no ``stock`` is made to order. A ``deposit``
 (``{"percent": 1..99}`` or ``{"cents": n}``, at least 50 and less than the price) makes a variant a pre-order. A
 ``discount`` takes ``percent`` or ``amount_cents`` off, between ``starts_at`` and ``ends_at`` (ISO 8601; a date-time with
 no offset is UTC), for at most ``usage_limit`` orders. A run gives back ``{"format": "product", "document": {...},
@@ -29,10 +30,11 @@ from .classification import PRODUCT_SCHEMES, classification_problem
 from .documents import DocTree, Vocabulary, _json, register_vocabulary
 from .element import define
 
-PRODUCT_KINDS = ["physical", "digital"]
+PRODUCT_KINDS = ["physical", "digital", "subscription"]
+SUBSCRIPTION_INTERVALS = ["month", "year"]
 PRODUCT_STATUSES = ["draft", "active", "archived"]
 PRODUCT_FIELDS = ["name", "kind", "slug", "subtitle", "description", "images", "status", "shipping", "fulfilment", "quantityTerms", "embodimentKind", "taxCode", "codes", "tags"]
-VARIANT_FIELDS = ["sku", "name", "priceCents", "compareAtCents", "stock", "options", "weightGrams", "file", "deposit"]
+VARIANT_FIELDS = ["sku", "name", "priceCents", "compareAtCents", "stock", "options", "weightGrams", "file", "deposit", "interval"]
 DISCOUNT_FIELDS = ["code", "percent", "amountCents", "startsAt", "endsAt", "usageLimit"]
 
 #: Every tag and what it holds (the TypeScript SDK's ``SIGNATURES``).
@@ -42,7 +44,7 @@ SIGNATURES: Dict[str, Dict[str, Any]] = {
     "discount": {},
 }
 
-__all__ = ["PRODUCT_KINDS", "PRODUCT_STATUSES", "PRODUCT_FIELDS", "VARIANT_FIELDS", "DISCOUNT_FIELDS", "SIGNATURES", "product_of",
+__all__ = ["PRODUCT_KINDS", "SUBSCRIPTION_INTERVALS", "PRODUCT_STATUSES", "PRODUCT_FIELDS", "VARIANT_FIELDS", "DISCOUNT_FIELDS", "SIGNATURES", "product_of",
            "variant_of", "discount_of", "deposit_of", "PRODUCT_VOCABULARY", *define(globals(), "products", SIGNATURES)]
 
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{1,79}$")
@@ -116,6 +118,16 @@ def variant_of(attrs: Dict[str, Any], kind: str) -> Dict[str, Any]:
         if not ok:
             raise ValueError(f"{at} options is an object of at most 20 names, each a text, a number or a boolean, not {_said(o)}")
         out["options"] = dict(o)
+    if kind == "subscription":
+        for k in ("stock", "weightGrams", "deposit", "file"):
+            if k in attrs:
+                raise ValueError(f"{at} is a subscription: it has no {k}")
+        if attrs.get("interval") not in SUBSCRIPTION_INTERVALS:
+            raise ValueError(f"{at} is a subscription: interval is month or year, not {_said(attrs.get('interval'))}")
+        out["interval"] = attrs["interval"]
+        return out
+    if "interval" in attrs:
+        raise ValueError(f"{at} is {kind}: it is paid once, so it has no interval")
     if kind == "digital":
         if "stock" in attrs:
             raise ValueError(f"{at} is digital: it has no stock (a file does not run out)")
@@ -210,8 +222,8 @@ def product_of(t: DocTree) -> Dict[str, Any]:
         if a["status"] not in PRODUCT_STATUSES:
             raise ValueError(f"{at} status is {', '.join(PRODUCT_STATUSES)}, not {_said(a['status'])}")
         out["status"] = a["status"]
-    if kind == "digital" and "shipping" in a:
-        raise ValueError(f"{at} is digital: it ships nothing, so it has no shipping")
+    if kind != "physical" and "shipping" in a:
+        raise ValueError(f"{at} is {kind}: it ships nothing, so it has no shipping")
     if kind == "physical":
         if not isinstance(a.get("shipping"), dict):
             raise ValueError(f"{at} is physical: shipping is its shipping policy ({{ zones, from?, parcel? }}), not {_said(a.get('shipping'))}")
